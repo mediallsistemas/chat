@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(docker compose *)",
+      "Bash(docker logs *)",
+      "Bash(turbo run *)",
+      "Bash(code .)",
+      "Bash(pm2 list)",
+      "Bash(pm2 list *)",
+      "Bash(pm2 logs *)",
+      "Bash(pm2 show *)",
+      "Bash(pm2 start *)",
+      "Bash(pm2 restart *)",
+      "Bash(pm2 stop *)",
+      "Bash(tasklist)",
+      "Bash(tasklist *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull)",
+      "Bash(wsl --list *)"
+    ]
+  }
+}

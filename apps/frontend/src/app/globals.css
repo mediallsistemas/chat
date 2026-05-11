@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gd: #0D3B2E;
+  --gm: #1A4D3A;
+  --gn: #BFEF45;
+  --bg: #EDF2EE;
+  --wh: #ffffff;
+  --gs: #C8D4C9;
+  --gx: #6B7E6D;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: #1a1a1a;
+    font-family: var(--font-dm-sans), 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sora), 'Sora', sans-serif;
+  }
+}
+
+@layer utilities {
+  /* Sidebar active state with exact brand opacity */
+  .sidebar-active {
+    background-color: rgba(191, 239, 69, 0.15);
+    color: #BFEF45;
+  }
+
+  .sidebar-item {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .sidebar-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
