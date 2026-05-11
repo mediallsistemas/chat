@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware'
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
+import { EventEmitterModule } from '@nestjs/event-emitter'
 import { ScheduleModule } from '@nestjs/schedule'
 import { BullModule } from '@nestjs/bull'
 import { JwtModule } from '@nestjs/jwt'
@@ -26,12 +27,14 @@ import { TicketsModule } from './tickets/tickets.module'
 import { HealthModule } from './health/health.module'
 import { ConsentsModule } from './consents/consents.module'
 import { PrismaModule } from './prisma/prisma.module'
+import { SharedModule } from './shared/shared.module'
 import { GatewayModule } from './gateway/gateway.module'
 import { MailModule } from './mail/mail.module'
 import { ImpedimentEscalationJob } from './jobs/impediment-escalation.job'
 import { GroupArchiveJob } from './jobs/group-archive.job'
 import { MeetingReminderJob } from './jobs/meeting-reminder.job'
 import { ExecutiveReportJob } from './jobs/executive-report.job'
+import { ExecutiveReportHandler } from './jobs/handlers/executive-report.handler'
 import { TaskCheckinJob } from './jobs/task-checkin.job'
 import { DataRetentionJob } from './jobs/data-retention.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
@@ -43,6 +46,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot({ wildcard: true, delimiter: '.' }),
     ThrottlerModule.forRoot([{ name: 'global', ttl: 60_000, limit: 100 }]),
     ScheduleModule.forRoot(),
     BullModule.forRoot({
@@ -56,6 +60,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
       signOptions: { expiresIn: '15m' },
     }),
     PrismaModule,
+    SharedModule,
     GatewayModule,
     MailModule,
     AuthModule,
@@ -89,6 +94,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     GroupArchiveJob,
     MeetingReminderJob,
     ExecutiveReportJob,
+    ExecutiveReportHandler,
     TaskCheckinJob,
     DataRetentionJob,
   ],

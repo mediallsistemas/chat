@@ -51,6 +51,18 @@ export interface MessageSender {
   avatarUrl: string | null
 }
 
+export interface MessageReactionItem {
+  emoji: string
+  userId: string
+}
+
+export interface MessageReactionSummary {
+  messageId: string
+  groupId: string
+  reactions: Array<{ emoji: string; count: number }>
+  myReactions: string[]
+}
+
 export interface Message {
   id: string
   groupId: string
@@ -70,4 +82,5 @@ export interface Message {
   isDeleted: boolean
   createdAt: string
   editedAt: string | null
+  reactions?: MessageReactionItem[]
 }

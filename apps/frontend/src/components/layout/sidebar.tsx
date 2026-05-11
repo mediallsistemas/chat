@@ -84,11 +84,13 @@ export function Sidebar() {
       {/* User avatar */}
       <div className="pb-3 flex justify-center">
         <div
-          className="w-9 h-9 rounded-full bg-gn flex items-center justify-center text-gd text-[11px] font-bold font-sora cursor-pointer select-none"
+          className="w-9 h-9 rounded-full bg-gn flex items-center justify-center text-gd text-[11px] font-bold font-sora cursor-pointer select-none overflow-hidden"
           title={user?.name ?? 'Usuário'}
           aria-label={`Usuário: ${user?.name ?? ''}`}
         >
-          {user ? getInitials(user.name) : '?'}
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            : (user ? getInitials(user.name) : '?')}
         </div>
       </div>
     </aside>

@@ -154,8 +154,10 @@ export function Header() {
             aria-label="Menu do usuário"
             aria-expanded={userMenuOpen}
           >
-            <div className="w-7 h-7 rounded-full bg-gd flex items-center justify-center text-gn text-[11px] font-bold font-sora select-none">
-              {user ? getInitials(user.name) : '?'}
+            <div className="w-7 h-7 rounded-full bg-gd flex items-center justify-center text-gn text-[11px] font-bold font-sora select-none overflow-hidden">
+              {user?.avatarUrl
+                ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                : (user ? getInitials(user.name) : '?')}
             </div>
             <span className="text-sm text-gray-700 hidden sm:block max-w-[120px] truncate">
               {user?.name}

@@ -7,7 +7,7 @@ import { Avatar, Button, Modal } from '@/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
-  useUploadFile,
+  useUploadFile, useToggleReaction,
 } from '@/hooks/use-chat'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
@@ -65,20 +65,38 @@ const GROUP_TYPE_LABEL: Record<GroupType, string> = {
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏']
+
 function MessageBubble({
   msg,
   isMine,
+  currentUserId,
   onDelete,
   onPin,
   onReply,
+  onReact,
 }: {
   msg: Message
   isMine: boolean
+  currentUserId: string
   onDelete: () => void
   onPin: () => void
   onReply: () => void
+  onReact: (emoji: string) => void
 }) {
   const [hover, setHover] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+
+  // Group flat reaction list into summary { emoji → { count, isMine } }
+  const reactionSummary = (msg.reactions ?? []).reduce<Record<string, { count: number; isMine: boolean }>>(
+    (acc, r) => {
+      acc[r.emoji] ??= { count: 0, isMine: false }
+      acc[r.emoji].count++
+      if (r.userId === currentUserId) acc[r.emoji].isMine = true
+      return acc
+    },
+    {},
+  )
 
   if (msg.isDeleted) {
     return (
@@ -97,7 +115,7 @@ function MessageBubble({
     >
       {!isMine && (
         <div className="shrink-0 mt-auto">
-          <Avatar name={msg.sender.name} size="xs" />
+          <Avatar name={msg.sender.name} src={msg.sender.avatarUrl} size="xs" />
         </div>
       )}
 
@@ -158,15 +176,67 @@ function MessageBubble({
           </span>
           {msg.isEdited && <span className="text-[10px] text-gx">(editado)</span>}
         </div>
+
+        {/* Reaction bubbles */}
+        {Object.keys(reactionSummary).length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1 px-1">
+            {Object.entries(reactionSummary).map(([emoji, { count, isMine: mine }]) => (
+              <button
+                key={emoji}
+                onClick={() => onReact(emoji)}
+                className={clsx(
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors',
+                  mine
+                    ? 'bg-gd/10 border-gd/30 text-gd'
+                    : 'bg-white border-gs/60 text-gray-600 hover:bg-page-bg',
+                )}
+                title={mine ? 'Remover reação' : 'Reagir'}
+              >
+                <span>{emoji}</span>
+                <span className="font-medium">{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Hover actions */}
       <div
         className={clsx(
-          'self-center flex items-center gap-1 transition-opacity',
+          'self-center flex items-center gap-1 transition-opacity relative',
           hover ? 'opacity-100' : 'opacity-0',
         )}
       >
+        {/* Emoji picker */}
+        <div className="relative">
+          <button
+            onClick={() => setEmojiOpen((o) => !o)}
+            className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
+            aria-label="Reagir"
+            title="Reagir"
+          >
+            <i className="ti ti-mood-smile text-sm" aria-hidden="true" />
+          </button>
+          {emojiOpen && (
+            <div
+              className={clsx(
+                'absolute bottom-8 z-20 bg-white rounded-2xl border border-gs/60 shadow-lg p-1.5 flex gap-1',
+                isMine ? 'right-0' : 'left-0',
+              )}
+            >
+              {QUICK_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => { onReact(e); setEmojiOpen(false) }}
+                  className="text-lg hover:scale-125 transition-transform p-0.5 rounded-lg hover:bg-page-bg"
+                  aria-label={`Reagir com ${e}`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={onReply}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
@@ -305,7 +375,7 @@ function StartDirectModal({
                 onClick={() => { onSelect(m.id); onClose() }}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-page-bg transition-colors text-left"
               >
-                <Avatar name={m.name} size="sm" />
+                <Avatar name={m.name} src={m.avatarUrl} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{m.name}</p>
                   <p className="text-[11px] text-gx truncate">{m.email}</p>
@@ -444,6 +514,7 @@ export default function MensagensPage() {
   const { mutate: sendMsg } = useSendMessage(activeGroupId ?? '')
   const { mutate: deleteMsg } = useDeleteMessage(activeGroupId ?? '')
   const { mutate: pinMsg } = usePinMessage(activeGroupId ?? '')
+  const { mutate: toggleReaction } = useToggleReaction(activeGroupId ?? '')
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -648,9 +719,11 @@ export default function MensagensPage() {
                   key={msg.id}
                   msg={msg}
                   isMine={msg.senderId === user?.id}
+                  currentUserId={user?.id ?? ''}
                   onDelete={() => deleteMsg(msg.id)}
                   onPin={() => pinMsg(msg.id)}
                   onReply={() => setReplyTo(msg)}
+                  onReact={(emoji) => toggleReaction({ messageId: msg.id, emoji })}
                 />
               ))
             )}

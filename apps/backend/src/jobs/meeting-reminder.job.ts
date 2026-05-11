@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { MeetingsService } from '../meetings/meetings.service'
-import { NotificationsService } from '../notifications/notifications.service'
-import { NotificationType } from '@mediall/types'
+import { EventBusService } from '../shared/events'
+import { MeetingReminderDueEvent } from '../meetings/events/meeting-reminder-due.event'
 
 const MINUTES = 60_000
 
@@ -12,7 +12,7 @@ export class MeetingReminderJob {
 
   constructor(
     private meetingsService: MeetingsService,
-    private notifications: NotificationsService,
+    private eventBus: EventBusService,
   ) {}
 
   @Cron('*/15 * * * *')
@@ -35,16 +35,14 @@ export class MeetingReminderJob {
     const meetings = await this.meetingsService.getMeetingsStartingBetween(from, to)
     for (const meeting of meetings) {
       if (meeting.participants.length === 0) continue
-      await this.notifications.notifyMany(
-        meeting.participants.map((p) => ({
-          userId: p.userId,
-          title: 'Reunião em 24 horas',
-          body: `"${meeting.title}" começa amanhã`,
-          type: NotificationType.MEETING_REMINDER,
-          entityType: 'meeting',
-          entityId: meeting.id,
-          unitId: meeting.unitId,
-        })),
+      this.eventBus.publish(
+        new MeetingReminderDueEvent(
+          meeting.id,
+          meeting.title,
+          meeting.unitId,
+          meeting.participants.map((p) => p.userId),
+          24 * 60,
+        ),
       )
     }
   }
@@ -57,16 +55,14 @@ export class MeetingReminderJob {
     const meetings = await this.meetingsService.getMeetingsStartingBetween(from, to)
     for (const meeting of meetings) {
       if (meeting.participants.length === 0) continue
-      await this.notifications.notifyMany(
-        meeting.participants.map((p) => ({
-          userId: p.userId,
-          title: 'Reunião em 15 minutos',
-          body: `"${meeting.title}" começa em breve`,
-          type: NotificationType.MEETING_REMINDER,
-          entityType: 'meeting',
-          entityId: meeting.id,
-          unitId: meeting.unitId,
-        })),
+      this.eventBus.publish(
+        new MeetingReminderDueEvent(
+          meeting.id,
+          meeting.title,
+          meeting.unitId,
+          meeting.participants.map((p) => p.userId),
+          15,
+        ),
       )
     }
   }

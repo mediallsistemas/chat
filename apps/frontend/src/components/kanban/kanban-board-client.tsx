@@ -9,21 +9,24 @@ import { CreateTaskModal } from './create-task-modal'
 import { TaskDetailModal } from './task-detail-modal'
 import { KanbanListView } from './kanban-list-view'
 import { KanbanCalendarView } from './kanban-calendar-view'
+import { KanbanGanttView } from './kanban-gantt-view'
 import { useKanbanBoard, useMoveTask, type KanbanBoardData, type KanbanColumnItem } from '@/hooks/use-kanban'
 import { KanbanBoardSkeleton } from './kanban-board-skeleton'
 import { useUnitStore } from '@/store/unit-store'
 
-type ViewMode = 'board' | 'list' | 'calendar'
+type ViewMode = 'board' | 'list' | 'calendar' | 'gantt'
 
 const VIEW_ICONS: Record<ViewMode, string> = {
   board: 'ti-layout-kanban',
   list: 'ti-list',
   calendar: 'ti-calendar',
+  gantt: 'ti-timeline',
 }
 const VIEW_LABELS: Record<ViewMode, string> = {
   board: 'Board',
   list: 'Lista',
   calendar: 'Calendário',
+  gantt: 'Gantt',
 }
 
 interface Props {
@@ -98,7 +101,7 @@ export function KanbanBoardClient({ boardId, boardName }: Props) {
 
         {/* View toggle */}
         <div className="flex items-center gap-1 bg-page-bg rounded-xl p-1">
-          {(['board', 'list', 'calendar'] as ViewMode[]).map((mode) => (
+          {(['board', 'list', 'calendar', 'gantt'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -140,6 +143,10 @@ export function KanbanBoardClient({ boardId, boardName }: Props) {
 
       {viewMode === 'calendar' && (
         <KanbanCalendarView board={board} onOpenDetail={(taskId) => setDetailTaskId(taskId)} />
+      )}
+
+      {viewMode === 'gantt' && (
+        <KanbanGanttView board={board} onOpenDetail={(taskId) => setDetailTaskId(taskId)} />
       )}
 
       {/* Add task modal */}

@@ -48,7 +48,7 @@
 - [x] Checklists em tarefas (backend CRUD + modal de detalhe no Kanban)
 - [x] Dependências entre tarefas (Prisma TaskDependency, backend CRUD + ciclo/transitividade, UI no TaskDetailModal)
 - [x] Visualizações: Lista e Calendário (toggle Board/Lista/Calendário no KanbanBoardClient)
-- [ ] Visualização: Timeline (Gantt)
+- [x] Visualização: Timeline (Gantt)
 
 ### Sprint 4 (semanas 7–8) — Impedimentos + Painel
 - [x] Módulo de impedimentos completo
@@ -71,7 +71,7 @@
 - [x] Chat em tempo real (Socket.IO message:new/edited/deleted)
 - [x] Mensagens fixadas (pin/unpin), threads (replyToId), delete, edit
 - [x] /mensagens page — sidebar de grupos + painel de chat completo
-- [ ] Reações emoji
+- [x] Reações emoji
 
 ### Sprint 6 (semanas 11–12) — Arquivos + Presença
 - [x] Upload de arquivos (MinIO) — POST /units/:unitId/upload, FilesService, FileInterceptor

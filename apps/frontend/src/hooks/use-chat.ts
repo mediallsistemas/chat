@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useUnitStore } from '@/store/unit-store'
-import type { Group, Message, GroupType } from '@mediall/types'
+import type { Group, Message, GroupType, MessageReactionSummary } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
   return `/units/${unitId}${path}`
@@ -131,15 +131,47 @@ export function useMessages(groupId: string | null) {
       )
     }
 
+    function onReaction(payload: MessageReactionSummary) {
+      qc.setQueryData<{ pages: MessagesPage[]; pageParams: unknown[] }>(
+        ['messages', groupId],
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((p) => ({
+              ...p,
+              messages: p.messages.map((m) =>
+                m.id === payload.messageId
+                  ? {
+                      ...m,
+                      reactions: payload.reactions.flatMap((r) =>
+                        Array.from({ length: r.count }, (_, i) => ({
+                          emoji: r.emoji,
+                          userId: i === 0 ? payload.myReactions.includes(r.emoji) ? '' : 'other' : 'other',
+                        })),
+                      ),
+                    }
+                  : m,
+              ),
+            })),
+          }
+        },
+      )
+      // Store per-message reaction summary for accurate display
+      qc.setQueryData(['reactions', payload.messageId], payload)
+    }
+
     socket.on('message:new', onNew)
     socket.on('message:edited', onEdited)
     socket.on('message:deleted', onDeleted)
+    socket.on('message:reaction', onReaction)
 
     return () => {
       socket.emit('leave:group', groupId)
       socket.off('message:new', onNew)
       socket.off('message:edited', onEdited)
       socket.off('message:deleted', onDeleted)
+      socket.off('message:reaction', onReaction)
     }
   }, [groupId, qc])
 
@@ -175,6 +207,14 @@ export function usePinMessage(groupId: string) {
     mutationFn: (messageId: string) =>
       api.patch(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/pin`)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', groupId, 'pinned'] }),
+  })
+}
+
+export function useToggleReaction(groupId: string) {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      api.post(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/reactions`), { emoji }),
   })
 }
 

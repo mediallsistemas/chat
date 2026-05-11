@@ -12,89 +12,97 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg' },
     create: {
       name: 'Administrador',
       email: 'admin@mediall.com.br',
       passwordHash: await hash('Admin@123'),
       accessScope: AccessScope.GLOBAL,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
     },
   })
 
   const rafael = await prisma.user.upsert({
     where: { email: 'rafael@gmail.com' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/45.jpg' },
     create: {
       name: 'Rafael Moreira',
       email: 'rafael@gmail.com',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.GLOBAL,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/45.jpg',
     },
   })
 
   const gabriel = await prisma.user.upsert({
     where: { email: 'gabriel@gmail.com' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/78.jpg' },
     create: {
       name: 'Gabriel Araujo',
       email: 'gabriel@gmail.com',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.GLOBAL,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/78.jpg',
     },
   })
 
   const gerenteEnfermagem = await prisma.user.upsert({
     where: { email: 'gerente.enfermagem@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/women/21.jpg' },
     create: {
       name: 'Gerente de Enfermagem',
       email: 'gerente.enfermagem@mediall.com.br',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.SINGLE,
+      avatarUrl: 'https://randomuser.me/api/portraits/women/21.jpg',
     },
   })
 
   const gerenteProntoSocorro = await prisma.user.upsert({
     where: { email: 'gerente.ps@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/12.jpg' },
     create: {
       name: 'Gerente Pronto Socorro',
       email: 'gerente.ps@mediall.com.br',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.SINGLE,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/12.jpg',
     },
   })
 
   const diretorFinanceiro = await prisma.user.upsert({
     where: { email: 'diretor.financeiro@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/57.jpg' },
     create: {
       name: 'Diretor Financeiro',
       email: 'diretor.financeiro@mediall.com.br',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.MULTI,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/57.jpg',
     },
   })
 
   const diretorOperacional = await prisma.user.upsert({
     where: { email: 'diretor.operacional@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/men/63.jpg' },
     create: {
       name: 'Diretor Operacional',
       email: 'diretor.operacional@mediall.com.br',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.GLOBAL,
+      avatarUrl: 'https://randomuser.me/api/portraits/men/63.jpg',
     },
   })
 
   const gerenteCCIH = await prisma.user.upsert({
     where: { email: 'gerente.ccih@mediall.com.br' },
-    update: {},
+    update: { avatarUrl: 'https://randomuser.me/api/portraits/women/55.jpg' },
     create: {
       name: 'Gerente CCIH',
       email: 'gerente.ccih@mediall.com.br',
       passwordHash: await hash('Mediall@2026'),
       accessScope: AccessScope.MULTI,
+      avatarUrl: 'https://randomuser.me/api/portraits/women/55.jpg',
     },
   })
 
