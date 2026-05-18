@@ -2,9 +2,9 @@ import { Controller, Get, Post, Param, Body } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import { MacroTasksService } from './macro-tasks.service'
 import { CreateMacroTaskDto } from './dto/create-macro-task.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { Roles } from '../../shared/decorators/roles.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
+import { Roles } from '../../../shared/decorators/roles.decorator'
 import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('macro-tasks')

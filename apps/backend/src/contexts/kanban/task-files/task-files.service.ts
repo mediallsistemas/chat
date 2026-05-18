@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../prisma/prisma.service'
-import { FilesService } from '../../files/files.service'
+import { PrismaService } from '../../../prisma/prisma.service'
+import { FilesService } from '../../../infrastructure/files/files.service'
 import { AttachFileDto } from './dto/attach-file.dto'
 
 @Injectable()

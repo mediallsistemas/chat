@@ -3,9 +3,9 @@ import { ApiTags } from '@nestjs/swagger'
 import { PhasesService } from './phases.service'
 import { CreatePhaseDto } from './dto/create-phase.dto'
 import { UpdatePhaseDto } from './dto/update-phase.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { Roles } from '../../shared/decorators/roles.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
+import { Roles } from '../../../shared/decorators/roles.decorator'
 import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('phases')

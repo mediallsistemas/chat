@@ -2,8 +2,8 @@ import { Controller, Post, Patch, Get, Param, Body } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
 import { ImpedimentsService } from './impediments.service'
 import { CreateImpedimentDto, ResolveImpedimentDto } from './dto/create-impediment.dto'
-import { BaseUnitController } from '../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @ApiTags('impediments')

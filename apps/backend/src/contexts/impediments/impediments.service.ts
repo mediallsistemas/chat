@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service'
-import { EventBusService } from '../shared/events'
+import { PrismaService } from '../../prisma/prisma.service'
+import { EventBusService } from '../../shared/events'
 import { ImpedimentCreatedEvent } from './events/impediment-created.event'
 import { ImpedimentEscalatedEvent } from './events/impediment-escalated.event'
 import { ImpedimentResolvedEvent } from './events/impediment-resolved.event'

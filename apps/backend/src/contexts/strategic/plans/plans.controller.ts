@@ -3,9 +3,9 @@ import { ApiTags } from '@nestjs/swagger'
 import { PlansService } from './plans.service'
 import { CreatePlanDto } from './dto/create-plan.dto'
 import { UpdatePlanDto } from './dto/update-plan.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { Roles } from '../../shared/decorators/roles.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
+import { Roles } from '../../../shared/decorators/roles.decorator'
 import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('plans')

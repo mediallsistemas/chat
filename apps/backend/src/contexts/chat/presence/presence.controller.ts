@@ -1,7 +1,7 @@
 import { Controller, Get, Param } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { AppGateway } from '../../gateway/app.gateway'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { AppGateway } from '../../../infrastructure/gateway/app.gateway'
 
 @ApiTags('presence')
 @Controller('units/:unitId')

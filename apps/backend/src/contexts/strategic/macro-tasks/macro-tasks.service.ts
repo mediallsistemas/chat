@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../prisma/prisma.service'
+import { PrismaService } from '../../../prisma/prisma.service'
 import { CreateMacroTaskDto } from './dto/create-macro-task.dto'
 import { JwtPayload, BoardOwner, TaskStatus } from '@mediall/types'
 

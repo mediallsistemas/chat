@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common'
 import { MeetingsService } from './meetings.service'
 import { MeetingsController } from './meetings.controller'
 import { MeetingNotificationHandler } from './handlers/meeting-notification.handler'
-import { PrismaModule } from '../prisma/prisma.module'
-import { NotificationsModule } from '../notifications/notifications.module'
+import { PrismaModule } from '../../prisma/prisma.module'
+import { NotificationsModule } from '../../infrastructure/notifications/notifications.module'
 
 @Module({
   imports: [PrismaModule, NotificationsModule],

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
-import { ImpedimentsService } from '../impediments/impediments.service'
+import { ImpedimentsService } from '../contexts/impediments/impediments.service'
 
 @Injectable()
 export class ImpedimentEscalationJob {

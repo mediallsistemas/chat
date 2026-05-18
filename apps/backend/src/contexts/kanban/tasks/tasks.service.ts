@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
-import { PrismaService } from '../../prisma/prisma.service'
-import { EventBusService } from '../../shared/events'
+import { PrismaService } from '../../../prisma/prisma.service'
+import { EventBusService } from '../../../shared/events'
 import { TaskCreatedEvent } from './events/task-created.event'
 import { TaskCompletedEvent } from './events/task-completed.event'
 import { CreateTaskDto } from './dto/create-task.dto'

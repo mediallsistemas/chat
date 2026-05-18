@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common'
 import * as webpush from 'web-push'
-import { PrismaService } from '../prisma/prisma.service'
+import { PrismaService } from '../../prisma/prisma.service'
 import { SubscribePushDto } from './dto/subscribe-push.dto'
 
 @Injectable()

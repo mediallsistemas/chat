@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../shared/events'
+import { DomainEvent } from '../../../shared/events'
 
 export class TicketAssignedEvent extends DomainEvent {
   readonly eventName = 'ticket.assigned'

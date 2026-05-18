@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../../shared/events'
+import { DomainEvent } from '../../../../shared/events'
 
 export class MessageSentEvent extends DomainEvent {
   readonly eventName = 'message.sent'

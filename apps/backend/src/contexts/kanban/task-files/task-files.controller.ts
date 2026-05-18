@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common'
 import { TaskFilesService } from './task-files.service'
 import { AttachFileDto } from './dto/attach-file.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @Controller('units/:unitId/tasks/:taskId/files')

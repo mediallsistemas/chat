@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiTags, ApiConsumes } from '@nestjs/swagger'
-import { BaseUnitController } from '../shared/controllers/base-unit.controller'
+import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
 import { FilesService } from './files.service'
 import { randomUUID } from 'crypto'
 

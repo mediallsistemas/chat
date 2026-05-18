@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Query } from '@nestjs/common'
 import { PushService } from './push.service'
 import { SubscribePushDto } from './dto/subscribe-push.dto'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @Controller('push')

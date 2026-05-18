@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
-import { MeetingsService } from '../meetings/meetings.service'
+import { MeetingsService } from '../contexts/meetings/meetings.service'
 import { EventBusService } from '../shared/events'
-import { MeetingReminderDueEvent } from '../meetings/events/meeting-reminder-due.event'
+import { MeetingReminderDueEvent } from '../contexts/meetings/events/meeting-reminder-due.event'
 
 const MINUTES = 60_000
 

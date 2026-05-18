@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
-import { NotificationsService } from '../../../notifications/notifications.service'
+import { NotificationsService } from '../../../../infrastructure/notifications/notifications.service'
 import { NotificationType } from '@mediall/types'
 import { PhaseCompletedEvent } from '../events/phase-completed.event'
 import { PhaseUnlockedEvent } from '../events/phase-unlocked.event'

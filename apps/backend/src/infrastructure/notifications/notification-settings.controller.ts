@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Post, Delete, Param, Body } from '@nestjs/common'
 import { NotificationSettingsService } from './notification-settings.service'
 import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @Controller('notifications/settings')

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { randomUUID } from 'crypto'
-import { PrismaService } from '../prisma/prisma.service'
-import { FilesService } from '../files/files.service'
+import { PrismaService } from '../../prisma/prisma.service'
+import { FilesService } from '../../infrastructure/files/files.service'
 import { CreateFolderDto } from './dto/create-folder.dto'
 import { JwtPayload } from '@mediall/types'
 

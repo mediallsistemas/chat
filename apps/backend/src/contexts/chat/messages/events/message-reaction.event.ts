@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../../shared/events'
+import { DomainEvent } from '../../../../shared/events'
 
 export class MessageReactionEvent extends DomainEvent {
   readonly eventName = 'message.reaction'

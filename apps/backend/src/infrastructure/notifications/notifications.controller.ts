@@ -1,6 +1,6 @@
 import { Controller, Get, Patch, Param, HttpCode, HttpStatus } from '@nestjs/common'
 import { NotificationsService } from './notifications.service'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @Controller('notifications')

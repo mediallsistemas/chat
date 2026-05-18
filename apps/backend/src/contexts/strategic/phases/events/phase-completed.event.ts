@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../../shared/events'
+import { DomainEvent } from '../../../../shared/events'
 
 export class PhaseCompletedEvent extends DomainEvent {
   readonly eventName = 'phase.completed'

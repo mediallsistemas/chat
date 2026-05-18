@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConsentType } from '@prisma/client'
-import { PrismaService } from '../prisma/prisma.service'
+import { PrismaService } from '../../prisma/prisma.service'
 import { AppGateway } from '../gateway/app.gateway'
 import { MailService } from '../mail/mail.service'
 import { PushService } from '../push/push.service'
 import { NotificationSettingsService } from './notification-settings.service'
-import { ConsentsService } from '../consents/consents.service'
+import { ConsentsService } from '../../consents/consents.service'
 import { CreateNotificationDto } from './dto/create-notification.dto'
 
 @Injectable()

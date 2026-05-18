@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../../shared/events'
+import { DomainEvent } from '../../../../shared/events'
 
 export class TaskCreatedEvent extends DomainEvent {
   readonly eventName = 'task.created'

@@ -3,9 +3,9 @@ import { ApiTags } from '@nestjs/swagger'
 import { ObjectivesService } from './objectives.service'
 import { CreateObjectiveDto } from './dto/create-objective.dto'
 import { UpdateObjectiveDto } from './dto/update-objective.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { Roles } from '../../shared/decorators/roles.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
+import { Roles } from '../../../shared/decorators/roles.decorator'
 import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('objectives')

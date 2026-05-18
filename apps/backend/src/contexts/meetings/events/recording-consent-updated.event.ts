@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../shared/events'
+import { DomainEvent } from '../../../shared/events'
 
 export class RecordingConsentUpdatedEvent extends DomainEvent {
   readonly eventName = 'meeting.recording_consent_updated'

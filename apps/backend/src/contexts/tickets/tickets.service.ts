@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service'
-import { EventBusService } from '../shared/events'
+import { PrismaService } from '../../prisma/prisma.service'
+import { EventBusService } from '../../shared/events'
 import { TicketAssignedEvent } from './events/ticket-assigned.event'
 import { TicketStatusChangedEvent } from './events/ticket-status-changed.event'
 import { CreateTicketDto } from './dto/create-ticket.dto'
 import { UpdateTicketDto } from './dto/update-ticket.dto'
 import { JwtPayload, TicketStatus } from '@mediall/types'
-import { paginate } from '../common/utils/paginate'
-import { PaginationDto } from '../common/dto/pagination.dto'
+import { paginate } from '../../common/utils/paginate'
+import { PaginationDto } from '../../common/dto/pagination.dto'
 
 const INCLUDE_TICKET = {
   reporter: { select: { id: true, name: true, avatarUrl: true } },

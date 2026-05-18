@@ -9,8 +9,8 @@ class ReactionDto {
   @Length(1, 10)
   emoji: string
 }
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @ApiTags('messages')

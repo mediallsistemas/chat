@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
-import { NotificationsService } from '../../notifications/notifications.service'
-import { MailService } from '../../mail/mail.service'
+import { NotificationsService } from '../../infrastructure/notifications/notifications.service'
+import { MailService } from '../../infrastructure/mail/mail.service'
 import { NotificationType } from '@mediall/types'
 import { ExecutiveReportReadyEvent } from '../events/executive-report-ready.event'
 

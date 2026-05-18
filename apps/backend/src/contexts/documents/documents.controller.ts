@@ -15,8 +15,8 @@ import { ApiTags, ApiConsumes, ApiOperation, ApiCookieAuth } from '@nestjs/swagg
 import { IsOptional, IsString } from 'class-validator'
 import { DocumentsService } from './documents.service'
 import { CreateFolderDto } from './dto/create-folder.dto'
-import { BaseUnitController } from '../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 class ListDocsQuery {

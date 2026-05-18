@@ -4,9 +4,9 @@ import { GroupsController } from './groups/groups.controller'
 import { MessagesService } from './messages/messages.service'
 import { MessagesController } from './messages/messages.controller'
 import { PresenceController } from './presence/presence.controller'
-import { PrismaModule } from '../prisma/prisma.module'
-import { FilesModule } from '../files/files.module'
-import { NotificationsModule } from '../notifications/notifications.module'
+import { PrismaModule } from '../../prisma/prisma.module'
+import { FilesModule } from '../../infrastructure/files/files.module'
+import { NotificationsModule } from '../../infrastructure/notifications/notifications.module'
 
 @Module({
   imports: [PrismaModule, FilesModule, NotificationsModule],

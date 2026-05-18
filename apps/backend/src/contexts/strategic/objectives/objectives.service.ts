@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import { PrismaService } from '../../prisma/prisma.service'
+import { PrismaService } from '../../../prisma/prisma.service'
 import { CreateObjectiveDto } from './dto/create-objective.dto'
 import { UpdateObjectiveDto } from './dto/update-objective.dto'
 import { JwtPayload, TrafficLight, GoalStatus } from '@mediall/types'

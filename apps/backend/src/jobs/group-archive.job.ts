@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
-import { GroupsService } from '../chat/groups/groups.service'
+import { GroupsService } from '../contexts/chat/groups/groups.service'
 
 @Injectable()
 export class GroupArchiveJob {

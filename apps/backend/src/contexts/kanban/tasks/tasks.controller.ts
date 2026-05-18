@@ -3,8 +3,8 @@ import { ApiTags } from '@nestjs/swagger'
 import { TasksService } from './tasks.service'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { MoveTaskDto } from './dto/move-task.dto'
-import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../../shared/decorators/current-user.decorator'
+import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
 import { JwtPayload } from '@mediall/types'
 
 @ApiTags('kanban')

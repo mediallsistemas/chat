@@ -14,9 +14,9 @@ import { MeetingsService } from './meetings.service'
 import { CreateMeetingDto } from './dto/create-meeting.dto'
 import { UpdateMeetingDto } from './dto/update-meeting.dto'
 import { RespondInviteDto } from './dto/respond-invite.dto'
-import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard'
-import { RolesGuard } from '../shared/guards/roles.guard'
-import { UnitScopeGuard } from '../shared/guards/unit-scope.guard'
+import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
+import { RolesGuard } from '../../shared/guards/roles.guard'
+import { UnitScopeGuard } from '../../shared/guards/unit-scope.guard'
 
 @Controller('units/:unitId/meetings')
 @UseGuards(JwtAuthGuard, RolesGuard, UnitScopeGuard)

@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../shared/events'
+import { DomainEvent } from '../../../shared/events'
 
 export class MeetingReminderDueEvent extends DomainEvent {
   readonly eventName = 'meeting.reminder_due'

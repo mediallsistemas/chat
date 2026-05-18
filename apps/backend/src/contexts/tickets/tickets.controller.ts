@@ -5,9 +5,9 @@ import { Transform } from 'class-transformer'
 import { TicketsService } from './tickets.service'
 import { CreateTicketDto } from './dto/create-ticket.dto'
 import { UpdateTicketDto } from './dto/update-ticket.dto'
-import { PaginationDto } from '../common/dto/pagination.dto'
-import { BaseUnitController } from '../shared/controllers/base-unit.controller'
-import { CurrentUser } from '../shared/decorators/current-user.decorator'
+import { PaginationDto } from '../../common/dto/pagination.dto'
+import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
+import { CurrentUser } from '../../shared/decorators/current-user.decorator'
 import { JwtPayload, TicketStatus } from '@mediall/types'
 
 class CommentDto {
