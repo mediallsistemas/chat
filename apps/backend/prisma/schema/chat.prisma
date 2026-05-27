@@ -117,3 +117,18 @@ model CustomEmoji {
   @@index([unitId])
   @@map("chat_custom_emojis")
 }
+
+model ChatReminder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  unitId    String   @map("unit_id")
+  groupId   String?  @map("group_id")
+  text      String
+  remindAt  DateTime @map("remind_at")
+  jobId     String?  @map("job_id")
+  fired     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, remindAt])
+  @@map("chat_reminders")
+}

@@ -12,6 +12,7 @@ import type {
   MessageReactionSummary,
   BookmarksPage,
   CustomEmoji,
+  ChatReminder,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
@@ -303,6 +304,23 @@ export function useDeleteCustomEmoji() {
     mutationFn: (id: string) =>
       api.delete(getUrl(activeUnit!.id, `/chat/custom-emojis/${id}`)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-emojis', activeUnit?.id] }),
+  })
+}
+
+// ─── Chat reminders ───────────────────────────────────────────────────────────
+
+export function useCreateReminder() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (dto: { text: string; remindAt: string; groupId?: string }) => {
+      const res = await api.post<{ data: ChatReminder }>(
+        getUrl(activeUnit!.id, '/chat/reminders'),
+        dto,
+      )
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reminders', activeUnit?.id] }),
   })
 }
 

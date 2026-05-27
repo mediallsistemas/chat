@@ -8,8 +8,9 @@ import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
   useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
-  useCustomEmojis,
+  useCustomEmojis, useCreateReminder,
 } from '@/hooks/use-chat'
+import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
@@ -576,6 +577,8 @@ function MensagensPageInner() {
   )
   const { data: customEmojiList = [] } = useCustomEmojis()
   const customEmojis = new Map(customEmojiList.map((e) => [e.shortcode, e.url]))
+  const { mutateAsync: createReminder } = useCreateReminder()
+  const [slashFeedback, setSlashFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -606,9 +609,35 @@ function MensagensPageInner() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
-  function send() {
+  async function send() {
     const content = text.trim()
-    if (!content) return
+    if (!content || !activeGroupId) return
+
+    // Try to interpret as slash command first.
+    const parsed = parseSlash(content)
+    if (parsed) {
+      const result = await parsed.command.run(parsed.args, {
+        groupId: activeGroupId,
+        sendMessage: (text) => sendMsg({ content: text, replyToId: replyTo?.id ?? undefined }),
+        createReminder: async (input) => { await createReminder(input) },
+      })
+      if (result.kind === 'error') {
+        setSlashFeedback({ tone: 'error', text: result.message })
+        return
+      }
+      if (result.kind === 'noop' && result.message) {
+        setSlashFeedback({ tone: 'info', text: result.message })
+      } else {
+        setSlashFeedback(null)
+      }
+      setText('')
+      setReplyTo(null)
+      setMentionQuery('')
+      setMentionStart(-1)
+      return
+    }
+
+    setSlashFeedback(null)
     sendMsg({ content, replyToId: replyTo?.id })
     setText('')
     setReplyTo(null)
@@ -867,6 +896,59 @@ function MensagensPageInner() {
             </div>
           )}
 
+          {/* Slash command suggestions */}
+          {text.startsWith('/') && !text.includes(' ') && (
+            <div className="px-4 pt-2 bg-white border-t border-gs/60 shrink-0">
+              <ul className="bg-white border border-gs/60 rounded-xl text-xs overflow-hidden">
+                {SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1))).map((c) => (
+                  <li
+                    key={c.name}
+                    onClick={() => {
+                      setText(`/${c.name} `)
+                      textareaRef.current?.focus()
+                    }}
+                    className="px-3 py-1.5 hover:bg-page-bg cursor-pointer flex items-baseline gap-2"
+                  >
+                    <code className="font-semibold text-gd">/{c.name}</code>
+                    <span className="text-gx">— {c.description}</span>
+                    <span className="ml-auto text-[10px] text-gx">{c.usage}</span>
+                  </li>
+                ))}
+                {SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1))).length === 0 && (
+                  <li className="px-3 py-1.5 text-gx italic">
+                    Nenhum comando encontrado para “{text}”.
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Slash feedback */}
+          {slashFeedback && (
+            <div
+              className={clsx(
+                'px-4 py-1.5 text-xs flex items-center gap-2 border-t border-gs/60',
+                slashFeedback.tone === 'error' ? 'bg-red-50 text-red-600' : 'bg-page-bg text-gd',
+              )}
+            >
+              <i
+                className={clsx(
+                  'ti text-sm',
+                  slashFeedback.tone === 'error' ? 'ti-alert-circle' : 'ti-info-circle',
+                )}
+                aria-hidden="true"
+              />
+              <span className="flex-1">{slashFeedback.text}</span>
+              <button
+                onClick={() => setSlashFeedback(null)}
+                className="text-gx hover:text-gray-700"
+                aria-label="Fechar"
+              >
+                <i className="ti ti-x text-sm" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
           {/* Input bar */}
           <div className="px-4 py-3 bg-white border-t border-gs/60 shrink-0">
             <div className="flex items-end gap-2 bg-page-bg rounded-2xl px-3 py-2 border border-gs/60 focus-within:border-gd transition-colors">
@@ -894,7 +976,7 @@ function MensagensPageInner() {
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={onKeyDown}
-                placeholder="Mensagem... (@ para mencionar tarefa)"
+                placeholder="Mensagem... (@ para mencionar, / para comandos)"
                 rows={1}
                 className="flex-1 text-sm bg-transparent resize-none focus:outline-none max-h-32 leading-relaxed"
                 style={{ minHeight: '24px' }}

@@ -110,3 +110,14 @@ export interface CustomEmoji {
   createdAt: string
   url: string
 }
+
+export interface ChatReminder {
+  id: string
+  userId: string
+  unitId: string
+  groupId: string | null
+  text: string
+  remindAt: string
+  fired: boolean
+  createdAt: string
+}
