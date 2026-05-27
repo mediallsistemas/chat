@@ -104,3 +104,16 @@ model MessageBookmark {
   @@index([userId, unitId, createdAt])
   @@map("chat_message_bookmarks")
 }
+
+model CustomEmoji {
+  id        String   @id @default(uuid())
+  unitId    String   @map("unit_id")
+  shortcode String
+  fileKey   String   @map("file_key")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([unitId, shortcode])
+  @@index([unitId])
+  @@map("chat_custom_emojis")
+}

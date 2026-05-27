@@ -8,6 +8,7 @@ import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
   useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
+  useCustomEmojis,
 } from '@/hooks/use-chat'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
@@ -16,21 +17,22 @@ import { api } from '@/lib/api'
 import { getSocket, connectSocket } from '@/lib/socket'
 import { GroupType, type Group, type Message } from '@mediall/types'
 
-// ─── Mention helpers ──────────────────────────────────────────────────────────
+// ─── Mention + custom emoji helpers ───────────────────────────────────────────
 
-const MENTION_RE = /@\[([TO]):([a-f0-9-]+)\|([^\]]+)\]/g
+const MENTION_RE     = /@\[([TO]):([a-f0-9-]+)\|([^\]]+)\]/g
+const CUSTOM_EMOJI_RE = /:([a-z0-9_-]{2,32}):/g
 
-function renderContent(content: string) {
+function renderContent(content: string, customEmojis?: Map<string, string>) {
   const parts: React.ReactNode[] = []
   let last = 0
   let match: RegExpExecArray | null
   MENTION_RE.lastIndex = 0
   while ((match = MENTION_RE.exec(content)) !== null) {
-    if (match.index > last) parts.push(content.slice(last, match.index))
+    if (match.index > last) parts.push(renderInline(content.slice(last, match.index), customEmojis, `t-${match.index}`))
     const [, type, , title] = match
     parts.push(
       <span
-        key={match.index}
+        key={`m-${match.index}`}
         className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gd/10 text-gd text-[11px] font-medium"
       >
         <i className={clsx('ti text-[10px]', type === 'T' ? 'ti-subtask' : 'ti-target')} aria-hidden="true" />
@@ -39,8 +41,34 @@ function renderContent(content: string) {
     )
     last = match.index + match[0].length
   }
-  if (last < content.length) parts.push(content.slice(last))
+  if (last < content.length) parts.push(renderInline(content.slice(last), customEmojis, `t-tail`))
   return parts
+}
+
+function renderInline(text: string, customEmojis: Map<string, string> | undefined, keyPrefix: string) {
+  if (!customEmojis || customEmojis.size === 0) return text
+  const out: React.ReactNode[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  CUSTOM_EMOJI_RE.lastIndex = 0
+  while ((m = CUSTOM_EMOJI_RE.exec(text)) !== null) {
+    const url = customEmojis.get(m[1])
+    if (!url) continue
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push(
+      <img
+        key={`${keyPrefix}-e-${m.index}`}
+        src={url}
+        alt={`:${m[1]}:`}
+        title={`:${m[1]}:`}
+        className="inline-block align-text-bottom h-5 w-5 mx-0.5"
+      />,
+    )
+    last = m.index + m[0].length
+  }
+  if (last === 0) return text
+  if (last < text.length) out.push(text.slice(last))
+  return out
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -72,6 +100,7 @@ function MessageBubble({
   isMine,
   currentUserId,
   isBookmarked,
+  customEmojis,
   onDelete,
   onPin,
   onReply,
@@ -82,6 +111,7 @@ function MessageBubble({
   isMine: boolean
   currentUserId: string
   isBookmarked: boolean
+  customEmojis: Map<string, string>
   onDelete: () => void
   onPin: () => void
   onReply: () => void
@@ -168,7 +198,7 @@ function MessageBubble({
               <i className="ti ti-download text-base ml-auto shrink-0" aria-hidden="true" />
             </a>
           )}
-          {msg.content && <span>{renderContent(msg.content)}</span>}
+          {msg.content && <span>{renderContent(msg.content, customEmojis)}</span>}
           {msg.isPinned && (
             <i className="ti ti-pin text-[10px] ml-1.5 opacity-60" aria-hidden="true" />
           )}
@@ -544,6 +574,8 @@ function MensagensPageInner() {
   const bookmarkedIds = new Set(
     bookmarksData?.pages.flatMap((p) => p.bookmarks.map((b) => b.messageId)) ?? [],
   )
+  const { data: customEmojiList = [] } = useCustomEmojis()
+  const customEmojis = new Map(customEmojiList.map((e) => [e.shortcode, e.url]))
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -647,6 +679,14 @@ function MensagensPageInner() {
               title="Mensagens salvas"
             >
               <i className="ti ti-bookmark text-base" aria-hidden="true" />
+            </a>
+            <a
+              href="/configuracoes/emojis"
+              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+              aria-label="Emojis customizados"
+              title="Emojis customizados"
+            >
+              <i className="ti ti-mood-smile text-base" aria-hidden="true" />
             </a>
             <button
               onClick={() => setDmOpen(true)}
@@ -758,6 +798,7 @@ function MensagensPageInner() {
                   isMine={msg.senderId === user?.id}
                   currentUserId={user?.id ?? ''}
                   isBookmarked={bookmarkedIds.has(msg.id)}
+                  customEmojis={customEmojis}
                   onDelete={() => deleteMsg(msg.id)}
                   onPin={() => pinMsg(msg.id)}
                   onReply={() => setReplyTo(msg)}

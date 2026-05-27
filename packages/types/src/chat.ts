@@ -100,3 +100,13 @@ export interface BookmarksPage {
   bookmarks: MessageBookmark[]
   nextCursor: string | null
 }
+
+export interface CustomEmoji {
+  id: string
+  unitId: string
+  shortcode: string
+  fileKey: string
+  createdBy: string
+  createdAt: string
+  url: string
+}

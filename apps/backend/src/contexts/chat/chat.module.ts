@@ -6,14 +6,22 @@ import { MessagesController } from './messages/messages.controller'
 import { PresenceController } from './presence/presence.controller'
 import { BookmarksService } from './bookmarks/bookmarks.service'
 import { BookmarksController } from './bookmarks/bookmarks.controller'
+import { CustomEmojisService } from './custom-emojis/custom-emojis.service'
+import { CustomEmojisController } from './custom-emojis/custom-emojis.controller'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { FilesModule } from '../../infrastructure/files/files.module'
 import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
 
 @Module({
   imports: [PrismaModule, FilesModule, GatewayModule],
-  controllers: [GroupsController, MessagesController, PresenceController, BookmarksController],
-  providers: [GroupsService, MessagesService, BookmarksService],
+  controllers: [
+    GroupsController,
+    MessagesController,
+    PresenceController,
+    BookmarksController,
+    CustomEmojisController,
+  ],
+  providers: [GroupsService, MessagesService, BookmarksService, CustomEmojisService],
   exports: [GroupsService],
 })
 export class ChatModule {}

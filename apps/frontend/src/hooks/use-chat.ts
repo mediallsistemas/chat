@@ -11,6 +11,7 @@ import type {
   GroupType,
   MessageReactionSummary,
   BookmarksPage,
+  CustomEmoji,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
@@ -256,6 +257,52 @@ export function useToggleBookmark() {
         : api.post(url, { messageId })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookmarks', activeUnit?.id] }),
+  })
+}
+
+// ─── Custom emojis ────────────────────────────────────────────────────────────
+
+export function useCustomEmojis() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useQuery<CustomEmoji[]>({
+    queryKey: ['custom-emojis', activeUnit?.id],
+    queryFn: async () => {
+      const res = await api.get<{ data: CustomEmoji[] }>(
+        getUrl(activeUnit!.id, '/chat/custom-emojis'),
+      )
+      return res.data.data
+    },
+    enabled: !!activeUnit,
+    staleTime: 60_000,
+  })
+}
+
+export function useCreateCustomEmoji() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ shortcode, file }: { shortcode: string; file: File }) => {
+      const form = new FormData()
+      form.append('shortcode', shortcode)
+      form.append('file', file)
+      const res = await api.post<{ data: CustomEmoji }>(
+        getUrl(activeUnit!.id, '/chat/custom-emojis'),
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      return res.data.data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-emojis', activeUnit?.id] }),
+  })
+}
+
+export function useDeleteCustomEmoji() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(getUrl(activeUnit!.id, `/chat/custom-emojis/${id}`)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-emojis', activeUnit?.id] }),
   })
 }
 
