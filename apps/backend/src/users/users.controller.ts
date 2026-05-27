@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger'
 import { UsersService } from './users.service'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
+import { UpdateStatusDto } from './dto/update-status.dto'
 import { PaginationDto } from '../shared/dto/pagination.dto'
 import { Roles } from '../shared/decorators/roles.decorator'
 import { CurrentUser } from '../shared/decorators/current-user.decorator'
@@ -16,6 +17,11 @@ export class UsersController {
   @Get('search')
   search(@Query('q') q: string, @CurrentUser() user: JwtPayload) {
     return this.usersService.searchByName(q, user)
+  }
+
+  @Patch('me/status')
+  updateStatus(@Body() dto: UpdateStatusDto, @CurrentUser() user: JwtPayload) {
+    return this.usersService.updateStatus(user.sub, dto)
   }
 
   @Get()

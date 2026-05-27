@@ -31,19 +31,22 @@ model Unit {
 }
 
 model User {
-  id           String      @id @default(uuid())
-  name         String
-  email        String      @unique
-  passwordHash String      @map("password_hash")
-  avatarUrl    String?     @map("avatar_url")
-  phone        String?
-  accessScope  AccessScope @map("access_scope")
-  isActive     Boolean     @default(true) @map("is_active")
-  failedLogins Int         @default(0) @map("failed_logins")
-  lockedAt     DateTime?   @map("locked_at")
-  lastSeenAt   DateTime?   @map("last_seen_at")
-  createdAt    DateTime    @default(now()) @map("created_at")
-  updatedAt    DateTime    @updatedAt @map("updated_at")
+  id                 String      @id @default(uuid())
+  name               String
+  email              String      @unique
+  passwordHash       String      @map("password_hash")
+  avatarUrl          String?     @map("avatar_url")
+  phone              String?
+  accessScope        AccessScope @map("access_scope")
+  isActive           Boolean     @default(true) @map("is_active")
+  failedLogins       Int         @default(0) @map("failed_logins")
+  lockedAt           DateTime?   @map("locked_at")
+  lastSeenAt         DateTime?   @map("last_seen_at")
+  customStatus       String?     @map("custom_status")
+  customStatusEmoji  String?     @map("custom_status_emoji")
+  statusExpiresAt    DateTime?   @map("status_expires_at")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
 
   unitAccess           UserUnit[]
   managedUnits         Unit[]               @relation("UnitManager")

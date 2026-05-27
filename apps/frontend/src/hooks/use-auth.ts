@@ -1,9 +1,9 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
-import { AuthUser } from '@mediall/types'
+import { AuthUser, UserStatus } from '@mediall/types'
 
 export function useAuth() {
   const { user, setUser } = useAuthStore()
@@ -20,4 +20,19 @@ export function useAuth() {
   })
 
   return { user, isLoading, isAuthenticated: !!user }
+}
+
+export function useUpdateStatus() {
+  const { user, setUser } = useAuthStore()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (dto: Partial<UserStatus>) => {
+      const res = await api.patch<{ data: UserStatus }>('/users/me/status', dto)
+      return res.data.data
+    },
+    onSuccess: (data) => {
+      if (user) setUser({ ...user, ...data })
+      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
 }
