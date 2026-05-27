@@ -11,6 +11,7 @@ import {
   useCustomEmojis, useCreateReminder,
 } from '@/hooks/use-chat'
 import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
+import { SearchPanel } from './search-panel'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
@@ -101,6 +102,7 @@ function MessageBubble({
   isMine,
   currentUserId,
   isBookmarked,
+  isFlashing,
   customEmojis,
   onDelete,
   onPin,
@@ -112,6 +114,7 @@ function MessageBubble({
   isMine: boolean
   currentUserId: string
   isBookmarked: boolean
+  isFlashing: boolean
   customEmojis: Map<string, string>
   onDelete: () => void
   onPin: () => void
@@ -119,6 +122,10 @@ function MessageBubble({
   onReact: (emoji: string) => void
   onBookmark: () => void
 }) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isFlashing) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [isFlashing])
   const [hover, setHover] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
 
@@ -144,7 +151,12 @@ function MessageBubble({
 
   return (
     <div
-      className={clsx('flex gap-2 mb-2 group', isMine && 'flex-row-reverse')}
+      ref={rootRef}
+      className={clsx(
+        'flex gap-2 mb-2 group rounded-xl p-1 -m-1 transition-colors',
+        isMine && 'flex-row-reverse',
+        isFlashing && 'bg-yellow-100',
+      )}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -524,19 +536,45 @@ function MensagensPageInner() {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState(-1)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [flashMessageId, setFlashMessageId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const activeGroup = groups.find((g) => g.id === activeGroupId) ?? null
 
-  // Auto-select group from ?group= URL param
+  // Auto-select group from ?group= or ?groupId= URL param
   useEffect(() => {
-    const groupParam = searchParams.get('group')
+    const groupParam = searchParams.get('group') ?? searchParams.get('groupId')
     if (groupParam && groups.length > 0) {
       const found = groups.find((g) => g.id === groupParam)
       if (found) setActiveGroupId(groupParam)
     }
   }, [searchParams, groups])
+
+  // Deep-link: flash a specific messageId after opening a group via search
+  useEffect(() => {
+    const messageId = searchParams.get('messageId')
+    if (!messageId) return
+    setFlashMessageId(messageId)
+    const timer = setTimeout(() => setFlashMessageId(null), 3500)
+    return () => clearTimeout(timer)
+  }, [searchParams])
+
+  // Ctrl+K / Cmd+K opens search panel
+  useEffect(() => {
+    function onKey(e: globalThis.KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen((v) => !v)
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
 
   // Auto-select first group (only if no URL param)
   useEffect(() => {
@@ -701,6 +739,17 @@ function MensagensPageInner() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gs/60">
           <h2 className="text-sm font-semibold text-gray-800 font-sora">Mensagens</h2>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setSearchOpen((v) => !v)}
+              className={clsx(
+                'p-1.5 rounded-lg transition-colors',
+                searchOpen ? 'bg-gd/10 text-gd' : 'text-gx hover:bg-page-bg hover:text-gd',
+              )}
+              aria-label="Buscar mensagens (Ctrl+K)"
+              title="Buscar mensagens (Ctrl+K)"
+            >
+              <i className="ti ti-search text-base" aria-hidden="true" />
+            </button>
             <a
               href="/mensagens/salvos"
               className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
@@ -827,6 +876,7 @@ function MensagensPageInner() {
                   isMine={msg.senderId === user?.id}
                   currentUserId={user?.id ?? ''}
                   isBookmarked={bookmarkedIds.has(msg.id)}
+                  isFlashing={flashMessageId === msg.id}
                   customEmojis={customEmojis}
                   onDelete={() => deleteMsg(msg.id)}
                   onPin={() => pinMsg(msg.id)}
@@ -1004,6 +1054,23 @@ function MensagensPageInner() {
             ou crie um novo grupo
           </button>
         </div>
+      )}
+
+      {searchOpen && (
+        <SearchPanel
+          currentGroupId={activeGroupId}
+          onClose={() => setSearchOpen(false)}
+          onJumpToMessage={(r) => {
+            setActiveGroupId(r.groupId)
+            setFlashMessageId(r.id)
+            setSearchOpen(false)
+            window.history.replaceState(
+              null,
+              '',
+              `/mensagens?groupId=${r.groupId}&messageId=${r.id}`,
+            )
+          }}
+        />
       )}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />

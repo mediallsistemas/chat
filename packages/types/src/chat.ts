@@ -121,3 +121,22 @@ export interface ChatReminder {
   fired: boolean
   createdAt: string
 }
+
+export interface ChatSearchResult {
+  id: string
+  groupId: string
+  groupName: string
+  senderId: string
+  senderName: string
+  senderAvatarUrl: string | null
+  content: string
+  /** Snippet com `<mark>…</mark>` no termo destacado. Não confiar no HTML — sanitize antes de renderizar. */
+  headline: string
+  rank: number
+  createdAt: string
+}
+
+export interface ChatSearchPage {
+  results: ChatSearchResult[]
+  nextCursor: string | null
+}

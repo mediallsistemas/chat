@@ -13,6 +13,7 @@ import type {
   BookmarksPage,
   CustomEmoji,
   ChatReminder,
+  ChatSearchPage,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
@@ -321,6 +322,32 @@ export function useCreateReminder() {
       return res.data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reminders', activeUnit?.id] }),
+  })
+}
+
+// ─── Chat search ──────────────────────────────────────────────────────────────
+
+export interface ChatSearchParams {
+  q: string
+  groupId?: string
+  from?: string
+  to?: string
+}
+
+export function useChatSearch(params: ChatSearchParams, enabled = true) {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useInfiniteQuery<ChatSearchPage>({
+    queryKey: ['chat-search', activeUnit?.id, params.q, params.groupId ?? null, params.from ?? null, params.to ?? null],
+    queryFn: async ({ pageParam }) => {
+      const res = await api.get<{ data: ChatSearchPage }>(
+        getUrl(activeUnit!.id, '/chat/search'),
+        { params: { ...params, cursor: pageParam ?? undefined } },
+      )
+      return res.data.data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: enabled && !!activeUnit && params.q.trim().length >= 2,
   })
 }
 

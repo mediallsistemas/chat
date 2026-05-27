@@ -12,6 +12,8 @@ import { CustomEmojisController } from './custom-emojis/custom-emojis.controller
 import { RemindersService } from './reminders/reminders.service'
 import { RemindersController } from './reminders/reminders.controller'
 import { RemindersProcessor } from './reminders/reminders.processor'
+import { SearchService } from './search/search.service'
+import { SearchController } from './search/search.controller'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { FilesModule } from '../../infrastructure/files/files.module'
 import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
@@ -30,6 +32,7 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     BookmarksController,
     CustomEmojisController,
     RemindersController,
+    SearchController,
   ],
   providers: [
     GroupsService,
@@ -38,6 +41,7 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     CustomEmojisService,
     RemindersService,
     RemindersProcessor,
+    SearchService,
   ],
   exports: [GroupsService],
 })
