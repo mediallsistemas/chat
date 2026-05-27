@@ -5,7 +5,13 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useUnitStore } from '@/store/unit-store'
-import type { Group, Message, GroupType, MessageReactionSummary } from '@mediall/types'
+import type {
+  Group,
+  Message,
+  GroupType,
+  MessageReactionSummary,
+  BookmarksPage,
+} from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
   return `/units/${unitId}${path}`
@@ -215,6 +221,41 @@ export function useToggleReaction(groupId: string) {
   return useMutation({
     mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
       api.post(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/reactions`), { emoji }),
+  })
+}
+
+// ─── Bookmarks ────────────────────────────────────────────────────────────────
+
+export function useBookmarks() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useInfiniteQuery<BookmarksPage>({
+    queryKey: ['bookmarks', activeUnit?.id],
+    queryFn: async ({ pageParam }) => {
+      const url = getUrl(activeUnit!.id, '/chat/bookmarks')
+      const res = await api.get<{ data: BookmarksPage }>(url, {
+        params: pageParam ? { cursor: pageParam } : {},
+      })
+      return res.data.data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: !!activeUnit,
+  })
+}
+
+export function useToggleBookmark() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ messageId, isBookmarked }: { messageId: string; isBookmarked: boolean }) => {
+      const url = isBookmarked
+        ? getUrl(activeUnit!.id, `/chat/bookmarks/${messageId}`)
+        : getUrl(activeUnit!.id, '/chat/bookmarks')
+      return isBookmarked
+        ? api.delete(url)
+        : api.post(url, { messageId })
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookmarks', activeUnit?.id] }),
   })
 }
 

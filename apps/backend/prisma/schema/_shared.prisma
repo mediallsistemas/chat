@@ -1,0 +1,82 @@
+// Shared core models — User, Unit, UserUnit. These cross every context
+// boundary (User appears in 11 models, Unit in 8+). They are owned by the
+// shared/auth/users contexts and treated as the read-only "identity" surface
+// for every other context.
+
+model Unit {
+  id                    String   @id @default(uuid())
+  name                  String
+  type                  UnitType
+  parentId              String?  @map("parent_id")
+  managerId             String   @map("manager_id")
+  isActive              Boolean  @default(true) @map("is_active")
+  escalationDaysLevel1  Int      @default(2) @map("escalation_days_level1")
+  escalationDaysLevel2  Int      @default(5) @map("escalation_days_level2")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  parent   Unit?  @relation("UnitHierarchy", fields: [parentId], references: [id])
+  children Unit[] @relation("UnitHierarchy")
+  manager  User   @relation("UnitManager", fields: [managerId], references: [id])
+
+  userUnits         UserUnit[]
+  strategicPlans    StrategicPlan[]
+  groups            Group[]
+  meetings          Meeting[]
+  documentFolders   DocumentFolder[]
+  documents         Document[]
+  tickets           Ticket[]
+  phaseScopeBoards  PhaseScopeBoard[] @relation("PhaseScopeBoardUnit")
+
+  @@map("units")
+}
+
+model User {
+  id           String      @id @default(uuid())
+  name         String
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  avatarUrl    String?     @map("avatar_url")
+  phone        String?
+  accessScope  AccessScope @map("access_scope")
+  isActive     Boolean     @default(true) @map("is_active")
+  failedLogins Int         @default(0) @map("failed_logins")
+  lockedAt     DateTime?   @map("locked_at")
+  lastSeenAt   DateTime?   @map("last_seen_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  unitAccess           UserUnit[]
+  managedUnits         Unit[]               @relation("UnitManager")
+  auditLogs            AuditLog[]
+  notificationSetting  NotificationSetting?
+  pushSubscriptions    PushSubscription[]
+  consents             UserConsent[]
+  sentMessages         Message[]            @relation("MessageSender")
+  messageReactions     MessageReaction[]
+  messageBookmarks     MessageBookmark[]
+  createdMeetings      Meeting[]            @relation("MeetingCreator")
+  meetingParticipations MeetingParticipant[] @relation("MeetingParticipantUser")
+  uploadedDocuments    Document[]           @relation("DocumentUploader")
+  reportedTickets      Ticket[]             @relation("TicketReporter")
+  assignedTickets      Ticket[]             @relation("TicketAssignee")
+  ticketComments       TicketComment[]
+
+  @@map("users")
+}
+
+model UserUnit {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  unitId    String    @map("unit_id")
+  role      UserRole
+  isPrimary Boolean   @default(false) @map("is_primary")
+  grantedBy String    @map("granted_by")
+  grantedAt DateTime  @default(now()) @map("granted_at")
+  expiresAt DateTime? @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id])
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@unique([userId, unitId])
+  @@map("user_units")
+}

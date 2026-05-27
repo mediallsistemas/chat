@@ -84,3 +84,19 @@ export interface Message {
   editedAt: string | null
   reactions?: MessageReactionItem[]
 }
+
+export interface MessageBookmark {
+  id: string
+  userId: string
+  messageId: string
+  unitId: string
+  createdAt: string
+  message: Message & {
+    group: { id: string; name: string; type: GroupType }
+  }
+}
+
+export interface BookmarksPage {
+  bookmarks: MessageBookmark[]
+  nextCursor: string | null
+}

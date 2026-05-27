@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, KeyboardEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { clsx } from 'clsx'
 import { Avatar, Button, Modal } from '@/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
-  useUploadFile, useToggleReaction,
+  useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
 } from '@/hooks/use-chat'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
@@ -71,18 +71,22 @@ function MessageBubble({
   msg,
   isMine,
   currentUserId,
+  isBookmarked,
   onDelete,
   onPin,
   onReply,
   onReact,
+  onBookmark,
 }: {
   msg: Message
   isMine: boolean
   currentUserId: string
+  isBookmarked: boolean
   onDelete: () => void
   onPin: () => void
   onReply: () => void
   onReact: (emoji: string) => void
+  onBookmark: () => void
 }) {
   const [hover, setHover] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
@@ -252,6 +256,17 @@ function MessageBubble({
           title={msg.isPinned ? 'Desafixar' : 'Fixar'}
         >
           <i className={clsx('ti text-sm', msg.isPinned ? 'ti-pin-filled text-gd' : 'ti-pin')} aria-hidden="true" />
+        </button>
+        <button
+          onClick={onBookmark}
+          className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
+          aria-label={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
+          title={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
+        >
+          <i
+            className={clsx('ti text-sm', isBookmarked ? 'ti-bookmark-filled text-gd' : 'ti-bookmark')}
+            aria-hidden="true"
+          />
         </button>
         {isMine && (
           <button
@@ -455,6 +470,15 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function MensagensPage() {
+  // useSearchParams() requires a Suspense boundary during static prerender.
+  return (
+    <Suspense fallback={<div className="p-6 text-gx text-sm">Carregando…</div>}>
+      <MensagensPageInner />
+    </Suspense>
+  )
+}
+
+function MensagensPageInner() {
   const user = useAuthStore((s) => s.user)
   const activeUnit = useUnitStore((s) => s.activeUnit)
   const searchParams = useSearchParams()
@@ -515,6 +539,11 @@ export default function MensagensPage() {
   const { mutate: deleteMsg } = useDeleteMessage(activeGroupId ?? '')
   const { mutate: pinMsg } = usePinMessage(activeGroupId ?? '')
   const { mutate: toggleReaction } = useToggleReaction(activeGroupId ?? '')
+  const { mutate: toggleBookmark } = useToggleBookmark()
+  const { data: bookmarksData } = useBookmarks()
+  const bookmarkedIds = new Set(
+    bookmarksData?.pages.flatMap((p) => p.bookmarks.map((b) => b.messageId)) ?? [],
+  )
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -611,6 +640,14 @@ export default function MensagensPage() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gs/60">
           <h2 className="text-sm font-semibold text-gray-800 font-sora">Mensagens</h2>
           <div className="flex items-center gap-1">
+            <a
+              href="/mensagens/salvos"
+              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+              aria-label="Mensagens salvas"
+              title="Mensagens salvas"
+            >
+              <i className="ti ti-bookmark text-base" aria-hidden="true" />
+            </a>
             <button
               onClick={() => setDmOpen(true)}
               className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
@@ -720,10 +757,14 @@ export default function MensagensPage() {
                   msg={msg}
                   isMine={msg.senderId === user?.id}
                   currentUserId={user?.id ?? ''}
+                  isBookmarked={bookmarkedIds.has(msg.id)}
                   onDelete={() => deleteMsg(msg.id)}
                   onPin={() => pinMsg(msg.id)}
                   onReply={() => setReplyTo(msg)}
                   onReact={(emoji) => toggleReaction({ messageId: msg.id, emoji })}
+                  onBookmark={() =>
+                    toggleBookmark({ messageId: msg.id, isBookmarked: bookmarkedIds.has(msg.id) })
+                  }
                 />
               ))
             )}
