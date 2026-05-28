@@ -85,3 +85,17 @@ export interface TranscriptResult {
   keyDecisions: string[]
   duration?: string
 }
+
+export interface MeetingChatMessage {
+  id: string
+  meetingId: string
+  senderId: string
+  sender: { id: string; name: string; avatarUrl: string | null }
+  content: string
+  createdAt: string
+}
+
+export interface MeetingChatPage {
+  messages: MeetingChatMessage[]
+  nextCursor: string | null
+}

@@ -57,6 +57,7 @@ model User {
   sentMessages         Message[]            @relation("MessageSender")
   messageReactions     MessageReaction[]
   messageBookmarks     MessageBookmark[]
+  meetingChatMessages  MeetingChatMessage[]
   createdMeetings      Meeting[]            @relation("MeetingCreator")
   meetingParticipations MeetingParticipant[] @relation("MeetingParticipantUser")
   uploadedDocuments    Document[]           @relation("DocumentUploader")

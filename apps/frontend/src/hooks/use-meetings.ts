@@ -1,8 +1,10 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useUnitStore } from '@/store/unit-store'
 import { api as axios } from '@/lib/api'
+import { getSocket } from '@/lib/socket'
 import { toast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/get-error-message'
 import type {
@@ -11,6 +13,8 @@ import type {
   LiveKitTokenResponse,
   AgendaItem,
   RecordingConsentStatus,
+  MeetingChatMessage,
+  MeetingChatPage,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path = '') {
@@ -190,5 +194,68 @@ export function useStopRecording() {
         .then((r) => r.data.data),
     onSuccess: (_, meetingId) =>
       qc.invalidateQueries({ queryKey: ['meetings', unitId, meetingId] }),
+  })
+}
+
+// ─── Meeting in-call chat ─────────────────────────────────────────────────────
+
+export function useMeetingChat(meetingId: string | null) {
+  const unitId = useUnitStore((s) => s.activeUnit?.id)
+  const qc = useQueryClient()
+
+  const query = useInfiniteQuery<MeetingChatPage>({
+    queryKey: ['meeting-chat', unitId, meetingId],
+    queryFn: async ({ pageParam }) => {
+      const res = await axios.get<{ data: MeetingChatPage }>(
+        getUrl(unitId!, `/${meetingId}/chat`),
+        { params: pageParam ? { cursor: pageParam } : {} },
+      )
+      return res.data.data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: !!unitId && !!meetingId,
+  })
+
+  useEffect(() => {
+    if (!meetingId) return
+    const socket = getSocket()
+    socket.emit('join:meeting', meetingId)
+    function onNew(msg: MeetingChatMessage) {
+      if (msg.meetingId !== meetingId) return
+      qc.setQueryData<{ pages: MeetingChatPage[]; pageParams: unknown[] }>(
+        ['meeting-chat', unitId, meetingId],
+        (old) => {
+          if (!old) return old
+          const pages = [...old.pages]
+          const last = { ...pages[pages.length - 1] }
+          last.messages = [...last.messages, msg]
+          pages[pages.length - 1] = last
+          return { ...old, pages }
+        },
+      )
+    }
+    socket.on('meeting-chat:message', onNew)
+    return () => {
+      socket.off('meeting-chat:message', onNew)
+    }
+  }, [meetingId, unitId, qc])
+
+  return query
+}
+
+export function useSendMeetingChat(meetingId: string | null) {
+  const unitId = useUnitStore((s) => s.activeUnit?.id)
+  return useMutation({
+    mutationFn: async (content: string) => {
+      const res = await axios.post<{ data: MeetingChatMessage }>(
+        getUrl(unitId!, `/${meetingId}/chat`),
+        { content },
+      )
+      return res.data.data
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err))
+    },
   })
 }

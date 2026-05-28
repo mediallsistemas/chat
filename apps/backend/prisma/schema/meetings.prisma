@@ -1,0 +1,66 @@
+// Meetings context — owns:
+//   meetings, meeting_participants
+//
+// Note: transcript fields stay here for now; when transcription becomes a
+// separate service (plano 17 Fase 2) they will be replaced by a reference to
+// a Transcript model owned by transcription-svc.
+
+model Meeting {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  groupId         String?       @map("group_id")
+  unitId          String        @map("unit_id")
+  createdBy       String        @map("created_by")
+  startAt         DateTime      @map("start_at")
+  endAt           DateTime      @map("end_at")
+  roomId          String        @map("room_id")
+  isRecurring     Boolean       @default(false) @map("is_recurring")
+  recurrenceRule  String?       @map("recurrence_rule")
+  parentMeetingId String?       @map("parent_meeting_id")
+  status                MeetingStatus @default(SCHEDULED)
+  recordingUrl          String?       @map("recording_url")
+  transcript            String?
+  transcriptSummary     String?       @map("transcript_summary")
+  transcriptActionItems Json?         @map("transcript_action_items")
+  transcriptedAt        DateTime?     @map("transcripted_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  unit         Unit                 @relation(fields: [unitId], references: [id])
+  creator      User                 @relation("MeetingCreator", fields: [createdBy], references: [id])
+  group        Group?               @relation(fields: [groupId], references: [id])
+  participants MeetingParticipant[]
+  chatMessages MeetingChatMessage[]
+
+  @@map("meet_meetings")
+}
+
+model MeetingParticipant {
+  id        String            @id @default(uuid())
+  meetingId String            @map("meeting_id")
+  userId    String            @map("user_id")
+  status    ParticipantStatus @default(INVITED)
+  joinedAt  DateTime?         @map("joined_at")
+  leftAt    DateTime?         @map("left_at")
+
+  meeting Meeting @relation(fields: [meetingId], references: [id])
+  user    User    @relation("MeetingParticipantUser", fields: [userId], references: [id])
+
+  @@unique([meetingId, userId])
+  @@map("meet_participants")
+}
+
+model MeetingChatMessage {
+  id        String   @id @default(uuid())
+  meetingId String   @map("meeting_id")
+  senderId  String   @map("sender_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id])
+
+  @@index([meetingId, createdAt])
+  @@map("meet_chat_messages")
+}

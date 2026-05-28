@@ -15,6 +15,8 @@ import type { LiveKitTokenResponse } from '@mediall/types'
 
 const VideoRoom = dynamic(() => import('./video-room'), { ssr: false })
 
+import { MeetingChatPanel } from './meeting-chat-panel'
+
 const STATUS_LABEL: Record<MeetingStatus, string> = {
   [MeetingStatus.SCHEDULED]: 'Agendada',
   [MeetingStatus.IN_PROGRESS]: 'Em andamento',
@@ -41,6 +43,7 @@ export default function MeetingDetailPage() {
 
   const [liveKitSession, setLiveKitSession] = useState<LiveKitTokenResponse | null>(null)
   const [transcriptText, setTranscriptText] = useState('')
+  const [chatHistoryOpen, setChatHistoryOpen] = useState(false)
 
   const { data: transcriptData } = useTranscript(meetingId)
   const processTranscript = useProcessTranscript(meetingId)
@@ -232,6 +235,34 @@ export default function MeetingDetailPage() {
               <span className="text-sm text-gs flex-1">Você foi convidado para esta reunião.</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Meeting chat history */}
+      {meeting.status === MeetingStatus.DONE && myParticipant && (
+        <div className="bg-white rounded-xl border border-gs/60 p-5 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gd flex items-center gap-2">
+              <i className="ti ti-message-circle" />
+              Chat da reunião
+            </h2>
+            <p className="text-xs text-gs mt-1">Mensagens trocadas durante a reunião.</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => setChatHistoryOpen(true)}>
+            Ver histórico
+          </Button>
+        </div>
+      )}
+
+      {chatHistoryOpen && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
+          <div className="h-full bg-white shadow-xl">
+            <MeetingChatPanel
+              meetingId={meetingId}
+              readOnly
+              onClose={() => setChatHistoryOpen(false)}
+            />
+          </div>
         </div>
       )}
 

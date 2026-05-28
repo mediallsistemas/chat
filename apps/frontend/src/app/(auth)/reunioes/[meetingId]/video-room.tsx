@@ -11,6 +11,7 @@ import {
   useStopRecording,
 } from '@/hooks/use-meetings'
 import { useSocket } from '@/lib/socket'
+import { MeetingChatPanel } from './meeting-chat-panel'
 
 // ─── Recording Controls (rendered inside LiveKitRoom context) ─────────────────
 
@@ -28,7 +29,8 @@ function RecordingControls({
   const stopRecording = useStopRecording()
 
   const [consentState, setConsentState] = useState<{
-    requested: boolean
+    requested?: boolean
+    meetingId?: string
     consentedCount: number
     totalRequired: number
     allConsented: boolean
@@ -185,19 +187,42 @@ interface VideoRoomProps {
 }
 
 export default function VideoRoom({ token, wsUrl, meetingId, isOwner }: VideoRoomProps) {
+  const [chatOpen, setChatOpen] = useState(false)
+
   return (
-    <div className="relative h-full w-full">
-      <LiveKitRoom
-        token={token}
-        serverUrl={wsUrl}
-        data-lk-theme="default"
-        style={{ height: '100%', width: '100%' }}
-        video={true}
-        audio={true}
-      >
-        <VideoConference />
-        <RecordingControls meetingId={meetingId} isOwner={isOwner} />
-      </LiveKitRoom>
+    <div className="relative h-full w-full flex">
+      <div className="relative flex-1">
+        <LiveKitRoom
+          token={token}
+          serverUrl={wsUrl}
+          data-lk-theme="default"
+          style={{ height: '100%', width: '100%' }}
+          video={true}
+          audio={true}
+        >
+          <VideoConference />
+          <RecordingControls meetingId={meetingId} isOwner={isOwner} />
+        </LiveKitRoom>
+
+        {/* Chat toggle */}
+        <button
+          onClick={() => setChatOpen((v) => !v)}
+          className={clsx(
+            'absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+            chatOpen
+              ? 'bg-gd text-white'
+              : 'bg-black/60 hover:bg-black/80 text-white',
+          )}
+          aria-label="Alternar chat"
+        >
+          <i className="ti ti-message-circle text-base" aria-hidden="true" />
+          Chat
+        </button>
+      </div>
+
+      {chatOpen && (
+        <MeetingChatPanel meetingId={meetingId} onClose={() => setChatOpen(false)} />
+      )}
     </div>
   )
 }

@@ -143,6 +143,10 @@ export class AppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnG
     this.server.to(`group:${groupId}`).emit(event, data)
   }
 
+  emitToMeeting(meetingId: string, event: string, data: unknown) {
+    this.server.to(`meeting:${meetingId}`).emit(event, data)
+  }
+
   emitToUser(userId: string, event: string, data: unknown) {
     const socketId = this.userSockets.get(userId)
     if (socketId) this.server.to(socketId).emit(event, data)
