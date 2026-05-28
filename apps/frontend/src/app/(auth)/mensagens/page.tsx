@@ -25,7 +25,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
 import { api } from '@/lib/api'
 import { getSocket, connectSocket } from '@/lib/socket'
-import { GroupType, GroupVisibility, type Group, type Message } from '@mediall/types'
+import { GroupType, GroupVisibility, UserRole, type Group, type Message } from '@mediall/types'
 
 // ─── Mention + custom emoji helpers ───────────────────────────────────────────
 
@@ -589,6 +589,11 @@ function MensagensPageInner() {
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null)
   const [threadParentId, setThreadParentId] = useState<string | null>(null)
   const [sidebarTab, setSidebarTab] = useState<'mine' | 'discover'>('mine')
+  const canManageGroups = user
+    ? user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.DIRETORIA ||
+      user.role === UserRole.GESTOR
+    : false
   const { data: discoverableGroups = [] } = useDiscoverableGroups()
   const { mutate: joinGroup, isPending: joining } = useJoinGroup()
   const { data: activeHuddle } = useActiveHuddle(activeGroupId)
@@ -849,47 +854,51 @@ function MensagensPageInner() {
             >
               <i className="ti ti-user-plus text-base" aria-hidden="true" />
             </button>
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
-              aria-label="Novo grupo"
-              title="Novo grupo"
-            >
-              <i className="ti ti-plus text-base" aria-hidden="true" />
-            </button>
+            {canManageGroups && (
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+                aria-label="Novo grupo"
+                title="Novo grupo"
+              >
+                <i className="ti ti-plus text-base" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex px-2 pt-2 gap-1 shrink-0 border-b border-gs/40">
-          <button
-            onClick={() => setSidebarTab('mine')}
-            className={clsx(
-              'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2',
-              sidebarTab === 'mine'
-                ? 'border-gd text-gd'
-                : 'border-transparent text-gx hover:text-gray-700',
-            )}
-          >
-            Meus
-          </button>
-          <button
-            onClick={() => setSidebarTab('discover')}
-            className={clsx(
-              'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2 flex items-center justify-center gap-1',
-              sidebarTab === 'discover'
-                ? 'border-gd text-gd'
-                : 'border-transparent text-gx hover:text-gray-700',
-            )}
-          >
-            Descobrir
-            {discoverableGroups.length > 0 && (
-              <span className="text-[10px] bg-gd/10 text-gd px-1.5 py-0.5 rounded-full">
-                {discoverableGroups.length}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Tabs — only relevant when there's a Discover tab to show */}
+        {canManageGroups && (
+          <div className="flex px-2 pt-2 gap-1 shrink-0 border-b border-gs/40">
+            <button
+              onClick={() => setSidebarTab('mine')}
+              className={clsx(
+                'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2',
+                sidebarTab === 'mine'
+                  ? 'border-gd text-gd'
+                  : 'border-transparent text-gx hover:text-gray-700',
+              )}
+            >
+              Meus
+            </button>
+            <button
+              onClick={() => setSidebarTab('discover')}
+              className={clsx(
+                'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2 flex items-center justify-center gap-1',
+                sidebarTab === 'discover'
+                  ? 'border-gd text-gd'
+                  : 'border-transparent text-gx hover:text-gray-700',
+              )}
+            >
+              Descobrir
+              {discoverableGroups.length > 0 && (
+                <span className="text-[10px] bg-gd/10 text-gd px-1.5 py-0.5 rounded-full">
+                  {discoverableGroups.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {sidebarTab === 'mine' ? (
@@ -1222,12 +1231,14 @@ function MensagensPageInner() {
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
           <i className="ti ti-message-2 text-5xl text-gx" aria-hidden="true" />
           <p className="text-sm text-gray-600 font-medium">Selecione um grupo para conversar</p>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="text-sm text-gd hover:underline"
-          >
-            ou crie um novo grupo
-          </button>
+          {canManageGroups && (
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="text-sm text-gd hover:underline"
+            >
+              ou crie um novo grupo
+            </button>
+          )}
         </div>
       )}
 
