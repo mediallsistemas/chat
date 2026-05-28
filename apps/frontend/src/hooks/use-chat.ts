@@ -14,6 +14,7 @@ import type {
   CustomEmoji,
   ChatReminder,
   ChatSearchPage,
+  ThreadView,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
@@ -332,6 +333,42 @@ export interface ChatSearchParams {
   groupId?: string
   from?: string
   to?: string
+}
+
+// ─── Threads ──────────────────────────────────────────────────────────────────
+
+export function useThread(groupId: string | null, parentId: string | null) {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+
+  const query = useQuery<ThreadView>({
+    queryKey: ['thread', groupId, parentId],
+    queryFn: async () => {
+      const res = await api.get<{ data: ThreadView }>(
+        getUrl(activeUnit!.id, `/groups/${groupId}/messages/${parentId}/thread`),
+      )
+      return res.data.data
+    },
+    enabled: !!activeUnit && !!groupId && !!parentId,
+  })
+
+  // Live updates: a reply in this group with replyToId === parentId belongs here.
+  useEffect(() => {
+    if (!groupId || !parentId) return
+    const socket = getSocket()
+    function onNew(msg: Message) {
+      if (msg.replyToId !== parentId) return
+      qc.setQueryData<ThreadView>(['thread', groupId, parentId], (old) =>
+        old ? { ...old, replies: [...old.replies, msg] } : old,
+      )
+      // Bump parent reply count in the timeline cache so the indicator updates.
+      qc.invalidateQueries({ queryKey: ['messages', groupId] })
+    }
+    socket.on('message:new', onNew)
+    return () => { socket.off('message:new', onNew) }
+  }, [groupId, parentId, qc])
+
+  return query
 }
 
 export function useChatSearch(params: ChatSearchParams, enabled = true) {

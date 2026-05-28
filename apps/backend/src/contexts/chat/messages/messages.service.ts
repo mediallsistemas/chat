@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { FilesService } from '../../../infrastructure/files/files.service'
-import { NotificationsService } from '../../../infrastructure/notifications/notifications.service'
-import { EventBusService } from '../../../shared/events'
+import { EventBusService, NotifyUserRequested } from '../../../shared/events'
 import { MessageSentEvent } from './events/message-sent.event'
 import { MessageEditedEvent } from './events/message-edited.event'
 import { MessageDeletedEvent } from './events/message-deleted.event'
 import { MessageReactionEvent } from './events/message-reaction.event'
 import { SendMessageDto, EditMessageDto } from './dto/send-message.dto'
 import { JwtPayload, MessageType, NotificationType } from '@mediall/types'
+import { NotifyManyRequested } from '../../../shared/events/notification.events'
 
 // Mention format: @[T:uuid|Task Title] for tasks, @[O:uuid|Objective Title] for objectives
 const MENTION_RE = /@\[([TO]):([a-f0-9-]+)\|[^\]]+\]/g
@@ -20,7 +20,6 @@ export class MessagesService {
   constructor(
     private prisma: PrismaService,
     private filesService: FilesService,
-    private notifications: NotificationsService,
     private eventBus: EventBusService,
   ) {}
 
@@ -45,6 +44,7 @@ export class MessagesService {
           select: { id: true, content: true, sender: { select: { name: true } } },
         },
         reactions: { select: { emoji: true, userId: true } },
+        _count: { select: { replies: true } },
       },
     })
 
@@ -82,6 +82,7 @@ export class MessagesService {
         replyTo: {
           select: { id: true, content: true, sender: { select: { name: true } } },
         },
+        _count: { select: { replies: true } },
       },
     })
 
@@ -91,7 +92,88 @@ export class MessagesService {
     // Parse @mentions and notify mentioned entity owners asynchronously
     this.processMentions(dto.content, user, groupId).catch(() => undefined)
 
+    // Notify thread participants on new reply
+    if (dto.replyToId) {
+      this.notifyThreadParticipants(unitId, groupId, dto.replyToId, user).catch(() => undefined)
+    }
+
     return enriched
+  }
+
+  async findThread(unitId: string, groupId: string, parentId: string, user: JwtPayload) {
+    await this.assertMembership(unitId, groupId, user.sub)
+
+    const parent = await this.prisma.message.findFirst({
+      where: { id: parentId, groupId, group: { unitId } },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: { select: { emoji: true, userId: true } },
+        _count: { select: { replies: true } },
+      },
+    })
+    if (!parent) throw new NotFoundException('Mensagem não encontrada.')
+
+    const replies = await this.prisma.message.findMany({
+      where: { replyToId: parentId, isDeleted: false },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: { select: { id: true, name: true, avatarUrl: true } },
+        reactions: { select: { emoji: true, userId: true } },
+      },
+    })
+
+    const parentWithUrl = await this.attachFileUrl(parent as unknown as Record<string, unknown>)
+    const repliesWithUrls = await Promise.all(
+      replies.map((r) => this.attachFileUrl(r as unknown as Record<string, unknown>)),
+    )
+
+    return { parent: parentWithUrl, replies: repliesWithUrls }
+  }
+
+  private async notifyThreadParticipants(
+    unitId: string,
+    groupId: string,
+    parentId: string,
+    sender: JwtPayload,
+  ) {
+    const parent = await this.prisma.message.findUnique({
+      where: { id: parentId },
+      select: { senderId: true, content: true, group: { select: { name: true } } },
+    })
+    if (!parent) return
+
+    // Collect everyone who has posted in this thread (parent author + reply authors)
+    // minus the current sender.
+    const repliers = await this.prisma.message.findMany({
+      where: { replyToId: parentId, isDeleted: false },
+      select: { senderId: true },
+      distinct: ['senderId'],
+    })
+
+    const recipients = new Set<string>()
+    if (parent.senderId !== sender.sub) recipients.add(parent.senderId)
+    for (const r of repliers) {
+      if (r.senderId !== sender.sub) recipients.add(r.senderId)
+    }
+    if (recipients.size === 0) return
+
+    const preview = parent.content.length > 60
+      ? parent.content.slice(0, 60).trimEnd() + '…'
+      : parent.content
+
+    this.eventBus.publish(
+      new NotifyManyRequested(
+        Array.from(recipients).map((userId) => ({
+          userId,
+          unitId,
+          type: NotificationType.MENTION as any,
+          title: `Nova resposta em "${parent.group.name}"`,
+          body: `${sender.name} respondeu: "${preview}"`,
+          entityType: 'chat-thread',
+          entityId: parentId,
+        })),
+      ),
+    )
   }
 
   private async processMentions(content: string, sender: JwtPayload, groupId: string) {
@@ -100,6 +182,9 @@ export class MessagesService {
       select: { name: true, unitId: true },
     })
     if (!group) return
+    // Direct/PRIVATE groups (unitId null) don't support entity mentions.
+    if (!group.unitId) return
+    const groupUnitId = group.unitId
 
     const matches = [...content.matchAll(MENTION_RE)]
     for (const [, type, entityId] of matches) {
@@ -108,14 +193,14 @@ export class MessagesService {
 
       if (type === 'T') {
         const task = await this.prisma.task.findFirst({
-          where: { id: entityId, unitId: group.unitId },
+          where: { id: entityId, unitId: groupUnitId },
           select: { responsibleUserId: true, title: true },
         })
         responsibleUserId = task?.responsibleUserId ?? null
         entityTitle = task?.title ?? ''
       } else if (type === 'O') {
         const objective = await this.prisma.objective.findFirst({
-          where: { id: entityId, unitId: group.unitId },
+          where: { id: entityId, unitId: groupUnitId },
           select: { responsibleUserId: true, title: true },
         })
         responsibleUserId = objective?.responsibleUserId ?? null
@@ -123,15 +208,17 @@ export class MessagesService {
       }
 
       if (responsibleUserId && responsibleUserId !== sender.sub) {
-        await this.notifications.create({
-          userId: responsibleUserId,
-          title: `Você foi mencionado em ${group.name}`,
-          body: `${sender.name} mencionou "${entityTitle}"`,
-          type: NotificationType.MENTION,
-          entityType: type === 'T' ? 'task' : 'objective',
-          entityId,
-          unitId: group.unitId,
-        })
+        this.eventBus.publish(
+          new NotifyUserRequested({
+            userId: responsibleUserId,
+            title: `Você foi mencionado em ${group.name}`,
+            body: `${sender.name} mencionou "${entityTitle}"`,
+            type: NotificationType.MENTION as any,
+            entityType: type === 'T' ? 'task' : 'objective',
+            entityId,
+            unitId: groupUnitId,
+          }),
+        )
       }
     }
   }

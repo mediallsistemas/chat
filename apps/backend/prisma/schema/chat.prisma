@@ -76,6 +76,7 @@ model Message {
   @@index([groupId, createdAt])
   @@index([groupId, isPinned])
   @@index([senderId, createdAt])
+  @@index([replyToId])
   @@map("chat_messages")
 }
 

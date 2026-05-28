@@ -12,6 +12,7 @@ import {
 } from '@/hooks/use-chat'
 import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
 import { SearchPanel } from './search-panel'
+import { ThreadPanel } from './thread-panel'
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
@@ -109,6 +110,7 @@ function MessageBubble({
   onReply,
   onReact,
   onBookmark,
+  onOpenThread,
 }: {
   msg: Message
   isMine: boolean
@@ -121,6 +123,7 @@ function MessageBubble({
   onReply: () => void
   onReact: (emoji: string) => void
   onBookmark: () => void
+  onOpenThread: () => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -224,6 +227,17 @@ function MessageBubble({
           {msg.isEdited && <span className="text-[10px] text-gx">(editado)</span>}
         </div>
 
+        {/* Reply count indicator (opens thread) */}
+        {msg._count && msg._count.replies > 0 && (
+          <button
+            onClick={onOpenThread}
+            className="mt-1 px-2 py-0.5 self-start text-[11px] font-medium text-gd bg-gd/5 hover:bg-gd/10 rounded-full transition-colors flex items-center gap-1"
+          >
+            <i className="ti ti-message-circle-2 text-xs" aria-hidden="true" />
+            {msg._count.replies} {msg._count.replies === 1 ? 'resposta' : 'respostas'}
+          </button>
+        )}
+
         {/* Reaction bubbles */}
         {Object.keys(reactionSummary).length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1 px-1">
@@ -291,6 +305,14 @@ function MessageBubble({
           title="Responder"
         >
           <i className="ti ti-corner-up-left text-sm" aria-hidden="true" />
+        </button>
+        <button
+          onClick={onOpenThread}
+          className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
+          aria-label="Abrir conversa"
+          title="Abrir conversa"
+        >
+          <i className="ti ti-message-circle-2 text-sm" aria-hidden="true" />
         </button>
         <button
           onClick={onPin}
@@ -538,6 +560,7 @@ function MensagensPageInner() {
   const [mentionStart, setMentionStart] = useState(-1)
   const [searchOpen, setSearchOpen] = useState(false)
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null)
+  const [threadParentId, setThreadParentId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -559,6 +582,12 @@ function MensagensPageInner() {
     setFlashMessageId(messageId)
     const timer = setTimeout(() => setFlashMessageId(null), 3500)
     return () => clearTimeout(timer)
+  }, [searchParams])
+
+  // Deep-link: open thread panel from ?thread=<messageId>
+  useEffect(() => {
+    const threadId = searchParams.get('thread')
+    if (threadId) setThreadParentId(threadId)
   }, [searchParams])
 
   // Ctrl+K / Cmd+K opens search panel
@@ -885,6 +914,7 @@ function MensagensPageInner() {
                   onBookmark={() =>
                     toggleBookmark({ messageId: msg.id, isBookmarked: bookmarkedIds.has(msg.id) })
                   }
+                  onOpenThread={() => { setThreadParentId(msg.id); setSearchOpen(false) }}
                 />
               ))
             )}
@@ -1056,7 +1086,19 @@ function MensagensPageInner() {
         </div>
       )}
 
-      {searchOpen && (
+      {threadParentId && activeGroupId ? (
+        <ThreadPanel
+          groupId={activeGroupId}
+          parentId={threadParentId}
+          currentUserId={user?.id ?? ''}
+          onClose={() => {
+            setThreadParentId(null)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('thread')
+            window.history.replaceState(null, '', url.toString())
+          }}
+        />
+      ) : searchOpen ? (
         <SearchPanel
           currentGroupId={activeGroupId}
           onClose={() => setSearchOpen(false)}
@@ -1071,7 +1113,7 @@ function MensagensPageInner() {
             )
           }}
         />
-      )}
+      ) : null}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <StartDirectModal

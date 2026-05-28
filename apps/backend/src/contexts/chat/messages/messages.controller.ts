@@ -34,6 +34,16 @@ export class MessagesController extends BaseUnitController {
     return this.messagesService.findPinned(unitId, groupId)
   }
 
+  @Get('groups/:groupId/messages/:messageId/thread')
+  findThread(
+    @Param('unitId') unitId: string,
+    @Param('groupId') groupId: string,
+    @Param('messageId') messageId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.messagesService.findThread(unitId, groupId, messageId, user)
+  }
+
   @Post('groups/:groupId/messages')
   send(
     @Param('unitId') unitId: string,

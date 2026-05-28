@@ -83,6 +83,12 @@ export interface Message {
   createdAt: string
   editedAt: string | null
   reactions?: MessageReactionItem[]
+  _count?: { replies: number }
+}
+
+export interface ThreadView {
+  parent: Message
+  replies: Message[]
 }
 
 export interface MessageBookmark {
