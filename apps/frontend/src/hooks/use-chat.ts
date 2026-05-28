@@ -17,6 +17,8 @@ import type {
   ChatReminder,
   ChatSearchPage,
   ThreadView,
+  Huddle,
+  HuddleTokenResponse,
 } from '@mediall/types'
 
 function getUrl(unitId: string, path: string) {
@@ -510,4 +512,73 @@ export function useTypingIndicator(groupId: string | null) {
   useEffect(() => () => { if (typingRef.current) clearTimeout(typingRef.current) }, [])
 
   return { onInputChange }
+}
+
+// ─── Huddles ──────────────────────────────────────────────────────────────────
+
+export function useActiveHuddle(groupId: string | null) {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+
+  const query = useQuery<Huddle | null>({
+    queryKey: ['huddle', activeUnit?.id, groupId],
+    queryFn: async () => {
+      const res = await api.get<{ data: Huddle | null }>(
+        getUrl(activeUnit!.id, `/groups/${groupId}/huddle`),
+      )
+      return res.data.data
+    },
+    enabled: !!activeUnit && !!groupId,
+    refetchOnWindowFocus: false,
+  })
+
+  // Live updates from gateway
+  useEffect(() => {
+    if (!groupId) return
+    const socket = getSocket()
+    socket.emit('join:group', groupId)
+    const refetch = () => qc.invalidateQueries({ queryKey: ['huddle', activeUnit?.id, groupId] })
+    socket.on('huddle:started', refetch)
+    socket.on('huddle:ended', refetch)
+    socket.on('huddle:participants', refetch)
+    return () => {
+      socket.off('huddle:started', refetch)
+      socket.off('huddle:ended', refetch)
+      socket.off('huddle:participants', refetch)
+    }
+  }, [activeUnit?.id, groupId, qc])
+
+  return query
+}
+
+export function useStartHuddle() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      const res = await api.post<{ data: HuddleTokenResponse }>(
+        getUrl(activeUnit!.id, `/groups/${groupId}/huddle/start`),
+      )
+      return res.data.data
+    },
+  })
+}
+
+export function useJoinHuddle() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useMutation({
+    mutationFn: async (huddleId: string) => {
+      const res = await api.post<{ data: HuddleTokenResponse }>(
+        getUrl(activeUnit!.id, `/huddles/${huddleId}/join`),
+      )
+      return res.data.data
+    },
+  })
+}
+
+export function useLeaveHuddle() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useMutation({
+    mutationFn: (huddleId: string) =>
+      api.post(getUrl(activeUnit!.id, `/huddles/${huddleId}/leave`), {}),
+  })
 }

@@ -14,6 +14,8 @@ import { RemindersController } from './reminders/reminders.controller'
 import { RemindersProcessor } from './reminders/reminders.processor'
 import { SearchService } from './search/search.service'
 import { SearchController } from './search/search.controller'
+import { HuddlesService } from './huddles/huddles.service'
+import { HuddlesController } from './huddles/huddles.controller'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { FilesModule } from '../../infrastructure/files/files.module'
 import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
@@ -33,6 +35,7 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     CustomEmojisController,
     RemindersController,
     SearchController,
+    HuddlesController,
   ],
   providers: [
     GroupsService,
@@ -42,6 +45,7 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     RemindersService,
     RemindersProcessor,
     SearchService,
+    HuddlesService,
   ],
   exports: [GroupsService],
 })

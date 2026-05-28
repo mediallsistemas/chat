@@ -32,6 +32,7 @@ import { StreamsModule } from './shared/streams/streams.module'
 import { TranscriptionStreamHandler } from './transcription/transcription-stream.handler'
 import { GatewayModule } from './infrastructure/gateway/gateway.module'
 import { MailModule } from './infrastructure/mail/mail.module'
+import { LiveKitModule } from './infrastructure/livekit/livekit.module'
 import { ImpedimentEscalationJob } from './jobs/impediment-escalation.job'
 import { GroupArchiveJob } from './jobs/group-archive.job'
 import { MeetingReminderJob } from './jobs/meeting-reminder.job'
@@ -67,6 +68,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     StreamsModule,
     GatewayModule,
     MailModule,
+    LiveKitModule,
     AuthModule,
     UsersModule,
     UnitsModule,

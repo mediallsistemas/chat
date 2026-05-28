@@ -145,6 +145,26 @@ export interface ChatReminder {
   createdAt: string
 }
 
+export interface Huddle {
+  id: string
+  groupId: string
+  unitId: string
+  startedBy: string
+  startedAt: string
+  endedAt: string | null
+  livekitRoomId: string
+  participantCount: number
+}
+
+export interface HuddleTokenResponse {
+  huddleId: string
+  groupId: string
+  roomId: string
+  token: string
+  wsUrl: string
+  participantCount: number
+}
+
 export interface ChatSearchResult {
   id: string
   groupId: string

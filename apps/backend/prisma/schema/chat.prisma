@@ -124,6 +124,19 @@ model CustomEmoji {
   @@map("chat_custom_emojis")
 }
 
+model Huddle {
+  id            String    @id @default(uuid())
+  groupId       String    @map("group_id")
+  unitId        String    @map("unit_id")
+  startedBy     String    @map("started_by")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  livekitRoomId String    @unique @map("livekit_room_id")
+
+  @@index([groupId, endedAt])
+  @@map("chat_huddles")
+}
+
 model ChatReminder {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")

@@ -10,10 +10,16 @@ import {
   useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
   useCustomEmojis, useCreateReminder,
   useDiscoverableGroups, useJoinGroup,
+  useActiveHuddle, useStartHuddle, useJoinHuddle,
 } from '@/hooks/use-chat'
+import type { HuddleTokenResponse } from '@mediall/types'
 import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
 import { SearchPanel } from './search-panel'
 import { ThreadPanel } from './thread-panel'
+import dynamic from 'next/dynamic'
+
+// Load LiveKit-bundle component lazily; SSR-safe.
+const HuddleMini = dynamic(() => import('./huddle-mini').then((m) => m.HuddleMini), { ssr: false })
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
@@ -585,6 +591,22 @@ function MensagensPageInner() {
   const [sidebarTab, setSidebarTab] = useState<'mine' | 'discover'>('mine')
   const { data: discoverableGroups = [] } = useDiscoverableGroups()
   const { mutate: joinGroup, isPending: joining } = useJoinGroup()
+  const { data: activeHuddle } = useActiveHuddle(activeGroupId)
+  const { mutateAsync: startHuddle, isPending: startingHuddle } = useStartHuddle()
+  const { mutateAsync: joinHuddleApi, isPending: joiningHuddle } = useJoinHuddle()
+  const [huddleSession, setHuddleSession] = useState<HuddleTokenResponse | null>(null)
+
+  async function handleStartHuddle() {
+    if (!activeGroupId) return
+    const session = await startHuddle(activeGroupId)
+    setHuddleSession(session)
+  }
+
+  async function handleJoinHuddle() {
+    if (!activeHuddle) return
+    const session = await joinHuddleApi(activeHuddle.id)
+    setHuddleSession(session)
+  }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -959,6 +981,28 @@ function MensagensPageInner() {
                   {activeGroup._count?.members ?? 0} membros · {GROUP_TYPE_LABEL[activeGroup.type]}
                 </p>
               </div>
+              {!huddleSession && (
+                activeHuddle ? (
+                  <button
+                    onClick={handleJoinHuddle}
+                    disabled={joiningHuddle}
+                    className="ml-2 flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-gd rounded-full hover:opacity-90 disabled:opacity-50"
+                  >
+                    <i className="ti ti-headphones text-sm" aria-hidden="true" />
+                    Entrar no huddle ({activeHuddle.participantCount})
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartHuddle}
+                    disabled={startingHuddle}
+                    className="ml-2 flex items-center gap-1.5 px-2.5 py-1 text-xs text-gd border border-gd/30 rounded-full hover:bg-gd/5 disabled:opacity-50"
+                    title="Iniciar huddle"
+                  >
+                    <i className="ti ti-headphones text-sm" aria-hidden="true" />
+                    Huddle
+                  </button>
+                )
+              )}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -1215,6 +1259,10 @@ function MensagensPageInner() {
           }}
         />
       ) : null}
+
+      {huddleSession && (
+        <HuddleMini session={huddleSession} onLeave={() => setHuddleSession(null)} />
+      )}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <StartDirectModal
