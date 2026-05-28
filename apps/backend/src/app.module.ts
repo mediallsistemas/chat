@@ -16,6 +16,7 @@ import { ImpedimentsModule } from './contexts/impediments/impediments.module'
 import { NotificationsModule } from './infrastructure/notifications/notifications.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { ChatModule } from './contexts/chat/chat.module'
+import { MeModule } from './contexts/me/me.module'
 import { FilesModule } from './infrastructure/files/files.module'
 import { PushModule } from './infrastructure/push/push.module'
 import { MeetingsModule } from './contexts/meetings/meetings.module'
@@ -78,6 +79,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     NotificationsModule,
     DashboardModule,
     ChatModule,
+    MeModule,
     FilesModule,
     PushModule,
     MeetingsModule,
