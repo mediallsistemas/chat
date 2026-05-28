@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { RoleGuard } from '@/components/layout/role-guard'
 import { InstallPwaBanner } from '@/components/pwa/install-prompt'
 import { ToastContainer } from '@/components/ui/toast-container'
 
@@ -9,7 +10,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          <RoleGuard>{children}</RoleGuard>
+        </main>
       </div>
       <InstallPwaBanner />
       <ToastContainer />

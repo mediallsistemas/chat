@@ -6,22 +6,86 @@ import { useAuthStore } from '@/store/auth-store'
 import { UserRole } from '@mediall/types'
 import { clsx } from 'clsx'
 
-const navItems = [
+// Convention: `roles: null` means "everyone". Otherwise, only listed
+// roles see the item. Order here is the order shown in the sidebar.
+const navItems: Array<{
+  href: string
+  icon: string
+  label: string
+  roles: UserRole[] | null
+}> = [
+  // Colaborador / Visualizador get a focused home
+  {
+    href: '/meu',
+    icon: 'ti-home',
+    label: 'Minha visão',
+    roles: [UserRole.COLABORADOR, UserRole.VISUALIZADOR],
+  },
+
+  // Chat is universal — every role has access to their groups
+  { href: '/mensagens', icon: 'ti-message-2', label: 'Mensagens', roles: null },
+
+  // Diretoria / SUPER_ADMIN-only painel
   {
     href: '/dashboard',
     icon: 'ti-layout-dashboard',
     label: 'Painel',
     roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA],
   },
-  { href: '/processos', icon: 'ti-sitemap', label: 'Processos', roles: null },
-  { href: '/kanban', icon: 'ti-layout-kanban', label: 'Kanban', roles: null },
-  { href: '/impedimentos', icon: 'ti-alert-triangle', label: 'Impedimentos', roles: null },
-  { href: '/mensagens', icon: 'ti-message-2', label: 'Mensagens', roles: null },
-  { href: '/reunioes', icon: 'ti-video', label: 'Reuniões', roles: null },
-  { href: '/arquivos', icon: 'ti-folder', label: 'Arquivos', roles: null },
-  { href: '/documentos', icon: 'ti-file-text', label: 'Documentos', roles: null },
-  { href: '/chamados', icon: 'ti-ticket', label: 'Chamados', roles: null },
-  { href: '/configuracoes/notificacoes', icon: 'ti-bell-cog', label: 'Notificações', roles: null },
+
+  // Gestor + admin
+  {
+    href: '/processos',
+    icon: 'ti-sitemap',
+    label: 'Processos',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/kanban',
+    icon: 'ti-layout-kanban',
+    label: 'Kanban',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/impedimentos',
+    icon: 'ti-alert-triangle',
+    label: 'Impedimentos',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/reunioes',
+    icon: 'ti-video',
+    label: 'Reuniões',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/arquivos',
+    icon: 'ti-folder',
+    label: 'Arquivos',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/documentos',
+    icon: 'ti-file-text',
+    label: 'Documentos',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+  {
+    href: '/chamados',
+    icon: 'ti-ticket',
+    label: 'Chamados',
+    roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR],
+  },
+
+  // Personal settings — available to everyone
+  {
+    href: '/configuracoes/notificacoes',
+    icon: 'ti-bell-cog',
+    label: 'Notificações',
+    roles: null,
+  },
+
+  // Admin-only
   {
     href: '/admin/usuarios',
     icon: 'ti-users',
