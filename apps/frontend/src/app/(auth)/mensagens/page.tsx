@@ -9,6 +9,7 @@ import {
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
   useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
   useCustomEmojis, useCreateReminder,
+  useDiscoverableGroups, useJoinGroup,
 } from '@/hooks/use-chat'
 import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
 import { SearchPanel } from './search-panel'
@@ -18,7 +19,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
 import { api } from '@/lib/api'
 import { getSocket, connectSocket } from '@/lib/socket'
-import { GroupType, type Group, type Message } from '@mediall/types'
+import { GroupType, GroupVisibility, type Group, type Message } from '@mediall/types'
 
 // ─── Mention + custom emoji helpers ───────────────────────────────────────────
 
@@ -476,12 +477,18 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [name, setName] = useState('')
   const [type, setType] = useState<GroupType>(GroupType.SECTOR)
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     create(
-      { name, type, description: description || undefined },
-      { onSuccess: () => { onClose(); setName(''); setDescription('') } },
+      {
+        name,
+        type,
+        description: description || undefined,
+        visibility: isPublic ? GroupVisibility.UNIT_PUBLIC : GroupVisibility.PRIVATE_INVITE,
+      },
+      { onSuccess: () => { onClose(); setName(''); setDescription(''); setIsPublic(false) } },
     )
   }
 
@@ -521,6 +528,20 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
             placeholder="Para que serve este grupo?"
           />
         </div>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-gd"
+          />
+          <span className="text-xs text-gray-700">
+            <span className="font-semibold">Público nesta unidade</span>
+            <span className="block text-[11px] text-gx mt-0.5">
+              Qualquer pessoa da unidade pode encontrar e entrar no grupo sem convite.
+            </span>
+          </span>
+        </label>
         <div className="flex justify-end gap-2 pt-2 border-t border-gs/60">
           <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
           <Button type="submit" disabled={!name.trim() || isPending}>
@@ -561,6 +582,9 @@ function MensagensPageInner() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [flashMessageId, setFlashMessageId] = useState<string | null>(null)
   const [threadParentId, setThreadParentId] = useState<string | null>(null)
+  const [sidebarTab, setSidebarTab] = useState<'mine' | 'discover'>('mine')
+  const { data: discoverableGroups = [] } = useDiscoverableGroups()
+  const { mutate: joinGroup, isPending: joining } = useJoinGroup()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -814,30 +838,107 @@ function MensagensPageInner() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex px-2 pt-2 gap-1 shrink-0 border-b border-gs/40">
+          <button
+            onClick={() => setSidebarTab('mine')}
+            className={clsx(
+              'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2',
+              sidebarTab === 'mine'
+                ? 'border-gd text-gd'
+                : 'border-transparent text-gx hover:text-gray-700',
+            )}
+          >
+            Meus
+          </button>
+          <button
+            onClick={() => setSidebarTab('discover')}
+            className={clsx(
+              'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2 flex items-center justify-center gap-1',
+              sidebarTab === 'discover'
+                ? 'border-gd text-gd'
+                : 'border-transparent text-gx hover:text-gray-700',
+            )}
+          >
+            Descobrir
+            {discoverableGroups.length > 0 && (
+              <span className="text-[10px] bg-gd/10 text-gd px-1.5 py-0.5 rounded-full">
+                {discoverableGroups.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {loadingGroups ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-12 rounded-xl bg-gs/30 animate-pulse mx-1 mb-1" />
-            ))
-          ) : groups.length === 0 ? (
-            <div className="py-10 text-center">
-              <i className="ti ti-message-off text-3xl text-gx mb-2 block" aria-hidden="true" />
-              <p className="text-xs text-gx">Nenhum grupo</p>
-            </div>
+          {sidebarTab === 'mine' ? (
+            loadingGroups ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-12 rounded-xl bg-gs/30 animate-pulse mx-1 mb-1" />
+              ))
+            ) : groups.length === 0 ? (
+              <div className="py-10 text-center">
+                <i className="ti ti-message-off text-3xl text-gx mb-2 block" aria-hidden="true" />
+                <p className="text-xs text-gx">Nenhum grupo</p>
+              </div>
+            ) : (
+              groups.map((g) => {
+                const memberIds = g.members?.map((m) => m.userId) ?? []
+                const onlineCount = memberIds.filter((id) => onlineIds.includes(id) && id !== user?.id).length
+                return (
+                  <GroupItem
+                    key={g.id}
+                    group={g}
+                    active={g.id === activeGroupId}
+                    onClick={() => setActiveGroupId(g.id)}
+                    onlineCount={onlineCount}
+                  />
+                )
+              })
+            )
           ) : (
-            groups.map((g) => {
-              const memberIds = g.members?.map((m) => m.userId) ?? []
-              const onlineCount = memberIds.filter((id) => onlineIds.includes(id) && id !== user?.id).length
-              return (
-                <GroupItem
+            discoverableGroups.length === 0 ? (
+              <div className="py-10 text-center px-2">
+                <i className="ti ti-compass-off text-3xl text-gx mb-2 block" aria-hidden="true" />
+                <p className="text-xs text-gx">Nenhum grupo público disponível.</p>
+              </div>
+            ) : (
+              discoverableGroups.map((g) => (
+                <div
                   key={g.id}
-                  group={g}
-                  active={g.id === activeGroupId}
-                  onClick={() => setActiveGroupId(g.id)}
-                  onlineCount={onlineCount}
-                />
-              )
-            })
+                  className="px-3 py-2.5 rounded-xl border border-gs/40 hover:border-gd/30 transition-colors mb-1"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <i
+                      className={clsx('ti text-base text-gd', GROUP_TYPE_ICON[g.type])}
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm font-semibold text-gray-800 truncate flex-1">{g.name}</p>
+                  </div>
+                  {g.description && (
+                    <p className="text-[11px] text-gx mb-2 line-clamp-2">{g.description}</p>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-gx">
+                      {g._count.members} {g._count.members === 1 ? 'membro' : 'membros'}
+                    </span>
+                    <button
+                      onClick={() =>
+                        joinGroup(g.id, {
+                          onSuccess: () => {
+                            setSidebarTab('mine')
+                            setActiveGroupId(g.id)
+                          },
+                        })
+                      }
+                      disabled={joining}
+                      className="text-[11px] font-medium text-white bg-gd px-2 py-1 rounded-lg hover:opacity-90 disabled:opacity-40"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )
           )}
         </div>
       </aside>

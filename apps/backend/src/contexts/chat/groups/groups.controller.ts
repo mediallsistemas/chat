@@ -18,6 +18,20 @@ export class GroupsController extends BaseUnitController {
     return this.groupsService.findAll(unitId, user.sub)
   }
 
+  @Get('groups/discoverable')
+  findDiscoverable(@Param('unitId') unitId: string, @CurrentUser() user: JwtPayload) {
+    return this.groupsService.findDiscoverable(unitId, user.sub)
+  }
+
+  @Post('groups/:groupId/join')
+  join(
+    @Param('unitId') unitId: string,
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.join(unitId, groupId, user.sub)
+  }
+
   @Get('groups/:groupId')
   findOne(@Param('unitId') unitId: string, @Param('groupId') groupId: string) {
     return this.groupsService.findOne(unitId, groupId)

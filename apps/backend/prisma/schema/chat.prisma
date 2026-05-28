@@ -2,23 +2,24 @@
 //   groups, group_members, messages, message_reactions
 
 model Group {
-  id             String    @id @default(uuid())
+  id             String          @id @default(uuid())
   name           String
   description    String?
   type           GroupType
-  parentId       String?   @map("parent_id")
-  sectorId       String?   @map("sector_id")
-  objectiveId    String?   @map("objective_id")
+  visibility     GroupVisibility @default(PRIVATE_INVITE)
+  parentId       String?         @map("parent_id")
+  sectorId       String?         @map("sector_id")
+  objectiveId    String?         @map("objective_id")
   /// Nullable so PRIVATE direct chats can be user-to-user without a unit.
-  unitId         String?   @map("unit_id")
-  createdBy      String    @map("created_by")
-  avatarUrl      String?   @map("avatar_url")
-  isArchived     Boolean   @default(false) @map("is_archived")
-  archiveAt      DateTime? @map("archive_at")
-  kanbanBoardId  String    @map("kanban_board_id")
-  onlyAdminsPost Boolean   @default(false) @map("only_admins_post")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  unitId         String?         @map("unit_id")
+  createdBy      String          @map("created_by")
+  avatarUrl      String?         @map("avatar_url")
+  isArchived     Boolean         @default(false) @map("is_archived")
+  archiveAt      DateTime?       @map("archive_at")
+  kanbanBoardId  String          @map("kanban_board_id")
+  onlyAdminsPost Boolean         @default(false) @map("only_admins_post")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
 
   unit     Unit?         @relation(fields: [unitId], references: [id])
   members  GroupMember[]

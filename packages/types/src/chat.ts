@@ -7,6 +7,11 @@ export enum GroupType {
   PRIVATE = 'PRIVATE',
 }
 
+export enum GroupVisibility {
+  PRIVATE_INVITE = 'PRIVATE_INVITE',
+  UNIT_PUBLIC = 'UNIT_PUBLIC',
+}
+
 export enum GroupMemberRole {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
@@ -25,6 +30,7 @@ export interface Group {
   name: string
   description: string | null
   type: GroupType
+  visibility: GroupVisibility
   parentId: string | null
   unitId: string
   createdBy: string
@@ -34,6 +40,17 @@ export interface Group {
   kanbanBoardId: string
   _count?: { members: number; messages: number }
   members?: GroupMember[]
+}
+
+export interface DiscoverableGroup {
+  id: string
+  name: string
+  description: string | null
+  type: GroupType
+  visibility: GroupVisibility
+  avatarUrl: string | null
+  createdAt: string
+  _count: { members: number; messages: number }
 }
 
 export interface GroupMember {

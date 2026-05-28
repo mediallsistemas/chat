@@ -9,6 +9,8 @@ import type {
   Group,
   Message,
   GroupType,
+  GroupVisibility,
+  DiscoverableGroup,
   MessageReactionSummary,
   BookmarksPage,
   CustomEmoji,
@@ -43,11 +45,39 @@ export function useCreateGroup() {
       name: string
       description?: string
       type: GroupType
+      visibility?: GroupVisibility
       parentId?: string
       onlyAdminsPost?: boolean
       archiveAt?: string
     }) => api.post(getUrl(activeUnit!.id, '/groups'), dto),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] }),
+  })
+}
+
+export function useDiscoverableGroups() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  return useQuery<DiscoverableGroup[]>({
+    queryKey: ['groups', activeUnit?.id, 'discoverable'],
+    queryFn: async () => {
+      const res = await api.get<{ data: DiscoverableGroup[] }>(
+        getUrl(activeUnit!.id, '/groups/discoverable'),
+      )
+      return res.data.data
+    },
+    enabled: !!activeUnit,
+  })
+}
+
+export function useJoinGroup() {
+  const activeUnit = useUnitStore((s) => s.activeUnit)
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (groupId: string) =>
+      api.post(getUrl(activeUnit!.id, `/groups/${groupId}/join`), {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] })
+      qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id, 'discoverable'] })
+    },
   })
 }
 
