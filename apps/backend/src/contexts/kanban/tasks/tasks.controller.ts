@@ -5,7 +5,8 @@ import { CreateTaskDto } from './dto/create-task.dto'
 import { MoveTaskDto } from './dto/move-task.dto'
 import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
-import { JwtPayload } from '@mediall/types'
+import { Roles } from '../../../shared/decorators/roles.decorator'
+import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('kanban')
 @Controller('units/:unitId')
@@ -25,6 +26,7 @@ export class TasksController extends BaseUnitController {
   }
 
   @Post('tasks')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   create(
     @Param('unitId') unitId: string,
     @Body() dto: CreateTaskDto,
@@ -59,6 +61,7 @@ export class TasksController extends BaseUnitController {
   }
 
   @Post('tasks/:taskId/checklists')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   addChecklist(
     @Param('unitId') unitId: string,
     @Param('taskId') taskId: string,
@@ -77,6 +80,7 @@ export class TasksController extends BaseUnitController {
   }
 
   @Delete('tasks/:taskId/checklists/:checklistId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   deleteChecklist(
     @Param('unitId') unitId: string,
     @Param('taskId') taskId: string,
@@ -86,6 +90,7 @@ export class TasksController extends BaseUnitController {
   }
 
   @Post('tasks/:taskId/dependencies')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   addDependency(
     @Param('unitId') unitId: string,
     @Param('taskId') taskId: string,
@@ -95,6 +100,7 @@ export class TasksController extends BaseUnitController {
   }
 
   @Delete('tasks/:taskId/dependencies/:dependsOnId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   removeDependency(
     @Param('unitId') unitId: string,
     @Param('taskId') taskId: string,

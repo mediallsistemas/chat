@@ -4,7 +4,8 @@ import { ImpedimentsService } from './impediments.service'
 import { CreateImpedimentDto, ResolveImpedimentDto } from './dto/create-impediment.dto'
 import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
 import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { JwtPayload } from '@mediall/types'
+import { Roles } from '../../shared/decorators/roles.decorator'
+import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('impediments')
 @Controller('units/:unitId')
@@ -24,6 +25,7 @@ export class ImpedimentsController extends BaseUnitController {
   }
 
   @Post('tasks/:taskId/impediments')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   create(
     @Param('unitId') unitId: string,
     @Param('taskId') taskId: string,
@@ -34,6 +36,7 @@ export class ImpedimentsController extends BaseUnitController {
   }
 
   @Patch('impediments/:impedimentId/resolve')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   resolve(
     @Param('unitId') unitId: string,
     @Param('impedimentId') impedimentId: string,

@@ -4,7 +4,8 @@ import { GroupsService } from './groups.service'
 import { CreateGroupDto, AddMemberDto } from './dto/create-group.dto'
 import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
-import { JwtPayload } from '@mediall/types'
+import { Roles } from '../../../shared/decorators/roles.decorator'
+import { JwtPayload, UserRole } from '@mediall/types'
 
 @ApiTags('groups')
 @Controller('units/:unitId')
@@ -38,6 +39,7 @@ export class GroupsController extends BaseUnitController {
   }
 
   @Post('groups')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   create(
     @Param('unitId') unitId: string,
     @Body() dto: CreateGroupDto,
@@ -47,6 +49,7 @@ export class GroupsController extends BaseUnitController {
   }
 
   @Patch('groups/:groupId/archive')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   archive(
     @Param('unitId') unitId: string,
     @Param('groupId') groupId: string,
@@ -56,6 +59,7 @@ export class GroupsController extends BaseUnitController {
   }
 
   @Post('groups/:groupId/members')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   addMember(
     @Param('unitId') unitId: string,
     @Param('groupId') groupId: string,

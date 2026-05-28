@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { EventBusService } from '../../../shared/events'
 import { TaskCreatedEvent } from './events/task-created.event'
 import { TaskCompletedEvent } from './events/task-completed.event'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { MoveTaskDto } from './dto/move-task.dto'
-import { JwtPayload, AcceptanceStatus } from '@mediall/types'
+import { JwtPayload, AcceptanceStatus, UserRole } from '@mediall/types'
 
 @Injectable()
 export class TasksService {
@@ -69,6 +69,12 @@ export class TasksService {
   async move(unitId: string, taskId: string, dto: MoveTaskDto, user: JwtPayload) {
     const task = await this.prisma.task.findFirst({ where: { id: taskId, unitId } })
     if (!task) throw new NotFoundException('Tarefa não encontrada.')
+
+    // Ownership: gestor+ pode mover qualquer task; outros roles só a própria.
+    const elevatedRoles: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR]
+    if (!elevatedRoles.includes(user.role) && task.responsibleUserId !== user.sub) {
+      throw new ForbiddenException('Somente o responsável pode mover esta tarefa.')
+    }
 
     const targetColumn = await this.prisma.kanbanColumn.findUnique({ where: { id: dto.columnId } })
 
