@@ -1,45 +1,49 @@
 import { Injectable } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
-import { NotificationsService } from '../../../infrastructure/notifications/notifications.service'
+import { EventBusService, NotifyManyRequested } from '../../../shared/events'
 import { NotificationType } from '@mediall/types'
 import { MeetingScheduledEvent } from '../events/meeting-scheduled.event'
 import { MeetingReminderDueEvent } from '../events/meeting-reminder-due.event'
 
 @Injectable()
 export class MeetingNotificationHandler {
-  constructor(private notifications: NotificationsService) {}
+  constructor(private eventBus: EventBusService) {}
 
   @OnEvent('meeting.scheduled')
-  async onScheduled(event: MeetingScheduledEvent) {
+  onScheduled(event: MeetingScheduledEvent) {
     if (event.invitedUserIds.length === 0) return
 
-    await this.notifications.notifyMany(
-      event.invitedUserIds.map((userId) => ({
-        userId,
-        title: 'Nova reunião agendada',
-        body: `${event.creatorName} agendou "${event.meetingTitle}"`,
-        type: NotificationType.MEETING_REMINDER,
-        entityType: 'meeting',
-        entityId: event.meetingId,
-        unitId: event.unitId,
-      })),
+    this.eventBus.publish(
+      new NotifyManyRequested(
+        event.invitedUserIds.map((userId) => ({
+          userId,
+          title: 'Nova reunião agendada',
+          body: `${event.creatorName} agendou "${event.meetingTitle}"`,
+          type: NotificationType.MEETING_REMINDER as any,
+          entityType: 'meeting',
+          entityId: event.meetingId,
+          unitId: event.unitId,
+        })),
+      ),
     )
   }
 
   @OnEvent('meeting.reminder_due')
-  async onReminderDue(event: MeetingReminderDueEvent) {
+  onReminderDue(event: MeetingReminderDueEvent) {
     if (event.participantUserIds.length === 0) return
 
-    await this.notifications.notifyMany(
-      event.participantUserIds.map((userId) => ({
-        userId,
-        title: 'Reunião em breve',
-        body: `"${event.meetingTitle}" começa em ${event.minutesUntilStart} minutos.`,
-        type: NotificationType.MEETING_REMINDER,
-        entityType: 'meeting',
-        entityId: event.meetingId,
-        unitId: event.unitId,
-      })),
+    this.eventBus.publish(
+      new NotifyManyRequested(
+        event.participantUserIds.map((userId) => ({
+          userId,
+          title: 'Reunião em breve',
+          body: `"${event.meetingTitle}" começa em ${event.minutesUntilStart} minutos.`,
+          type: NotificationType.MEETING_REMINDER as any,
+          entityType: 'meeting',
+          entityId: event.meetingId,
+          unitId: event.unitId,
+        })),
+      ),
     )
   }
 }

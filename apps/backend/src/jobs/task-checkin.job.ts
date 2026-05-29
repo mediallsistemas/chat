@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { PrismaService } from '../prisma/prisma.service'
-import { NotificationsService } from '../infrastructure/notifications/notifications.service'
+import { EventBusService, NotifyUserRequested } from '../shared/events'
 import { NotificationType } from '@mediall/types'
 
 @Injectable()
@@ -10,7 +10,7 @@ export class TaskCheckinJob {
 
   constructor(
     private prisma: PrismaService,
-    private notifications: NotificationsService,
+    private eventBus: EventBusService,
   ) {}
 
   @Cron('0 9 * * *')
@@ -37,15 +37,17 @@ export class TaskCheckinJob {
 
       for (const task of staleTasks) {
         if (!task.responsibleUserId) continue
-        await this.notifications.create({
-          userId: task.responsibleUserId,
-          unitId: task.unitId,
-          type: NotificationType.CHECKIN_REQUEST,
-          title: 'Atualização de tarefa necessária',
-          body: `A tarefa "${task.title}" não recebe atualizações há mais de 3 dias. Qual é o status atual?`,
-          entityType: 'task',
-          entityId: task.id,
-        })
+        this.eventBus.publish(
+          new NotifyUserRequested({
+            userId: task.responsibleUserId,
+            unitId: task.unitId,
+            type: NotificationType.CHECKIN_REQUEST as any,
+            title: 'Atualização de tarefa necessária',
+            body: `A tarefa "${task.title}" não recebe atualizações há mais de 3 dias. Qual é o status atual?`,
+            entityType: 'task',
+            entityId: task.id,
+          }),
+        )
       }
 
       this.logger.log(`Task check-in job completed — ${staleTasks.length} tasks notified`)
