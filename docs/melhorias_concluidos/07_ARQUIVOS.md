@@ -49,7 +49,7 @@ PDF, Word, Excel, imagens (JPG, PNG, WEBP), vídeos (MP4), ZIP
 - [x] Módulo de upload com Multer no NestJS (FilesModule — POST /units/:unitId/upload, FileInterceptor, 20MB limit)
 - [x] Geração de signed URLs com expiração (FilesService.getSignedUrl, 1h TTL)
 - [x] Preview inline no frontend (imagem inline no MessageBubble; arquivo com link download)
-- [x] Busca de arquivos por nome/tipo/data (filtros em `/documentos`)
-- [x] Versionamento de arquivos (`Document.versionOf` + `versionNumber` + `isLatest`)
-- [ ] Encriptação AES-256 para arquivos sensíveis (delegado a MinIO server-side encryption em produção)
+- [x] Busca de arquivos por nome/tipo/data (GET /units/:unitId/documents/search?name=&mime=&from=&to=)
+- [x] Versionamento de arquivos — versionOf, versionNumber, isLatest no schema + migration 20260513000001 + uploadVersion/listVersions endpoints
+- [x] Encriptação AES-256 para arquivos sensíveis — uploadEncrypted/downloadDecrypted em StorageService (AES-256-GCM, IV+tag prefixados ao blob); POST /upload?sensitive=true + GET /download/:key para decrypt proxy; chave via FILE_ENCRYPTION_KEY env
 - [x] Isolamento por unidade no acesso a arquivos (unitId no prefixo da chave MinIO)

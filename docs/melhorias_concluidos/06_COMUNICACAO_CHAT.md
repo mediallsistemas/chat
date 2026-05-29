@@ -128,19 +128,21 @@ messages
 - [x] Tabelas `groups`, `group_members`, `messages` no Prisma
 - [x] Socket.IO server configurado no NestJS
 - [x] Gateway de WebSocket com autenticação JWT
-- [x] Presença online via Redis (SADD/SREM/SMEMBERS em `online:unit:<unitId>` com TTL 24h; fallback in-memory)
+- [x] Presença online via Redis — PresenceService usa Redis SADD/SREM/SMEMBERS em `online:unit:<unitId>` com fallback in-memory; conecta no afterInit do gateway; PresenceController usa PresenceService filtrado por unitId
 - [x] CRUD de grupos por tipo (GENERAL/SECTOR/SUBSECTOR/PROJECT/TEMPORARY/PRIVATE)
 - [x] Hierarquia de grupos (parentId no schema + DTO)
 - [x] Isolamento por unidade no filtro de grupos
 - [x] Threads (replyToId — reply_to)
 - [x] Mensagens fixadas (togglePin)
-- [x] Busca de mensagens por palavra-chave
+- [x] Busca de mensagens por palavra-chave (GET /messages/search?q= + useMessageSearch hook + UI no /mensagens)
 - [x] Status online (user:online / user:offline via gateway)
 - [x] Indicador de digitação (message:typing → user:typing broadcast)
-- [x] Confirmação de leitura (`message:read` + `lastReadAt` em GroupMember + contagem de membros)
+- [x] Confirmação de leitura com contagem de membros (POST /groups/:groupId/read + lastReadAt em GroupMember + socket message:read:update)
 - [x] Arquivamento automático de grupos temporários (GroupArchiveJob — cron 23:55)
 - [x] Auditoria de edições e exclusões (AuditLogInterceptor global + isEdited/isDeleted em Message)
-- [x] Painéis laterais (Membros: `GET /groups/:groupId/members`, Arquivos: `GET /groups/:groupId/files`)
+- [x] Painel lateral Membros — GET /groups/:groupId/members + panel toggle no header do chat
+- [x] Painel lateral Arquivos — GET /groups/:groupId/files (signed URLs) + panel toggle no header do chat
+- [x] Silenciar grupo individual — toggle no sidebar com hover, mutedGroups via NotificationSettings API
 - [x] Conversas privadas 1:1 (POST /groups/direct + StartDirectModal no frontend)
 - [x] Upload de arquivos no chat (paperclip button + preview inline + download)
-- [x] Reações emoji (toggleReaction + `message:reaction` broadcast)
+- [x] Reações emoji (POST /messages/:id/reactions + toggleReaction service + UI no MessageBubble)

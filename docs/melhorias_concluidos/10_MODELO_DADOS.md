@@ -1,47 +1,10 @@
 # Plano 10 — Modelo de Dados
 ## Todas as tabelas, relações e Prisma schema
 
-> Última revisão: 2026-05-23 — alinhado com plano 17 (split por domínio planejado).
-
 ---
 
 ## Objetivo
 Definir o modelo de dados completo da plataforma como referência única para desenvolvimento.
-
----
-
-## Organização do schema — atual e planejado
-
-**Hoje (atual):** schema único em `apps/backend/prisma/schema.prisma` — 30 models, ~817 linhas.
-
-**Planejado (plano 17, Fase 1.3):** split em múltiplos arquivos via `prismaSchemaFolder` (preview Prisma 5+), com **um arquivo por contexto DDD**:
-
-```
-apps/backend/prisma/
-├── schema.prisma              ← datasource + generator + shared (User, Unit, UserUnit)
-└── schemas/
-    ├── auth.prisma            ← RefreshToken, AuditLog
-    ├── strategic.prisma       ← Plan, Objective, Goal, Phase, MacroTask
-    ├── kanban.prisma          ← Board, Column, Task, TaskFile
-    ├── chat.prisma            ← Group, GroupMember, Message, Reaction
-    ├── meetings.prisma        ← Meeting, MeetingParticipant
-    ├── transcription.prisma   ← Transcript, TranscriptSegment
-    ├── notifications.prisma   ← Notification, NotificationSettings
-    ├── impediments.prisma     ← Impediment, EscalationLog
-    ├── tickets.prisma         ← Ticket, TicketComment
-    ├── documents.prisma       ← Document, DocumentVersion
-    └── consents.prisma        ← UserConsent, ConsentLog
-```
-
-**Modelos transversais que permanecem no `schema.prisma` raiz:**
-- `User` (aparece em 11 models)
-- `Unit` (aparece em 8+ models)
-- `UserUnit` (junction)
-
-**Regras associadas (impostas por boundary lint + revisão):**
-- Cada `contexts/<domain>/infrastructure/repositories/*.ts` só consulta models do seu próprio arquivo `.prisma`
-- Exceção: leitura de `User`/`Unit` permitida (transversais)
-- Cross-domain reads de outros modelos: usar Read Models / Ports (não join Prisma direto). Ver plano 17, Fase 1.4.
 
 ---
 
@@ -411,8 +374,8 @@ model AuditLog {
 ## Checklist de Implementação
 
 - [x] Criar `schema.prisma` completo (todas as tabelas, enums, relações)
-- [x] Migrations aplicadas (13 migrations, última: `20260523000000_modular_monolith_phase1`)
-- [x] Seeders para dados iniciais (`prisma/seed.ts` + `prisma/seed-strategic.ts`)
-- [x] Validar relações e foreign keys (`npx prisma validate` ✅)
+- [x] Rodar `npx prisma migrate dev` — task_dependencies e Message file fields confirmados na DB (columns e FKs presentes)
+- [x] Seeders para dados iniciais — prisma/seed.ts: 8 users (SUPER_ADMIN/DIRETORIA/GESTOR), 6 unidades (Matriz + 5 hospitais), grupos GENERAL + Kanban boards por unidade
+- [x] Validar relações e foreign keys — task_dependencies FKs para tasks confirmadas; messages FKs para groups/users confirmadas
 - [x] Isolamento por `unitId` garantido via UnitScopeGuard + BaseUnitController (todas as rotas de dados)
-- [x] Índices de performance compostos (ver `melhorias_concluidos/12_database_indexes.md` + indexes em messages, tasks, impediments, audit_logs)
+- [x] Índices de performance — migration 20260513000004: tasks(unitId+completedAt/dueDate/updatedAt), messages(senderId+createdAt)

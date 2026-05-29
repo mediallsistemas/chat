@@ -71,13 +71,13 @@ meeting_participants
 ## Checklist de Implementação
 
 - [x] LiveKit Server no Docker Compose
-- [x] Integração LiveKit Client SDK no Next.js (`@livekit/components-react`)
-- [x] CRUD de reuniões (`GET/POST/PATCH/DELETE /units/:unitId/meetings`)
-- [x] Reuniões recorrentes com RRULE (`generateOccurrences()`)
-- [x] Sala persistente por grupo (`GET /meetings/group-room/:groupId`)
-- [x] Sala temporária instantânea (`POST /meetings/instant-room`)
-- [x] Gravação com consentimento (`RecordingConsentRequestedEvent` + `EgressClient`)
-- [x] Agenda integrada (`/reunioes/agenda` com reuniões + prazos de tarefas)
-- [x] Lembretes automáticos (`MeetingReminderJob` cron 24h e 15min)
-- [x] Permissões de câmera/microfone (UI de controle em `video-room.tsx`)
-- [x] Isolamento por unidade em todos os endpoints
+- [x] Integração LiveKit Client SDK no Next.js (@livekit/components-react, video-room.tsx)
+- [x] CRUD de reuniões (MeetingsModule — GET/POST/PATCH/DELETE /units/:unitId/meetings)
+- [x] Reuniões recorrentes com RRULE (generateOccurrences em meetings.service.ts)
+- [x] Sala persistente por grupo (GET /meetings/group-room/:groupId)
+- [x] Sala temporária instantânea (POST /meetings/instant-room)
+- [x] Gravação com consentimento (RecordingConsentRequestedEvent, EgressClient LiveKit, consentimento de todos os participantes)
+- [x] Agenda integrada — /reunioes/agenda com calendário mensal + prazos de tarefas
+- [x] Lembretes automáticos (MeetingReminderJob — 24h e 15min antes)
+- [x] Permissões de câmera/microfone (controles no video-room.tsx)
+- [x] Isolamento por unidade (unitId em todos os endpoints)

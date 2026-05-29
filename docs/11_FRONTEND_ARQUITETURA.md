@@ -37,79 +37,81 @@ import type { Plan, JwtPayload } from '@mediall/types'
 
 ---
 
-## Estrutura de Pastas
+## Estrutura de Pastas (Feature-based)
+
+Três grandes blocos: **`app/`** (só rotas), **`features/`** (domínios), **`shared/`** (cross-feature).
 
 ```
 apps/frontend/src/
-├── app/
-│   ├── (public)/
-│   │   └── login/
-│   │       └── page.tsx
-│   │
-│   ├── (auth)/                         ← rotas autenticadas
-│   │   ├── layout.tsx                  ← verifica JWT, redireciona se não auth
-│   │   ├── dashboard/
-│   │   │   └── page.tsx                ← painel da diretoria
-│   │   ├── processos/
-│   │   │   ├── page.tsx                ← lista de planos
-│   │   │   └── [planId]/
-│   │   │       ├── page.tsx            ← detalhe do plano
-│   │   │       └── [objectiveId]/
-│   │   │           └── [goalId]/
-│   │   │               └── page.tsx    ← metas e etapas
-│   │   ├── kanban/
-│   │   │   └── [boardId]/
-│   │   │       └── page.tsx
-│   │   ├── mensagens/
-│   │   │   ├── page.tsx                ← lista de grupos
-│   │   │   └── [groupId]/
-│   │   │       └── page.tsx            ← chat do grupo
-│   │   ├── agenda/
-│   │   │   └── page.tsx
-│   │   ├── arquivos/
-│   │   │   └── page.tsx
-│   │   └── perfil/
-│   │       └── page.tsx
-│   │
-│   ├── (admin)/                        ← apenas SUPER_ADMIN e DIRETORIA
-│   │   ├── layout.tsx
-│   │   └── admin/
-│   │       ├── usuarios/
-│   │       └── unidades/
-│   │
-│   └── middleware.ts                   ← proteção global de rotas
+├── app/                               ← Next.js App Router — só pages + layouts
+│   ├── (public)/login/page.tsx
+│   ├── (auth)/                        ← rotas autenticadas
+│   │   ├── layout.tsx                 ← verifica JWT, redireciona se não auth
+│   │   ├── dashboard/page.tsx
+│   │   ├── processos/...              ← planos → objetivos → metas → etapas
+│   │   ├── kanban/[boardId]/page.tsx
+│   │   ├── mensagens/...
+│   │   ├── agenda/page.tsx
+│   │   ├── documentos/page.tsx
+│   │   ├── chamados/page.tsx
+│   │   ├── impedimentos/page.tsx
+│   │   └── perfil/page.tsx
+│   ├── (admin)/admin/usuarios|unidades/
+│   └── middleware.ts                  ← proteção global de rotas
 │
-├── components/
-│   ├── ui/                             ← componentes base (Button, Input, Modal...)
-│   ├── layout/                         ← Sidebar, Header, UnitSelector
-│   ├── kanban/                         ← KanbanBoard, KanbanCard, KanbanColumn
-│   ├── strategic/                      ← PlanCard, ObjectiveCard, PhaseBlock
-│   ├── chat/                           ← MessageList, MessageInput, GroupList
-│   ├── dashboard/                      ← TrafficLight, ProgressBar, ImpedimentMap
-│   └── shared/                         ← Avatar, Badge, Tooltip, EmptyState
+├── features/                          ← 15 domínios — cada um com hooks/ e components/
+│   ├── auth/
+│   ├── users/
+│   ├── units/
+│   ├── strategic/
+│   ├── kanban/
+│   ├── chat/
+│   ├── meetings/
+│   ├── transcription/
+│   ├── documents/
+│   ├── tickets/
+│   ├── impediments/
+│   ├── notifications/
+│   ├── dashboard/
+│   ├── reports/
+│   └── audit/
 │
-├── hooks/
-│   ├── useAuth.ts
-│   ├── useUnit.ts                      ← contexto da unidade ativa
-│   ├── useSocket.ts
-│   └── useNotifications.ts
-│
-├── lib/
-│   ├── api.ts                          ← instância Axios configurada
-│   ├── queryClient.ts                  ← TanStack Query config
-│   └── socket.ts                       ← Socket.IO client
-│
-├── store/
-│   ├── authStore.ts                    ← Zustand: usuário autenticado
-│   ├── unitStore.ts                    ← Zustand: unidade ativa selecionada
-│   └── uiStore.ts                      ← Zustand: sidebar, modais
-│
-└── types/
-    ├── auth.ts
-    ├── strategic.ts
-    ├── kanban.ts
-    └── chat.ts
+└── shared/                            ← reutilizável entre features
+    ├── ui/                            ← componentes base (Button, Input, Modal, Badge, Avatar...)
+    ├── layout/                        ← Sidebar, Header, UnitSelector
+    ├── hooks/                         ← useAuth, useUnit, useSocket
+    ├── lib/                           ← api.ts (Axios), queryClient.ts, socket.ts, utils.ts
+    └── store/                         ← Zustand: authStore, unitStore, uiStore
 ```
+
+### Estrutura interna de cada feature
+
+```
+features/<domain>/
+├── hooks/                             ← TanStack Query hooks (use-<domain>.ts)
+├── components/                        ← componentes específicos do domínio
+└── index.ts                           ← barrel export
+```
+
+### Regras de acoplamento
+
+- `app/<route>/page.tsx` importa de `features/<X>/` e `shared/` — nunca de outra rota
+- `features/X` pode importar **apenas** de:
+  - `features/X/**` (próprio domínio)
+  - `shared/**`
+  - `@mediall/types`
+- **Exceções controladas** (frontend tem mais flexibilidade que backend):
+  - `features/X/hooks/use-users.ts` pode ser consumido por outra feature quando o dado é transversal (User aparece em todo lugar)
+  - Caso a ser evitado: feature A importando componentes visuais de B. Solução: promover o componente para `shared/ui/` ou `shared/<algo>/`
+
+### Tipos compartilhados com backend
+
+Vêm de `packages/types`:
+```typescript
+import type { Plan, JwtPayload, KanbanTask } from '@mediall/types'
+```
+
+Não duplicar types entre frontend e backend.
 
 ---
 
@@ -198,25 +200,35 @@ Toda query que precisa de `unitId` consome `unitStore.activeUnit`.
 
 ## Checklist de Implementação
 
-- [x] Configurar monorepo (Turborepo + npm workspaces) — ver `12_BACKEND_ARQUITETURA.md`
-- [x] Setup Next.js 14+ com App Router
-- [x] Configurar Tailwind CSS
-- [x] Configurar TanStack Query
-- [x] Configurar Zustand stores
-- [x] Configurar Axios com interceptors (token refresh)
-- [x] Configurar Socket.IO client
-- [x] Implementar middleware.ts de proteção de rotas
+### Setup
+- [x] Monorepo (Turborepo + npm workspaces) — ver plano 12
+- [x] Next.js 14+ com App Router
+- [x] Tailwind CSS
+- [x] TanStack Query
+- [x] Zustand stores (`authStore`, `unitStore`, `uiStore`)
+- [x] Axios com interceptors (token refresh)
+- [x] Socket.IO client
+- [x] Middleware de proteção de rotas
+- [x] Reestruturação `features/` + `shared/` concluída (15 features)
+
+### Componentização base
+- [x] Componentes UI shared: `Button`, `Badge`, `Avatar`, `ProgressBar`, `TrafficLight`, `Modal`, `Spinner`, `Input`, `Select`, `Textarea`
 - [x] Layout principal (3 colunas: sidebar, lista, conteúdo)
-- [x] Seletor de unidade no header
-- [x] Componentes base de UI — `Button`, `Badge`, `Avatar`, `ProgressBar`, `TrafficLight`, `Modal`, `Spinner`, `Input`, `Select`, `Textarea`
-- [x] Componente `PhaseTimeline` (timeline visual de etapas LOCKED/ACTIVE/ARCHIVED)
-- [x] Página `/processos` com integração API real (planos → objetivos → metas → etapas)
-- [x] Componentes Kanban: `KanbanCard`, `KanbanColumn`, `KanbanBoard` (drag-and-drop com `react-beautiful-dnd`, `dynamic ssr:false`), `KanbanBoardSkeleton`, `CreateTaskModal`
-- [x] Página `/processos/[planId]/[objectiveId]/[goalId]` — detalhe de meta com timeline de etapas e Kanban ativo
-- [x] `error.tsx` em `/processos`
-- [x] Modais de edição para plano, objetivo, meta e etapa (`EditPlanModal`, `EditObjectiveModal`, `EditGoalModal`, `EditPhaseModal`)
-- [x] PATCH endpoints para plano, objetivo, meta e etapa (backend)
-- [x] Visualizações: Lista e Calendário (KanbanBoardClient toggle Board/Lista/Calendário)
-- [ ] Visualização: Timeline (Gantt) — pendente
-- [x] Painel da diretoria
-- [x] Chat em tempo real (Socket.IO grupos + mensagens + typing indicator)
+- [x] Seletor de unidade no header (MULTI scope)
+- [x] `error.tsx` em rotas autenticadas
+
+### Features implementadas (ver plano 14 — Roadmap)
+- [x] Strategic (planos, objetivos, metas, etapas, modais de edição)
+- [x] Kanban (board/lista/calendário, drag-and-drop, checklists, dependências)
+- [x] Chat (grupos, mensagens, typing, reações, presença, conversas 1:1)
+- [x] Meetings (videochamadas LiveKit, agenda, gravação)
+- [x] Documents, Tickets, Impediments, Notifications, Dashboard, Reports
+
+### Concluído — arquitetural (plano 17)
+- [x] Boundary lint via dependency-cruiser (`.dependency-cruiser.cjs` + script `lint:boundaries`)
+- [x] Auditoria das exceções: kanban → users (UserCombobox), kanban → chat (task-files reuso) documentadas como warnings legítimos
+
+### Concluído — outras (plano 16)
+- [x] Visualização Timeline (Gantt) no Kanban (`KanbanGanttView`)
+- [x] Migração de formulários para `react-hook-form` + `zod` (4 forms: chamados, impedimentos, documentos, reuniões)
+- [x] FormModal reutilizável (`components/ui/form-modal.tsx`) adotado pelos 4 forms

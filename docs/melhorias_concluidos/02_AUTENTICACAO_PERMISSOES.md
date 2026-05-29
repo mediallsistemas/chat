@@ -166,8 +166,8 @@ units
 - [x] Decorator `@CurrentUser()` para injetar usuário nas rotas
 - [x] Endpoint `POST /api/auth/login`
 - [x] Endpoint `POST /api/auth/logout`
-- [x] Endpoint `POST /api/auth/refresh` — silent refresh via refresh cookie (Redis SHA-256)
-- [x] Middleware de timeout de inatividade no frontend — `InactivityGuard` (30min)
+- [x] Endpoint `POST /api/auth/refresh` — refresh token via Redis (7d TTL, hashed)
+- [x] Middleware de timeout de inatividade no frontend (30min, InactivityGuard no auth layout)
 - [x] Seletor de unidade no header (usuários MULTI) — header.tsx com dropdown e useUnits hook
-- [x] Bloqueio de conta após 5 tentativas falhas (failedLogins/lockedAt); desbloqueio via `PATCH /users/:id/unlock`
-- [x] Audit log de login/logout com userId, IP e timestamp
+- [x] Bloqueio de conta após tentativas falhas (failedLogins/lockedAt — lógica implementada em auth.service.ts login(); desbloqueio via PATCH /users/:id/unlock)
+- [x] Audit log de login/logout (prisma.auditLog.create com action LOGIN/LOGOUT em auth.service.ts)

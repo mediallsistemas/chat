@@ -57,9 +57,9 @@ Sistema de notificações informativo sem ser invasivo, com controle total pelo 
 - [x] Tabela `notifications` no Prisma (modelo Notification + enum NotificationType)
 - [x] Serviço de notificações no NestJS (NotificationsService: create, notifyMany, findAll, markRead, markAllRead)
 - [x] Canal in-app via WebSocket (emite `notification:new` via AppGateway em cada create())
-- [x] Canal e-mail com template (`MailService.sendNotification`)
-- [x] Fila BullMQ + node-cron para notificações assíncronas
+- [x] Canal e-mail com template (MailService + MailProcessor com BullMQ, templates HTML via Handlebars)
+- [x] Fila BullMQ para notificações assíncronas (mail.processor.ts)
 - [x] Painel de notificações no frontend (NotificationPanel + badge de não lidas no header)
-- [x] Configurações de notificação por usuário (`NotificationSetting` + `/configuracoes/notificacoes`)
-- [x] Modo não perturbe (`dndEnabled` + `dndStart`/`dndEnd`)
-- [x] Silenciar grupos (`isMuted` em GroupMember)
+- [x] Configurações de notificação por usuário — GET/PATCH /notifications/settings + página /configuracoes/notificacoes
+- [x] Modo não perturbe — campo doNotDisturb + horários no schema + verificação no NotificationsService
+- [x] Silenciar grupos individuais — toggle no sidebar do /mensagens, mutedGroups via useNotificationSettings, POST/DELETE /notifications/settings/muted-groups/:groupId

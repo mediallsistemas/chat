@@ -4,14 +4,6 @@
 > Documento gerado após auditoria completa do sistema (Maio 2026).
 > Cada área tem nota atual, diagnóstico e ações concretas ordenadas por prioridade.
 
-> **Status (revisão 2026-05-23):** a maioria dos itens críticos/altos deste plano já foi **concluída** — ver `melhorias_concluidos/01_helmet_rate_limiting.md` até `20_shared_components.md` e os `21-38_*_completo.md`. Este documento agora serve como referência histórica do diagnóstico inicial.
->
-> **Itens arquiteturais (EventBus, boundary lint, multi-file schema, extração de serviços) NÃO estão neste plano** — foram movidos para o **plano 17 (`17_PLANO_MODULAR_MONOLITH.md`)**, pois constituem evolução arquitetural, não dívida técnica pontual.
->
-> **Relação com plano 17:**
-> - "Escalabilidade #1 — Redis adapter para Socket.IO" já foi **concluído** (ver `melhorias_concluidos/16_socket_redis_adapter.md`) e habilita a futura extração de chat/meetings descrita no plano 17, Fase 4.
-> - "Indexes compostos" e "paginação" também já concluídos.
-
 ---
 
 ## Índice
@@ -628,50 +620,62 @@ const form = useForm<z.infer<typeof schema>>({
 
 ## Plano de Execução
 
-### Esta semana (go-live blocker)
-| # | Ação | Tempo estimado |
-|---|------|---------------|
-| 1 | Instalar `helmet` + `@nestjs/throttler` | 1h |
-| 2 | Remover fallback `JWT_SECRET` | 15min |
-| 3 | Filtro global de exceções no NestJS | 2h |
-| 4 | Health check `GET /api/health` | 1h |
-| 5 | Logger estruturado nos jobs e notifications service | 2h |
-| 6 | `onError` callbacks nas mutations de chamados e documentos | 2h |
-
-### Primeira semana pós go-live
-| # | Ação | Tempo estimado |
-|---|------|---------------|
-| 7 | Winston + logs estruturados em todos os services | 4h |
-| 8 | Sentry para captura de erros em produção | 2h |
-| 9 | Guard em `users.findAll()` | 30min |
-| 10 | Paginação em tickets e documents endpoints | 4h |
-| 11 | Indexes compostos no banco (migration) | 1h |
-| 12 | Modelo `UserConsent` no Prisma (LGPD) | 2h |
-
-### Primeiro mês pós go-live
+### Esta semana (go-live blocker) — ✅ CONCLUÍDO
 | # | Ação | Status |
-|---|------|---------------|
-| 13 | Endpoint de anonimização de usuário (LGPD Art. 18) | ✅ concluído (ver `melhorias_concluidos/14_lgpd_anonymization.md`) |
-| 14 | Job de retenção de dados (LGPD) | ✅ concluído (ver `melhorias_concluidos/15_lgpd_data_retention.md`) |
-| 15 | Redis adapter para Socket.IO (escalabilidade horizontal) | ✅ concluído (ver `melhorias_concluidos/16_socket_redis_adapter.md`) |
-| 16 | Versionamento de API (`/v1/`) | ✅ concluído (ver `melhorias_concluidos/17_api_versioning.md`) |
-| 17 | Migrar `react-beautiful-dnd` → `@dnd-kit` | ✅ concluído (ver `melhorias_concluidos/18_dnd_kit_migration.md`) |
-| 18 | Componentes `SkeletonList` e `FormModal` | ✅ concluído (FormModal criado 2026-05-23, SkeletonList já existia) |
-| 19 | Migrar formulários para `react-hook-form` + `zod` | ✅ concluído 2026-05-23 (chamados, documentos, impedimentos, reuniões) |
-| 20 | CSRF protection | ✅ concluído (csrf-csrf instalado + filter mapeia EBADCSRFTOKEN → 403) |
+|---|------|--------|
+| 1 | Instalar `helmet` + `@nestjs/throttler` | ✅ Concluído (ver `01_helmet_rate_limiting.md`) |
+| 2 | Remover fallback `JWT_SECRET` | ✅ Concluído (ver `02_jwt_secret_hardening.md`) |
+| 3 | Filtro global de exceções no NestJS | ✅ Concluído (ver `05_global_exception_filter.md`) |
+| 4 | Health check `GET /api/health` | ✅ Concluído (ver `06_health_check.md`) |
+| 5 | Logger estruturado nos jobs e notifications service | ✅ Concluído (ver `07_winston_logging.md`) |
+| 6 | `onError` callbacks nas mutations de chamados e documentos | ✅ Concluído (ver `10_on_error_mutations_frontend.md`) |
+
+### Primeira semana pós go-live — ✅ CONCLUÍDO
+| # | Ação | Status |
+|---|------|--------|
+| 7 | Winston + logs estruturados em todos os services | ✅ Concluído (ver `07_winston_logging.md`) |
+| 8 | Sentry para captura de erros em produção | ✅ Concluído (ver `08_sentry_error_tracking.md`) |
+| 9 | Guard em `users.findAll()` | ✅ Concluído (ver `04_users_role_guard.md`) |
+| 10 | Paginação em tickets e documents endpoints | ✅ Concluído (ver `11_pagination_api.md`) |
+| 11 | Indexes compostos no banco (migration) | ✅ Concluído (ver `12_database_indexes.md`) |
+| 12 | Modelo `UserConsent` no Prisma (LGPD) | ✅ Concluído (ver `13_lgpd_user_consent.md`) |
+
+### Primeiro mês pós go-live — ✅ CONCLUÍDO
+| # | Ação | Status |
+|---|------|--------|
+| 13 | Endpoint de anonimização de usuário (LGPD Art. 18) | ✅ Concluído (ver `14_lgpd_anonymization.md`) |
+| 14 | Job de retenção de dados (LGPD) | ✅ Concluído (ver `15_lgpd_data_retention.md`) |
+| 15 | Redis adapter para Socket.IO (escalabilidade horizontal) | ✅ Concluído (ver `16_socket_redis_adapter.md`) |
+| 16 | Versionamento de API (`/v1/`) | ✅ Concluído (ver `17_api_versioning.md`) |
+| 17 | Migrar `react-beautiful-dnd` → `@dnd-kit` | ✅ Concluído (ver `18_dnd_kit_migration.md`) |
+| 18 | Componentes `SkeletonList` e `FormModal` | ✅ Concluído (ver `20_shared_components.md`) |
+| 19 | Migrar formulários para `react-hook-form` + `zod` | ✅ Concluído (ver `19_react_hook_form_migration.md`) |
+| 20 | CSRF protection | ✅ Concluído (ver `03_csrf_protection.md`) |
+
+### Pendente (pós go-live)
+| # | Ação | Prioridade |
+|---|------|-----------|
+| 21 | Presença online via Redis pub/sub (substituir Map in-memory) | 🟡 Médio |
+| 22 | Encriptação AES-256 para arquivos sensíveis | 🟡 Médio |
+| 23 | Relatório ROPA (LGPD Art. 37) — documento, não código | 🟡 Médio |
+| 24 | Abas internas por grupo no chat (Kanban/Agenda/Arquivos/Membros) | 🟡 Médio |
+| 25 | Notificação imediata ao registrar impedimento | 🟠 Alto |
+| 26 | Exportação Excel no dashboard | 🟡 Baixo |
+| 27 | Silenciar grupos individuais | 🟡 Baixo |
+| 28 | Faróis em tempo real via WebSocket | 🟡 Baixo |
 
 ---
 
-## Score Atual vs Meta
+## Score Atualizado (Maio 2026)
 
-| Área | Atual | Meta | Gap |
-|------|-------|------|-----|
-| Segurança | 6.5 | 9.0 | +2.5 |
-| LGPD | 2.0 | 7.0 | +5.0 |
-| Observabilidade | 3.0 | 8.0 | +5.0 |
-| Tratamento de Erros | 4.0 | 8.0 | +4.0 |
-| Escalabilidade | 6.0 | 8.0 | +2.0 |
-| Design de API | 6.0 | 8.5 | +2.5 |
-| Performance | 5.5 | 7.5 | +2.0 |
-| Duplicação | 6.0 | 8.5 | +2.5 |
-| **Média** | **4.9** | **8.0** | **+3.1** |
+| Área | Original | Atual | Meta | Gap |
+|------|----------|-------|------|-----|
+| Segurança | 6.5 | 8.5 | 9.0 | +0.5 |
+| LGPD | 2.0 | 6.5 | 7.0 | +0.5 |
+| Observabilidade | 3.0 | 7.5 | 8.0 | +0.5 |
+| Tratamento de Erros | 4.0 | 7.5 | 8.0 | +0.5 |
+| Escalabilidade | 6.0 | 7.5 | 8.0 | +0.5 |
+| Design de API | 6.0 | 8.0 | 8.5 | +0.5 |
+| Performance | 5.5 | 6.5 | 7.5 | +1.0 |
+| Duplicação | 6.0 | 8.0 | 8.5 | +0.5 |
+| **Média** | **4.9** | **7.5** | **8.0** | **+0.5** |
