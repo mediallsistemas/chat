@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
 import { PageHeader } from '@/components/shared'
-import { Button, Modal, SkeletonList, EmptyState, TicketStatusBadge, TicketPriorityBadge, FormField } from '@/components/ui'
+import { Button, Modal, FormModal, SkeletonList, EmptyState, TicketStatusBadge, TicketPriorityBadge, FormField } from '@/components/ui'
 import {
   useTickets,
   useTicketStats,
@@ -220,51 +220,51 @@ export default function ChamadosPage() {
       )}
 
       {/* Create modal */}
-      <Modal open={showCreate} onClose={handleCloseCreate} title="Novo chamado" size="sm">
-        <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-4">
-          <FormField label="Título" error={form.formState.errors.title} required>
+      <FormModal
+        open={showCreate}
+        onClose={handleCloseCreate}
+        title="Novo chamado"
+        size="sm"
+        onSubmit={form.handleSubmit(handleCreate)}
+        isPending={createTicket.isPending}
+        submitLabel="Criar chamado"
+      >
+        <FormField label="Título" error={form.formState.errors.title} required>
+          <input
+            autoFocus
+            {...form.register('title')}
+            className="input w-full"
+            placeholder="Descreva o problema brevemente"
+          />
+        </FormField>
+        <FormField label="Descrição" error={form.formState.errors.description} required>
+          <textarea
+            {...form.register('description')}
+            className="input w-full resize-none"
+            rows={3}
+            placeholder="Detalhe o problema, contexto e impacto"
+          />
+        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Prioridade">
+            <select {...form.register('priority')} className="input w-full">
+              {Object.values(TicketPriority).map((p) => (
+                <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Categoria" error={form.formState.errors.category}>
             <input
-              autoFocus
-              {...form.register('title')}
+              {...form.register('category')}
               className="input w-full"
-              placeholder="Descreva o problema brevemente"
+              placeholder="TI, RH, Infraestrutura..."
             />
           </FormField>
-          <FormField label="Descrição" error={form.formState.errors.description} required>
-            <textarea
-              {...form.register('description')}
-              className="input w-full resize-none"
-              rows={3}
-              placeholder="Detalhe o problema, contexto e impacto"
-            />
-          </FormField>
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Prioridade">
-              <select {...form.register('priority')} className="input w-full">
-                {Object.values(TicketPriority).map((p) => (
-                  <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="Categoria" error={form.formState.errors.category}>
-              <input
-                {...form.register('category')}
-                className="input w-full"
-                placeholder="TI, RH, Infraestrutura..."
-              />
-            </FormField>
-          </div>
-          <FormField label="Prazo (opcional)">
-            <input type="date" {...form.register('dueDate')} className="input w-full" />
-          </FormField>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={handleCloseCreate}>Cancelar</Button>
-            <Button type="submit" loading={createTicket.isPending} disabled={!form.formState.isValid && form.formState.isSubmitted}>
-              Criar chamado
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+        <FormField label="Prazo (opcional)">
+          <input type="date" {...form.register('dueDate')} className="input w-full" />
+        </FormField>
+      </FormModal>
 
       {/* Ticket detail modal */}
       {selectedTicket && (

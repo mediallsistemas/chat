@@ -21,6 +21,9 @@ const EMAIL_TYPE_LABELS: Record<NotificationType, string> = {
   [NotificationType.MEETING_REMINDER]:     'Lembrete de reunião',
   [NotificationType.CHECKIN_REQUEST]:      'Check-in periódico de tarefa',
   [NotificationType.GOAL_AT_RISK]:         'Meta com progresso abaixo do esperado',
+  [NotificationType.TRANSCRIPT_READY]:     'Transcrição de reunião pronta',
+  [NotificationType.TICKET_ASSIGNED]:      'Chamado atribuído a mim',
+  [NotificationType.TICKET_UPDATED]:       'Atualização em chamado meu',
 }
 
 interface SettingsForm {

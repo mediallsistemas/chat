@@ -19,6 +19,9 @@ const TYPE_ICON: Record<NotificationType, string> = {
   [NotificationType.MEETING_REMINDER]:   'ti-video',
   [NotificationType.CHECKIN_REQUEST]:    'ti-refresh',
   [NotificationType.GOAL_AT_RISK]:       'ti-trending-down',
+  [NotificationType.TRANSCRIPT_READY]:   'ti-file-text',
+  [NotificationType.TICKET_ASSIGNED]:    'ti-ticket',
+  [NotificationType.TICKET_UPDATED]:     'ti-edit',
 }
 
 const TYPE_COLOR: Record<NotificationType, string> = {
@@ -34,6 +37,9 @@ const TYPE_COLOR: Record<NotificationType, string> = {
   [NotificationType.MEETING_REMINDER]:    'text-blue-600 bg-blue-50',
   [NotificationType.CHECKIN_REQUEST]:     'text-gx bg-page-bg',
   [NotificationType.GOAL_AT_RISK]:        'text-red-500 bg-red-50',
+  [NotificationType.TRANSCRIPT_READY]:    'text-indigo-600 bg-indigo-50',
+  [NotificationType.TICKET_ASSIGNED]:     'text-cyan-600 bg-cyan-50',
+  [NotificationType.TICKET_UPDATED]:      'text-cyan-600 bg-cyan-50',
 }
 
 function timeAgo(dateStr: string) {

@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client'
+import { useEffect, useState } from 'react'
 
 let socket: Socket | null = null
 
@@ -19,4 +20,20 @@ export function connectSocket() {
 export function disconnectSocket() {
   socket?.disconnect()
   socket = null
+}
+
+/**
+ * React hook returning the singleton Socket. Ensures connection on mount.
+ * Returns null on first render; the socket arrives on the second render.
+ */
+export function useSocket(): Socket | null {
+  const [instance, setInstance] = useState<Socket | null>(null)
+
+  useEffect(() => {
+    const s = getSocket()
+    if (!s.connected) s.connect()
+    setInstance(s)
+  }, [])
+
+  return instance
 }
