@@ -1,0 +1,26 @@
+// Impediments context — owns:
+//   task_impediments
+
+model TaskImpediment {
+  id                       String           @id @default(uuid())
+  taskId                   String           @map("task_id")
+  reportedBy               String           @map("reported_by")
+  description              String
+  responsibleForResolution String           @map("responsible_for_resolution")
+  expectedResolutionDate   DateTime         @map("expected_resolution_date")
+  status                   ImpedimentStatus @default(BLOCKED)
+  resolvedBy               String?          @map("resolved_by")
+  resolutionNotes          String?          @map("resolution_notes")
+  escalationLevel          Int              @default(0) @map("escalation_level")
+  unitId                   String           @map("unit_id")
+  createdAt                DateTime         @default(now()) @map("created_at")
+  updatedAt                DateTime         @updatedAt @map("updated_at")
+  resolvedAt               DateTime?        @map("resolved_at")
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@index([unitId, status])
+  @@index([unitId, createdAt])
+  @@index([escalationLevel])
+  @@map("imp_task_impediments")
+}

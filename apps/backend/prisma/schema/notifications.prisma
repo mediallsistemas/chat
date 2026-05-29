@@ -1,0 +1,50 @@
+// Notifications context — owns:
+//   notifications, notification_settings, push_subscriptions
+
+model NotificationSetting {
+  id           String   @id @default(uuid())
+  userId       String   @unique @map("user_id")
+  dndEnabled   Boolean  @default(false) @map("dnd_enabled")
+  dndStart     String?  @map("dnd_start")
+  dndEnd       String?  @map("dnd_end")
+  emailEnabled Boolean  @default(true) @map("email_enabled")
+  emailTypes   String[] @map("email_types")
+  pushEnabled  Boolean  @default(true) @map("push_enabled")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notif_settings")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, endpoint])
+  @@map("notif_push_subscriptions")
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  title      String
+  body       String
+  type       NotificationType
+  entityType String?          @map("entity_type")
+  entityId   String?          @map("entity_id")
+  unitId     String?          @map("unit_id")
+  isRead     Boolean          @default(false) @map("is_read")
+  readAt     DateTime?        @map("read_at")
+  expiresAt  DateTime?        @map("expires_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  @@index([userId, isRead])
+  @@index([unitId, createdAt])
+  @@map("notif_notifications")
+}

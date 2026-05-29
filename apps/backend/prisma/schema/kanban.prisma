@@ -1,0 +1,116 @@
+// Kanban context — owns:
+//   kanban_boards, kanban_columns, tasks, task_dependencies, task_checklists, task_files
+//
+// task_impediments is owned by the impediments context but Task has a back
+// relation here (cross-context FK is OK in Prisma multi-file).
+
+model KanbanBoard {
+  id        String     @id @default(uuid())
+  name      String
+  ownerType BoardOwner @map("owner_type")
+  ownerId   String     @map("owner_id")
+  unitId    String     @map("unit_id")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  columns          KanbanColumn[]
+  tasks            Task[]
+  planPhases       PlanPhase[]
+  macroTasks       MacroTask[]
+  phaseScopeBoards PhaseScopeBoard[]
+
+  @@map("kb_boards")
+}
+
+model KanbanColumn {
+  id           String   @id @default(uuid())
+  boardId      String   @map("board_id")
+  name         String
+  position     Int
+  wipLimit     Int?     @map("wip_limit")
+  isDoneColumn Boolean  @default(false) @map("is_done_column")
+  color        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  board KanbanBoard @relation(fields: [boardId], references: [id])
+  tasks Task[]
+
+  @@map("kb_columns")
+}
+
+model Task {
+  id                String           @id @default(uuid())
+  boardId           String           @map("board_id")
+  columnId          String           @map("column_id")
+  macroTaskId       String?          @map("macro_task_id")
+  title             String
+  description       String?
+  responsibleUserId String           @map("responsible_user_id")
+  createdBy         String           @map("created_by")
+  priority          Priority         @default(MEDIUM)
+  startDate         DateTime?        @map("start_date")
+  dueDate           DateTime?        @map("due_date")
+  estimatedHours    Decimal?         @map("estimated_hours")
+  actualHours       Decimal?         @map("actual_hours")
+  position          Int
+  isBlocked         Boolean          @default(false) @map("is_blocked")
+  acceptanceStatus  AcceptanceStatus @default(PENDING) @map("acceptance_status")
+  unitId            String           @map("unit_id")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  completedAt       DateTime?        @map("completed_at")
+
+  board      KanbanBoard      @relation(fields: [boardId], references: [id])
+  column     KanbanColumn     @relation(fields: [columnId], references: [id])
+  impediments  TaskImpediment[]
+  checklists   TaskChecklist[]
+  files        TaskFile[]
+  dependencies TaskDependency[] @relation("TaskDependencies")
+  dependents   TaskDependency[] @relation("TaskDependents")
+
+  @@index([columnId, position])
+  @@index([responsibleUserId, completedAt])
+  @@index([unitId, completedAt])
+  @@index([unitId, dueDate])
+  @@index([unitId, updatedAt])
+  @@map("kb_tasks")
+}
+
+model TaskDependency {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  dependsOnId String   @map("depends_on_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task      Task @relation("TaskDependencies", fields: [taskId], references: [id])
+  dependsOn Task @relation("TaskDependents", fields: [dependsOnId], references: [id])
+
+  @@unique([taskId, dependsOnId])
+  @@map("kb_task_dependencies")
+}
+
+model TaskChecklist {
+  id          String   @id @default(uuid())
+  taskId      String   @map("task_id")
+  description String
+  isDone      Boolean  @default(false) @map("is_done")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@map("kb_task_checklists")
+}
+
+model TaskFile {
+  id           String   @id @default(uuid())
+  taskId       String   @map("task_id")
+  fileKey      String   @map("file_key")
+  fileName     String   @map("file_name")
+  fileSize     Int      @map("file_size")
+  fileMime     String   @map("file_mime")
+  uploadedBy   String   @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  @@map("kb_task_files")
+}

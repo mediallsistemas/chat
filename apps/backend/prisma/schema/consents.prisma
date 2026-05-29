@@ -1,0 +1,20 @@
+// Consents context — owns:
+//   user_consents
+
+model UserConsent {
+  id         String      @id @default(uuid())
+  userId     String      @map("user_id")
+  type       ConsentType
+  accepted   Boolean
+  ip         String?
+  userAgent  String?     @map("user_agent")
+  version    String      @default("1.0")
+  acceptedAt DateTime    @default(now()) @map("accepted_at")
+  revokedAt  DateTime?   @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, type, version])
+  @@index([userId])
+  @@map("consent_user_consents")
+}
