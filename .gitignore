@@ -33,6 +33,7 @@ Thumbs.db
 
 # Claude Code (machine-specific, not committed)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # Turbo
 .turbo/

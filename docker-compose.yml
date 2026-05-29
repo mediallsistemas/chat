@@ -55,6 +55,9 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
       - CSRF_SECRET=${CSRF_SECRET}
       - SENTRY_DSN=${SENTRY_DSN}
+      - MONOLITH_INTERNAL_TOKEN=${MONOLITH_INTERNAL_TOKEN}
+      - TRANSCRIPTION_SVC_ENABLED=${TRANSCRIPTION_SVC_ENABLED:-false}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - NODE_ENV=production
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/api/v1/health"]
@@ -67,6 +70,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  transcription-svc:
+    build:
+      context: .
+      dockerfile: apps/transcription-svc/Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      - MONOLITH_INTERNAL_URL=http://nestjs:4000
+      - MONOLITH_INTERNAL_TOKEN=${MONOLITH_INTERNAL_TOKEN}
+      - HEALTH_PORT=4001
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+      nestjs:
+        condition: service_started
     restart: unless-stopped
 
   postgres:
