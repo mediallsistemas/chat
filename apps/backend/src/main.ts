@@ -7,7 +7,7 @@ import { format, transports } from 'winston'
 import cookieParser = require('cookie-parser')
 import helmet from 'helmet'
 import { AppModule } from './app.module'
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
+import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter'
 import { doubleCsrfProtection } from './csrf'
 
 const REQUIRED_ENV_VARS = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_HOST', 'MINIO_ENDPOINT', 'CSRF_SECRET']
@@ -52,6 +52,19 @@ async function bootstrap() {
   }))
   app.use(cookieParser())
   app.use(doubleCsrfProtection)
+  // csrf-csrf throws an http-errors ForbiddenError outside Nest's pipeline,
+  // which would land in Express's default 500 handler. Convert it to a clean
+  // 403 JSON so the frontend can react (re-fetch token + retry).
+  app.use((err: any, _req: any, res: any, next: any) => {
+    if (err && (err.code === 'EBADCSRFTOKEN' || err.statusCode === 403)) {
+      return res.status(403).json({
+        statusCode: 403,
+        message: 'Invalid or missing CSRF token',
+        code: err.code ?? 'EBADCSRFTOKEN',
+      })
+    }
+    next(err)
+  })
   app.setGlobalPrefix('api')
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' })
 
