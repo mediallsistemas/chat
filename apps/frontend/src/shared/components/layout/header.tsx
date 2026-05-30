@@ -176,7 +176,7 @@ export function Header() {
               </div>
               <button
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-page-bg hover:text-gray-900 transition-colors"
-                onClick={() => router.push('/perfil')}
+                onClick={() => router.push('/meu')}
               >
                 <i className="ti ti-user text-base" aria-hidden="true" />
                 Meu perfil
