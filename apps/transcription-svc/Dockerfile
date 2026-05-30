@@ -13,6 +13,10 @@ COPY apps/transcription-svc ./apps/transcription-svc
 COPY packages/events ./packages/events
 COPY packages/contracts ./packages/contracts
 
+WORKDIR /app
+RUN npm run build --workspace=packages/events
+RUN npm run build --workspace=packages/contracts
+
 WORKDIR /app/apps/transcription-svc
 RUN npm run build
 
