@@ -4,6 +4,11 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
   transpilePackages: ['@mediall/types'],
+  async redirects() {
+    return [
+      { source: '/perfil', destination: '/meu', permanent: false },
+    ]
+  },
   async rewrites() {
     return [
       {
