@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, KeyboardEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { clsx } from 'clsx'
 import { Avatar, Button, Modal } from '@/components/ui'
@@ -454,7 +454,7 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function MensagensPage() {
+function MensagensPageInner() {
   const user = useAuthStore((s) => s.user)
   const activeUnit = useUnitStore((s) => s.activeUnit)
   const searchParams = useSearchParams()
@@ -849,5 +849,13 @@ export default function MensagensPage() {
         onSelect={handleStartDirect}
       />
     </div>
+  )
+}
+
+export default function MensagensPage() {
+  return (
+    <Suspense>
+      <MensagensPageInner />
+    </Suspense>
   )
 }

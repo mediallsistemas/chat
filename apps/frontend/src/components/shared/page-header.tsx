@@ -7,12 +7,13 @@ interface Crumb {
 
 interface PageHeaderProps {
   title: string
+  subtitle?: string
   breadcrumbs?: Crumb[]
   action?: React.ReactNode
   className?: string
 }
 
-export function PageHeader({ title, breadcrumbs, action, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, breadcrumbs, action, className }: PageHeaderProps) {
   return (
     <div className={clsx('flex items-center justify-between mb-6', className)}>
       <div>
@@ -29,6 +30,7 @@ export function PageHeader({ title, breadcrumbs, action, className }: PageHeader
           </nav>
         )}
         <h2 className="text-xl font-bold text-gray-900 font-sora">{title}</h2>
+        {subtitle && <p className="text-sm text-gx mt-0.5">{subtitle}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>

@@ -52,7 +52,7 @@ function RecordingControls({
         totalRequired: number
         allConsented: boolean
       }) => {
-        if (data.meetingId === meetingId) setConsentState(data)
+        if (data.meetingId === meetingId) setConsentState({ requested: true, consentedCount: data.consentedCount, totalRequired: data.totalRequired, allConsented: data.allConsented })
       },
     )
 
@@ -79,7 +79,7 @@ function RecordingControls({
 
   async function handleConsent() {
     const result = await submitConsent.mutateAsync(meetingId)
-    setConsentState(result)
+    setConsentState({ requested: true, ...result })
     setConsented(true)
     setShowConsentModal(false)
   }

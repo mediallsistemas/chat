@@ -206,7 +206,7 @@ export default function UsuariosPage() {
       <div className="bg-white rounded-2xl border border-gs/60 overflow-hidden">
         {isLoading ? (
           <div className="p-5">
-            <SkeletonList rows={5} />
+            <SkeletonList count={5} />
           </div>
         ) : (
           <table className="w-full text-sm">

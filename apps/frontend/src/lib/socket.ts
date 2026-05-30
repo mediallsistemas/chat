@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client'
+import { useEffect, useRef } from 'react'
 
 let socket: Socket | null = null
 
@@ -19,4 +20,14 @@ export function connectSocket() {
 export function disconnectSocket() {
   socket?.disconnect()
   socket = null
+}
+
+export function useSocket(): Socket {
+  const socketRef = useRef<Socket>(getSocket())
+  useEffect(() => {
+    const s = socketRef.current
+    if (!s.connected) s.connect()
+    return () => { s.disconnect() }
+  }, [])
+  return socketRef.current
 }
