@@ -7,7 +7,7 @@ COPY apps/transcription-svc/package.json ./apps/transcription-svc/
 COPY packages/events/package.json ./packages/events/
 COPY packages/contracts/package.json ./packages/contracts/
 
-RUN npm install --workspace=transcription-svc --include-workspace-root --omit=optional
+RUN npm install --workspace=transcription-svc --workspace=packages/events --workspace=packages/contracts --include-workspace-root --omit=optional
 
 COPY apps/transcription-svc ./apps/transcription-svc
 COPY packages/events ./packages/events
