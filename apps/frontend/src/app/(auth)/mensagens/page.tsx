@@ -1284,10 +1284,3 @@ function MensagensPageInner() {
   )
 }
 
-export default function MensagensPage() {
-  return (
-    <Suspense>
-      <MensagensPageInner />
-    </Suspense>
-  )
-}
