@@ -27,7 +27,8 @@
     "socket.io-client": "^4.7.0",
     "tailwind-merge": "^2.3.0",
     "zod": "^4.4.3",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.0",
+    "@sentry/nextjs": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
