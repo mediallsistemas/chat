@@ -24,13 +24,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# wget is used by the Docker healthcheck (HTTP probe to /health on 4001)
 RUN apk add --no-cache wget
 
-# Run as non-root (matches infra rule: containers without root)
 RUN addgroup -S app && adduser -S app -G app
 
+# Copy root node_modules (hoisted deps)
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
+
+# Copy each package's own node_modules (non-hoisted deps like zod)
+COPY --from=builder --chown=app:app /app/packages/events/node_modules ./node_modules
+COPY --from=builder --chown=app:app /app/packages/contracts/node_modules ./node_modules
+
 COPY --from=builder --chown=app:app /app/apps/transcription-svc/dist ./dist
 COPY --from=builder --chown=app:app /app/apps/transcription-svc/package.json ./package.json
 COPY --from=builder --chown=app:app /app/packages ./packages
