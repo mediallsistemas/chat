@@ -7,9 +7,34 @@ import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnits } from '@/hooks/use-units'
 import { useNotifications } from '@/hooks/use-notifications'
+import { useUpdateStatus } from '@/hooks/use-auth'
 import { NotificationPanel } from '@/components/shared'
 import { AccessScope } from '@mediall/types'
 import { clsx } from 'clsx'
+
+interface StatusPreset {
+  emoji: string
+  text: string
+  expiresInMin: number | null
+}
+
+const STATUS_PRESETS: StatusPreset[] = [
+  { emoji: '📅', text: 'Em reunião',     expiresInMin: 60 },
+  { emoji: '🍽️', text: 'Almoço',         expiresInMin: 90 },
+  { emoji: '🎯', text: 'Foco profundo',  expiresInMin: 120 },
+  { emoji: '🏖️', text: 'Fora hoje',      expiresInMin: 8 * 60 },
+  { emoji: '🤒', text: 'Doente',         expiresInMin: 8 * 60 },
+]
+
+function statusExpiryLabel(iso: string | null): string {
+  if (!iso) return ''
+  const ms = new Date(iso).getTime() - Date.now()
+  if (ms <= 0) return ''
+  const min = Math.round(ms / 60_000)
+  if (min < 60) return `${min}min`
+  const hours = Math.round(min / 60)
+  return `${hours}h`
+}
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Painel da Diretoria',
@@ -44,8 +69,41 @@ export function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [unitMenuOpen, setUnitMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [statusEditOpen, setStatusEditOpen] = useState(false)
+  const [customStatusText, setCustomStatusText] = useState('')
+  const [customStatusEmoji, setCustomStatusEmoji] = useState('💬')
   const { unreadCount } = useNotifications()
+  const { mutate: updateStatus, isPending: savingStatus } = useUpdateStatus()
   const unitMenuRef = useRef<HTMLDivElement>(null)
+
+  function applyPreset(preset: StatusPreset) {
+    updateStatus({
+      customStatus: preset.text,
+      customStatusEmoji: preset.emoji,
+      statusExpiresAt: preset.expiresInMin
+        ? new Date(Date.now() + preset.expiresInMin * 60_000).toISOString()
+        : null,
+    })
+    setStatusEditOpen(false)
+    setUserMenuOpen(false)
+  }
+
+  function clearStatus() {
+    updateStatus({ customStatus: null, customStatusEmoji: null, statusExpiresAt: null })
+    setUserMenuOpen(false)
+  }
+
+  function saveCustomStatus() {
+    if (!customStatusText.trim()) return
+    updateStatus({
+      customStatus: customStatusText.trim(),
+      customStatusEmoji: customStatusEmoji || '💬',
+      statusExpiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+    })
+    setCustomStatusText('')
+    setStatusEditOpen(false)
+    setUserMenuOpen(false)
+  }
 
   // Close unit menu when clicking outside
   useEffect(() => {
@@ -154,10 +212,21 @@ export function Header() {
             aria-label="Menu do usuário"
             aria-expanded={userMenuOpen}
           >
-            <div className="w-7 h-7 rounded-full bg-gd flex items-center justify-center text-gn text-[11px] font-bold font-sora select-none overflow-hidden">
-              {user?.avatarUrl
-                ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                : (user ? getInitials(user.name) : '?')}
+            <div className="relative">
+              <div className="w-7 h-7 rounded-full bg-gd flex items-center justify-center text-gn text-[11px] font-bold font-sora select-none overflow-hidden">
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  : (user ? getInitials(user.name) : '?')}
+              </div>
+              {user?.customStatusEmoji && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 text-[10px] bg-white rounded-full leading-none p-0.5 border border-gs"
+                  aria-label={user.customStatus ?? 'Status'}
+                  title={user.customStatus ?? 'Status'}
+                >
+                  {user.customStatusEmoji}
+                </span>
+              )}
             </div>
             <span className="text-sm text-gray-700 hidden sm:block max-w-[120px] truncate">
               {user?.name}
@@ -169,11 +238,93 @@ export function Header() {
           </button>
 
           {userMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gs rounded-xl shadow-lg py-1 z-50">
+            <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gs rounded-xl shadow-lg py-1 z-50">
               <div className="px-3 py-2 border-b border-gs">
                 <p className="text-xs font-semibold text-gray-800 truncate">{user?.name}</p>
                 <p className="text-[11px] text-gx truncate">{user?.email}</p>
               </div>
+
+              {/* Status custom */}
+              <div className="px-3 py-2 border-b border-gs">
+                {user?.customStatus ? (
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-base leading-none">{user.customStatusEmoji}</span>
+                    <span className="text-xs font-medium text-gd flex-1 truncate">
+                      {user.customStatus}
+                    </span>
+                    {user.statusExpiresAt && (
+                      <span className="text-[10px] text-gx shrink-0">
+                        {statusExpiryLabel(user.statusExpiresAt)}
+                      </span>
+                    )}
+                    <button
+                      onClick={clearStatus}
+                      className="p-0.5 text-gx hover:text-red-500 transition-colors"
+                      aria-label="Limpar status"
+                      title="Limpar status"
+                    >
+                      <i className="ti ti-x text-sm" aria-hidden="true" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gx mb-1.5">Defina um status</p>
+                )}
+
+                {!statusEditOpen && (
+                  <button
+                    onClick={() => setStatusEditOpen(true)}
+                    className="w-full text-left text-xs text-gd hover:underline"
+                  >
+                    {user?.customStatus ? 'Alterar status…' : 'Definir status…'}
+                  </button>
+                )}
+
+                {statusEditOpen && (
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap gap-1">
+                      {STATUS_PRESETS.map((p) => (
+                        <button
+                          key={p.text}
+                          disabled={savingStatus}
+                          onClick={() => applyPreset(p)}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg border border-gs text-[11px] hover:bg-page-bg disabled:opacity-50"
+                        >
+                          <span>{p.emoji}</span>
+                          <span>{p.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1">
+                      <input
+                        value={customStatusEmoji}
+                        onChange={(e) => setCustomStatusEmoji(e.target.value.slice(0, 2))}
+                        className="w-10 text-center text-sm border border-gs rounded-lg px-1 py-1"
+                        aria-label="Emoji do status"
+                        maxLength={2}
+                      />
+                      <input
+                        value={customStatusText}
+                        onChange={(e) => setCustomStatusText(e.target.value)}
+                        placeholder="Status custom (1h)"
+                        className="flex-1 text-xs border border-gs rounded-lg px-2 py-1"
+                        maxLength={100}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveCustomStatus()
+                          if (e.key === 'Escape') setStatusEditOpen(false)
+                        }}
+                      />
+                      <button
+                        onClick={saveCustomStatus}
+                        disabled={!customStatusText.trim() || savingStatus}
+                        className="px-2 py-1 text-xs font-medium text-white bg-gd rounded-lg hover:bg-gd/90 disabled:opacity-50"
+                      >
+                        OK
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-page-bg hover:text-gray-900 transition-colors"
                 onClick={() => router.push('/perfil')}

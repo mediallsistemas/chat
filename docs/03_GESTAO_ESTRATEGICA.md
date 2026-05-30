@@ -248,7 +248,7 @@ Nenhuma atualização manual necessária nos níveis superiores.
 
 ### Pendente
 - [x] Visualização Lista (KanbanListView) e Calendário (KanbanCalendarView)
-- [ ] Visualização Timeline (Gantt)
-- [ ] Painel de gestão estratégica por unidade
-- [ ] Seletor de usuário responsável (substituir campo UUID livre por autocomplete)
+- [x] Visualização Timeline (Gantt) — KanbanGanttView
+- [x] Painel de gestão estratégica por unidade — `/processos/painel` com cards + lista
+- [x] Seletor de usuário responsável (UserCombobox em todos os modais)
 - [x] Edição de plano, objetivo, meta e etapa (PATCH endpoints + modais)

@@ -1,0 +1,178 @@
+// Shared enums. Enums are cross-context so they live in a single file owned
+// by `shared`. Each context's docs should document which enums it owns
+// conceptually even though they sit here.
+
+enum UnitType {
+  MATRIZ
+  UNIDADE
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  DIRETORIA
+  GESTOR
+  COLABORADOR
+  VISUALIZADOR
+}
+
+enum AccessScope {
+  GLOBAL
+  MULTI
+  SINGLE
+}
+
+enum PlanStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  AT_RISK
+  DONE
+}
+
+enum PhaseStatus {
+  LOCKED
+  ACTIVE
+  ARCHIVED
+}
+
+enum TrafficLight {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum Direction {
+  UP
+  DOWN
+}
+
+enum CalcMethod {
+  SUM
+  PERCENTAGE
+  BINARY
+}
+
+enum UnitScope {
+  ALL
+  SPECIFIC
+  MATRIX
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AcceptanceStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum ImpedimentStatus {
+  BLOCKED
+  ATTENTION
+  RESOLVED
+}
+
+enum BoardOwner {
+  GROUP
+  MACRO_TASK
+  PHASE
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_OVERDUE
+  TASK_DUE_SOON
+  IMPEDIMENT_CREATED
+  IMPEDIMENT_ESCALATED
+  IMPEDIMENT_RESOLVED
+  PHASE_UNLOCKED
+  PHASE_COMPLETED
+  MENTION
+  MEETING_REMINDER
+  CHECKIN_REQUEST
+  GOAL_AT_RISK
+  TRANSCRIPT_READY
+  TICKET_ASSIGNED
+  TICKET_UPDATED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum GroupType {
+  GENERAL
+  SECTOR
+  SUBSECTOR
+  PROJECT
+  TEMPORARY
+  PRIVATE
+}
+
+enum GroupMemberRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum GroupVisibility {
+  PRIVATE_INVITE
+  UNIT_PUBLIC
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  SYSTEM
+}
+
+enum ConsentType {
+  DATA_PROCESSING
+  PUSH_NOTIFICATIONS
+  EMAIL_COMMUNICATIONS
+  ANALYTICS
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum ParticipantStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  ATTENDED
+}

@@ -97,6 +97,34 @@ export class UsersService {
     })
   }
 
+  async updateStatus(
+    userId: string,
+    dto: { customStatus?: string | null; customStatusEmoji?: string | null; statusExpiresAt?: string | null },
+  ) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        customStatus: dto.customStatus ?? null,
+        customStatusEmoji: dto.customStatusEmoji ?? null,
+        statusExpiresAt: dto.statusExpiresAt ? new Date(dto.statusExpiresAt) : null,
+      },
+      select: {
+        id: true,
+        customStatus: true,
+        customStatusEmoji: true,
+        statusExpiresAt: true,
+      },
+    })
+  }
+
+  async clearExpiredStatuses(): Promise<number> {
+    const result = await this.prisma.user.updateMany({
+      where: { statusExpiresAt: { lte: new Date() } },
+      data: { customStatus: null, customStatusEmoji: null, statusExpiresAt: null },
+    })
+    return result.count
+  }
+
   async anonymizeUser(userId: string, requestedBy: string): Promise<void> {
     await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
     const anonymousId = randomBytes(8).toString('hex')

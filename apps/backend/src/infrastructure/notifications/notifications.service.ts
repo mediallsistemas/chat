@@ -1,11 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConsentType } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { AppGateway } from '../gateway/app.gateway'
 import { MailService } from '../mail/mail.service'
 import { PushService } from '../push/push.service'
 import { NotificationSettingsService } from './notification-settings.service'
-import { ConsentsService } from '../../consents/consents.service'
+import {
+  CONSENT_READ_PORT,
+  ConsentReadPort,
+  USERS_READ_PORT,
+  UsersReadPort,
+} from '../../shared/ports'
 import { CreateNotificationDto } from './dto/create-notification.dto'
 
 @Injectable()
@@ -18,7 +23,8 @@ export class NotificationsService {
     private mail: MailService,
     private push: PushService,
     private settings: NotificationSettingsService,
-    private consents: ConsentsService,
+    @Inject(CONSENT_READ_PORT) private consents: ConsentReadPort,
+    @Inject(USERS_READ_PORT) private users: UsersReadPort,
   ) {}
 
   async create(dto: CreateNotificationDto) {
@@ -46,10 +52,7 @@ export class NotificationsService {
       const shouldEmail = await this.settings.shouldSendEmail(dto.userId, dto.type)
       const hasEmailConsent = await this.consents.hasConsent(dto.userId, ConsentType.EMAIL_COMMUNICATIONS)
       if (shouldEmail && hasEmailConsent) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: dto.userId },
-          select: { email: true, name: true },
-        })
+        const user = await this.users.getEmail(dto.userId)
         if (user) {
           this.mail
             .sendNotification({ to: user.email, name: user.name, type: dto.type, title: dto.title, body: dto.body })

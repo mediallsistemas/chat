@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
 import { PageHeader } from '@/components/shared'
-import { Button, Modal } from '@/components/ui'
+import { Button, FormModal } from '@/components/ui'
 import { FormField } from '@/components/ui/form-field'
 import {
   useDocumentFolders,
@@ -221,86 +221,79 @@ export default function DocumentosPage() {
       </div>
 
       {/* Create folder modal */}
-      <Modal
+      <FormModal
         open={showCreateFolder}
         onClose={() => { folderForm.reset(); setShowCreateFolder(false) }}
         title="Nova pasta"
         size="sm"
+        onSubmit={folderForm.handleSubmit(handleCreateFolder)}
+        isPending={createFolder.isPending}
+        submitLabel="Criar"
       >
-        <form onSubmit={folderForm.handleSubmit(handleCreateFolder)} className="space-y-4">
-          <FormField label="Nome" error={folderForm.formState.errors.name} required>
-            <input
-              autoFocus
-              {...folderForm.register('name')}
-              className="input w-full"
-              placeholder="Ex.: Contratos, Políticas, RH..."
-            />
-          </FormField>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => { folderForm.reset(); setShowCreateFolder(false) }}>Cancelar</Button>
-            <Button type="submit" loading={createFolder.isPending}>Criar</Button>
-          </div>
-        </form>
-      </Modal>
+        <FormField label="Nome" error={folderForm.formState.errors.name} required>
+          <input
+            autoFocus
+            {...folderForm.register('name')}
+            className="input w-full"
+            placeholder="Ex.: Contratos, Políticas, RH..."
+          />
+        </FormField>
+      </FormModal>
 
       {/* Upload modal */}
-      <Modal
+      <FormModal
         open={showUpload}
         onClose={() => { uploadForm.reset(); setUploadFile(null); setShowUpload(false) }}
         title="Enviar documento"
         size="sm"
+        onSubmit={uploadForm.handleSubmit(handleUpload)}
+        isPending={uploadDoc.isPending}
+        submitDisabled={!uploadFile}
+        submitLabel="Enviar"
       >
-        <form onSubmit={uploadForm.handleSubmit(handleUpload)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gd mb-1">Arquivo</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={(e) => {
-                const f = e.target.files?.[0]
-                if (f) {
-                  setUploadFile(f)
-                  if (!uploadForm.getValues('name')) {
-                    uploadForm.setValue('name', f.name.replace(/\.[^.]+$/, ''))
-                  }
+        <div>
+          <label className="block text-sm font-medium text-gd mb-1">Arquivo</label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) {
+                setUploadFile(f)
+                if (!uploadForm.getValues('name')) {
+                  uploadForm.setValue('name', f.name.replace(/\.[^.]+$/, ''))
                 }
-              }}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-gs/40 rounded-xl py-6 text-center hover:border-gn transition-colors"
-            >
-              {uploadFile ? (
-                <div>
-                  <i className="ti ti-file-check text-2xl text-green-500 block mb-1" />
-                  <p className="text-sm font-medium text-gd">{uploadFile.name}</p>
-                  <p className="text-xs text-gs">{formatSize(uploadFile.size)}</p>
-                </div>
-              ) : (
-                <div>
-                  <i className="ti ti-upload text-2xl text-gs block mb-1" />
-                  <p className="text-sm text-gs">Clique para selecionar</p>
-                </div>
-              )}
-            </button>
-          </div>
-          <FormField label="Nome do documento" error={uploadForm.formState.errors.name} required>
-            <input
-              {...uploadForm.register('name')}
-              className="input w-full"
-              placeholder="Ex.: Contrato de prestação de serviços"
-            />
-          </FormField>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => { uploadForm.reset(); setUploadFile(null); setShowUpload(false) }}>Cancelar</Button>
-            <Button type="submit" loading={uploadDoc.isPending} disabled={!uploadFile}>
-              Enviar
-            </Button>
-          </div>
-        </form>
-      </Modal>
+              }
+            }}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full border-2 border-dashed border-gs/40 rounded-xl py-6 text-center hover:border-gn transition-colors"
+          >
+            {uploadFile ? (
+              <div>
+                <i className="ti ti-file-check text-2xl text-green-500 block mb-1" />
+                <p className="text-sm font-medium text-gd">{uploadFile.name}</p>
+                <p className="text-xs text-gs">{formatSize(uploadFile.size)}</p>
+              </div>
+            ) : (
+              <div>
+                <i className="ti ti-upload text-2xl text-gs block mb-1" />
+                <p className="text-sm text-gs">Clique para selecionar</p>
+              </div>
+            )}
+          </button>
+        </div>
+        <FormField label="Nome do documento" error={uploadForm.formState.errors.name} required>
+          <input
+            {...uploadForm.register('name')}
+            className="input w-full"
+            placeholder="Ex.: Contrato de prestação de serviços"
+          />
+        </FormField>
+      </FormModal>
     </div>
   )
 }

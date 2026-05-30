@@ -16,6 +16,7 @@ import { ImpedimentsModule } from './contexts/impediments/impediments.module'
 import { NotificationsModule } from './infrastructure/notifications/notifications.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { ChatModule } from './contexts/chat/chat.module'
+import { MeModule } from './contexts/me/me.module'
 import { FilesModule } from './infrastructure/files/files.module'
 import { PushModule } from './infrastructure/push/push.module'
 import { MeetingsModule } from './contexts/meetings/meetings.module'
@@ -28,8 +29,11 @@ import { HealthModule } from './health/health.module'
 import { ConsentsModule } from './consents/consents.module'
 import { PrismaModule } from './prisma/prisma.module'
 import { SharedModule } from './shared/shared.module'
+import { StreamsModule } from './shared/streams/streams.module'
+import { TranscriptionStreamHandler } from './transcription/transcription-stream.handler'
 import { GatewayModule } from './infrastructure/gateway/gateway.module'
 import { MailModule } from './infrastructure/mail/mail.module'
+import { LiveKitModule } from './infrastructure/livekit/livekit.module'
 import { ImpedimentEscalationJob } from './jobs/impediment-escalation.job'
 import { GroupArchiveJob } from './jobs/group-archive.job'
 import { MeetingReminderJob } from './jobs/meeting-reminder.job'
@@ -37,6 +41,7 @@ import { ExecutiveReportJob } from './jobs/executive-report.job'
 import { ExecutiveReportHandler } from './jobs/handlers/executive-report.handler'
 import { TaskCheckinJob } from './jobs/task-checkin.job'
 import { DataRetentionJob } from './jobs/data-retention.job'
+import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
 import { RolesGuard } from './shared/guards/roles.guard'
 import { UnitScopeGuard } from './shared/guards/unit-scope.guard'
@@ -61,8 +66,10 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     }),
     PrismaModule,
     SharedModule,
+    StreamsModule,
     GatewayModule,
     MailModule,
+    LiveKitModule,
     AuthModule,
     UsersModule,
     UnitsModule,
@@ -72,6 +79,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     NotificationsModule,
     DashboardModule,
     ChatModule,
+    MeModule,
     FilesModule,
     PushModule,
     MeetingsModule,
@@ -97,6 +105,8 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     ExecutiveReportHandler,
     TaskCheckinJob,
     DataRetentionJob,
+    UserStatusCleanupJob,
+    TranscriptionStreamHandler,
   ],
 })
 export class AppModule implements NestModule {

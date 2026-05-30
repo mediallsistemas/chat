@@ -9,7 +9,7 @@ import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
 import { PageHeader } from '@/components/shared'
-import { Button, Modal } from '@/components/ui'
+import { Button, FormModal } from '@/components/ui'
 import { useMeetings, useCreateMeeting, useCancelMeeting } from '@/hooks/use-meetings'
 import { useAuthStore } from '@/store/auth-store'
 import { MeetingStatus, ParticipantStatus } from '@mediall/types'
@@ -162,6 +162,7 @@ function MeetingCard({
 }
 
 export default function ReunioesPage() {
+  const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
   const { data: meetings = [], isLoading } = useMeetings()
   const createMeeting = useCreateMeeting()
@@ -291,77 +292,66 @@ export default function ReunioesPage() {
         </>
       )}
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nova Reunião">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <FormModal
+        open={showCreate}
+        onClose={() => { reset(); setShowCreate(false) }}
+        title="Nova Reunião"
+        onSubmit={handleSubmit(onSubmit)}
+        isPending={isSubmitting}
+        submitLabel="Agendar"
+      >
+        <div>
+          <label className="block text-sm font-medium text-gd mb-1">Título</label>
+          <input
+            {...register('title')}
+            className="input w-full"
+            placeholder="Ex.: Reunião de planejamento"
+          />
+          {errors.title && (
+            <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gd mb-1">
+            Descrição <span className="text-gs font-normal">(opcional)</span>
+          </label>
+          <textarea
+            {...register('description')}
+            className="input w-full resize-none"
+            rows={2}
+            placeholder="Pauta ou objetivo da reunião"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gd mb-1">Título</label>
-            <input
-              {...register('title')}
-              className="input w-full"
-              placeholder="Ex.: Reunião de planejamento"
-            />
-            {errors.title && (
-              <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>
+            <label className="block text-sm font-medium text-gd mb-1">Início</label>
+            <input type="datetime-local" {...register('startAt')} className="input w-full" />
+            {errors.startAt && (
+              <p className="text-xs text-red-500 mt-1">{errors.startAt.message}</p>
             )}
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gd mb-1">
-              Descrição <span className="text-gs font-normal">(opcional)</span>
-            </label>
-            <textarea
-              {...register('description')}
-              className="input w-full resize-none"
-              rows={2}
-              placeholder="Pauta ou objetivo da reunião"
-            />
+            <label className="block text-sm font-medium text-gd mb-1">Término</label>
+            <input type="datetime-local" {...register('endAt')} className="input w-full" />
+            {errors.endAt && (
+              <p className="text-xs text-red-500 mt-1">{errors.endAt.message}</p>
+            )}
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gd mb-1">Início</label>
-              <input type="datetime-local" {...register('startAt')} className="input w-full" />
-              {errors.startAt && (
-                <p className="text-xs text-red-500 mt-1">{errors.startAt.message}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gd mb-1">Término</label>
-              <input type="datetime-local" {...register('endAt')} className="input w-full" />
-              {errors.endAt && (
-                <p className="text-xs text-red-500 mt-1">{errors.endAt.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gd mb-1">Repetição</label>
-            <select {...register('recurrenceRule')} className="input w-full">
-              {RRULE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                reset()
-                setShowCreate(false)
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" loading={isSubmitting}>
-              Agendar
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        <div>
+          <label className="block text-sm font-medium text-gd mb-1">Repetição</label>
+          <select {...register('recurrenceRule')} className="input w-full">
+            {RRULE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </FormModal>
     </div>
   )
 }

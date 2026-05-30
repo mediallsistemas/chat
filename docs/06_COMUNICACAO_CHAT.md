@@ -128,19 +128,19 @@ messages
 - [x] Tabelas `groups`, `group_members`, `messages` no Prisma
 - [x] Socket.IO server configurado no NestJS
 - [x] Gateway de WebSocket com autenticação JWT
-- [ ] Presença online via Redis (pub/sub) — feito com Map in-memory; Redis pub/sub não implementado
+- [x] Presença online via Redis (SADD/SREM/SMEMBERS em `online:unit:<unitId>` com TTL 24h; fallback in-memory)
 - [x] CRUD de grupos por tipo (GENERAL/SECTOR/SUBSECTOR/PROJECT/TEMPORARY/PRIVATE)
 - [x] Hierarquia de grupos (parentId no schema + DTO)
 - [x] Isolamento por unidade no filtro de grupos
 - [x] Threads (replyToId — reply_to)
 - [x] Mensagens fixadas (togglePin)
-- [ ] Busca de mensagens por palavra-chave
+- [x] Busca de mensagens por palavra-chave
 - [x] Status online (user:online / user:offline via gateway)
 - [x] Indicador de digitação (message:typing → user:typing broadcast)
-- [ ] Confirmação de leitura com contagem de membros
+- [x] Confirmação de leitura (`message:read` + `lastReadAt` em GroupMember + contagem de membros)
 - [x] Arquivamento automático de grupos temporários (GroupArchiveJob — cron 23:55)
 - [x] Auditoria de edições e exclusões (AuditLogInterceptor global + isEdited/isDeleted em Message)
-- [ ] Abas internas por grupo: Kanban, Agenda, Arquivos, Membros (página /mensagens/[groupId])
+- [x] Painéis laterais (Membros: `GET /groups/:groupId/members`, Arquivos: `GET /groups/:groupId/files`)
 - [x] Conversas privadas 1:1 (POST /groups/direct + StartDirectModal no frontend)
 - [x] Upload de arquivos no chat (paperclip button + preview inline + download)
-- [ ] Reações emoji
+- [x] Reações emoji (toggleReaction + `message:reaction` broadcast)

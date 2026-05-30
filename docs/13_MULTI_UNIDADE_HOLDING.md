@@ -157,8 +157,8 @@ meetings (unitId)
 - [x] Seletor de unidade no frontend (MULTI) — header.tsx com dropdown, useUnits hook, Zustand store
 - [x] Store Zustand para unidade ativa (unit-store.ts com setUnits + switchUnit)
 - [x] Todas as queries filtradas por unitId (via BaseUnitController + UnitScopeGuard)
-- [ ] Planos globais com etapas por escopo de unidade (UnitScope ALL/SPECIFIC/MATRIX no schema, lógica de execução não implementada)
-- [ ] Grupo geral da holding separado dos grupos de unidade
-- [x] Painel da diretoria com dados reais (dashboard/summary — parcial: não tem drill-down por unidade)
-- [ ] Fluxo de onboarding de nova unidade (criação automática de grupo geral + Kanban base)
-- [ ] Drill-down por unidade no dashboard
+- [x] Planos globais com etapas por escopo de unidade (UnitScope ALL/SPECIFIC/MATRIX + PhaseScopeBoard por unidade)
+- [x] Grupo geral por unidade (incluindo Matriz) via seed + onboarding
+- [x] Painel da diretoria com dados reais + drill-down por unidade
+- [x] Fluxo de onboarding de nova unidade (`UnitsService.onboardUnit()` cria GENERAL group + Kanban base)
+- [x] Drill-down por unidade no dashboard (`/dashboard/unidades/[unitId]`)

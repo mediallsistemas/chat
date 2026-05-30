@@ -70,14 +70,14 @@ meeting_participants
 
 ## Checklist de Implementação
 
-- [ ] LiveKit Server no Docker Compose
-- [ ] Integração LiveKit Client SDK no Next.js
-- [ ] CRUD de reuniões
-- [ ] Reuniões recorrentes com RRULE
-- [ ] Sala persistente por grupo
-- [ ] Sala temporária instantânea
-- [ ] Gravação com consentimento
-- [ ] Agenda integrada (reuniões + prazos de tarefas)
-- [ ] Lembretes automáticos (24h e 15min)
-- [ ] Permissões de câmera/microfone
-- [ ] Isolamento por unidade
+- [x] LiveKit Server no Docker Compose
+- [x] Integração LiveKit Client SDK no Next.js (`@livekit/components-react`)
+- [x] CRUD de reuniões (`GET/POST/PATCH/DELETE /units/:unitId/meetings`)
+- [x] Reuniões recorrentes com RRULE (`generateOccurrences()`)
+- [x] Sala persistente por grupo (`GET /meetings/group-room/:groupId`)
+- [x] Sala temporária instantânea (`POST /meetings/instant-room`)
+- [x] Gravação com consentimento (`RecordingConsentRequestedEvent` + `EgressClient`)
+- [x] Agenda integrada (`/reunioes/agenda` com reuniões + prazos de tarefas)
+- [x] Lembretes automáticos (`MeetingReminderJob` cron 24h e 15min)
+- [x] Permissões de câmera/microfone (UI de controle em `video-room.tsx`)
+- [x] Isolamento por unidade em todos os endpoints

@@ -4,10 +4,11 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common'
-import { AccessToken, EgressClient } from 'livekit-server-sdk'
+import { EgressClient } from 'livekit-server-sdk'
 import { rrulestr } from 'rrule'
 import { MeetingStatus, ParticipantStatus } from '@mediall/types'
 import { PrismaService } from '../../prisma/prisma.service'
+import { LiveKitService } from '../../infrastructure/livekit/livekit.service'
 import { EventBusService } from '../../shared/events'
 import { MeetingScheduledEvent } from './events/meeting-scheduled.event'
 import { MeetingCreatedEvent } from './events/meeting-created.event'
@@ -26,6 +27,7 @@ import { UpdateMeetingDto } from './dto/update-meeting.dto'
 export class MeetingsService {
   constructor(
     private prisma: PrismaService,
+    private liveKit: LiveKitService,
     private eventBus: EventBusService,
   ) {}
 
@@ -204,26 +206,20 @@ export class MeetingsService {
       select: { name: true },
     })
 
-    const apiKey = process.env.LIVEKIT_API_KEY ?? 'devkey'
-    const apiSecret = process.env.LIVEKIT_API_SECRET ?? 'devsecret'
-    const wsUrl = process.env.LIVEKIT_WS_URL ?? 'ws://localhost:7880'
-
-    const token = new AccessToken(apiKey, apiSecret, {
+    const token = await this.liveKit.createToken({
       identity: userId,
       name: user?.name ?? userId,
-      ttl: '2h',
-    })
-
-    token.addGrant({
-      roomJoin: true,
-      room: meeting.roomId,
-      canPublish: true,
-      canSubscribe: true,
+      grants: {
+        roomJoin: true,
+        room: meeting.roomId,
+        canPublish: true,
+        canSubscribe: true,
+      },
     })
 
     return {
-      token: await token.toJwt(),
-      wsUrl,
+      token,
+      wsUrl: this.liveKit.wsUrl,
       roomId: meeting.roomId,
     }
   }

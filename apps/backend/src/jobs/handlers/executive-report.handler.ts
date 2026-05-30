@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
-import { NotificationsService } from '../../infrastructure/notifications/notifications.service'
+import { EventBusService, NotifyUserRequested } from '../../shared/events'
 import { MailService } from '../../infrastructure/mail/mail.service'
 import { NotificationType } from '@mediall/types'
 import { ExecutiveReportReadyEvent } from '../events/executive-report-ready.event'
@@ -10,7 +10,7 @@ export class ExecutiveReportHandler {
   private readonly logger = new Logger(ExecutiveReportHandler.name)
 
   constructor(
-    private notifications: NotificationsService,
+    private eventBus: EventBusService,
     private mail: MailService,
   ) {}
 
@@ -30,15 +30,15 @@ export class ExecutiveReportHandler {
     ].join('\n')
 
     for (const recipient of event.recipientIds) {
-      await this.notifications.create({
-        userId: recipient.userId,
-        type: NotificationType.GOAL_AT_RISK,
-        title,
-        body,
-        entityType: 'report',
-        entityId: undefined,
-        unitId: undefined,
-      })
+      this.eventBus.publish(
+        new NotifyUserRequested({
+          userId: recipient.userId,
+          type: NotificationType.GOAL_AT_RISK as any,
+          title,
+          body,
+          entityType: 'report',
+        }),
+      )
 
       this.mail
         .sendNotification({

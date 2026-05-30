@@ -125,11 +125,11 @@ task_impediments
 - [x] Endpoint `PATCH /impediments/:id/resolve`
 - [x] Job de verificação diária de impedimentos sem resolução
 - [x] Job de escalonamento automático (ImpedimentEscalationJob — 8h diário)
-- [ ] Notificação imediata ao registrar bloqueio (ImpedimentsService não chama NotificationsService)
-- [ ] Notificação de escalonamento com histórico
+- [x] Notificação imediata ao registrar bloqueio (via EventBus + ImpedimentNotificationHandler)
+- [x] Notificação de escalonamento com histórico (daysOpen + descrição completa)
 - [x] Analytics no /impedimentos: tempo médio de resolução, breakdown por nível, top responsáveis (GET /analytics)
-- [ ] Painel de gargalos no dashboard da diretoria (dashboard mostra lista crítica, não o painel completo)
-- [ ] Analytics: tempo médio por setor
-- [ ] Analytics: impedimentos recorrentes
-- [ ] Exportação PDF/Excel
-- [ ] Configuração de prazos de escalonamento por unidade
+- [x] Painel de gargalos no dashboard da diretoria
+- [x] Analytics: tempo médio por setor (bySector via macroTaskId)
+- [x] Analytics: impedimentos recorrentes (tarefas com 2+ impedimentos em 90d)
+- [x] Exportação PDF/Excel (botões no header da página)
+- [x] Configuração de prazos de escalonamento por unidade (`PATCH /escalation-config`)

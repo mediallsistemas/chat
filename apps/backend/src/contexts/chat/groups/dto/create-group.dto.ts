@@ -1,5 +1,5 @@
 import { IsString, IsEnum, IsOptional, IsBoolean, IsDateString } from 'class-validator'
-import { GroupType } from '@mediall/types'
+import { GroupType, GroupVisibility } from '@mediall/types'
 
 export class CreateGroupDto {
   @IsString()
@@ -11,6 +11,10 @@ export class CreateGroupDto {
 
   @IsEnum(GroupType)
   type: GroupType
+
+  @IsOptional()
+  @IsEnum(GroupVisibility)
+  visibility?: GroupVisibility
 
   @IsOptional()
   @IsString()

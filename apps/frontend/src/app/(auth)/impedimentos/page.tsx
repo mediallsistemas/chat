@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { clsx } from 'clsx'
 import { PageHeader, MetricCard } from '@/components/shared'
-import { Button, Avatar, Modal } from '@/components/ui'
+import { Button, Avatar, FormModal } from '@/components/ui'
 import {
   useImpediments,
   useImpedimentAnalytics,
@@ -266,7 +266,7 @@ export default function ImpedimentosPage() {
       </div>
 
       {/* Resolve modal */}
-      <Modal
+      <FormModal
         open={!!resolveTarget}
         onClose={() => {
           setResolveTarget(null)
@@ -274,44 +274,30 @@ export default function ImpedimentosPage() {
         }}
         title="Resolver impedimento"
         size="sm"
+        onSubmit={handleSubmit(onResolveSubmit)}
+        isPending={resolving}
+        submitLabel="Confirmar resolução"
       >
-        <form onSubmit={handleSubmit(onResolveSubmit)} className="space-y-4">
-          {resolveTarget && (
-            <p className="text-sm text-gray-600 bg-page-bg rounded-lg px-3 py-2">
-              {resolveTarget.description}
-            </p>
+        {resolveTarget && (
+          <p className="text-sm text-gray-600 bg-page-bg rounded-lg px-3 py-2">
+            {resolveTarget.description}
+          </p>
+        )}
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Como foi resolvido?
+          </label>
+          <textarea
+            {...register('resolutionNotes')}
+            rows={3}
+            placeholder="Descreva a solução adotada..."
+            className="w-full px-3 py-2 text-sm border border-gs rounded-xl focus:outline-none focus:border-gd focus:ring-1 focus:ring-gd/20 resize-none"
+          />
+          {errors.resolutionNotes && (
+            <p className="text-xs text-red-500 mt-1">{errors.resolutionNotes.message}</p>
           )}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Como foi resolvido?
-            </label>
-            <textarea
-              {...register('resolutionNotes')}
-              rows={3}
-              placeholder="Descreva a solução adotada..."
-              className="w-full px-3 py-2 text-sm border border-gs rounded-xl focus:outline-none focus:border-gd focus:ring-1 focus:ring-gd/20 resize-none"
-            />
-            {errors.resolutionNotes && (
-              <p className="text-xs text-red-500 mt-1">{errors.resolutionNotes.message}</p>
-            )}
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-gs/60">
-            <Button
-              variant="secondary"
-              type="button"
-              onClick={() => {
-                setResolveTarget(null)
-                reset()
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={resolving}>
-              {resolving ? 'Salvando...' : 'Confirmar resolução'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      </FormModal>
     </div>
   )
 }

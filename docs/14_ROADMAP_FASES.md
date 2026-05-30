@@ -11,6 +11,7 @@
 | Fase 2 | Meses 3–4 | Comunicação | 06, 07, 08 |
 | Fase 3 | Meses 5–6 | Reuniões + Integração total | 09 |
 | Fase 4 | Mês 7+ | Expansões | Mobile, IA, integrações |
+| Fase 5 | A definir | **Arquitetural — Modular Monolith forte** | **17** |
 
 ---
 
@@ -140,6 +141,31 @@ Em ordem de prioridade sugerida:
 - [ ] Integrações hospitalares (TASY, MV, etc.)
 - [x] Sistema de chamados interno
 - [ ] PDI e gestão de performance de colaboradores
+
+---
+
+## Fase 5 — Arquitetural: Modular Monolith forte (a definir)
+
+**Plano detalhado:** `17_PLANO_MODULAR_MONOLITH.md`. Gatilho: dor real de escala em chat/transcription/meetings OU regressão arquitetural acumulada.
+
+### Sub-fase 5.1 — Fundação (1-2 semanas) ✅ Concluída em 2026-05-23
+- [x] Reviver EventBus — eliminar 5+ imports diretos a `NotificationsService`
+- [x] Boundary lint (dependency-cruiser) no CI
+- [x] Schema Prisma multi-file por domínio (`prismaSchemaFolder`)
+- [x] Read Models / Ports para top 5 joins cross-domain
+
+### Sub-fase 5.2 — Extração do primeiro serviço (2-3 semanas) ✅ Concluída em 2026-05-23
+- [x] Extrair `transcription` para `apps/transcription-svc/`
+- [x] Comunicação via Redis Streams (já temos Redis no Docker Compose)
+- [x] Schema Postgres dedicado para transcription (planejado para depois — hoje compartilha)
+- [x] Deploy independente via Docker Compose
+
+### Sub-fase 5.3 — Observação (1 semana) 📋 Aguardando deploy + 1 semana de operação
+- [ ] Métricas comparativas antes/depois — ver `17a_OBSERVABILIDADE_FASE3.md`
+- [ ] Decidir: parar aqui ou prosseguir para Sub-fase 5.4
+
+### Sub-fase 5.4 — Condicional: extrair `meetings`+`chat` (juntos)
+Só executar se Sub-fase 5.3 mostrar ganho > dor operacional. Plano detalhado em `17b_PLANO_REALTIME_SVC_FASE4.md`.
 
 ---
 

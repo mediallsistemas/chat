@@ -10,10 +10,8 @@ import { PhasesService } from './phases/phases.service'
 import { PhaseNotificationHandler } from './phases/handlers/phase-notification.handler'
 import { MacroTasksController } from './macro-tasks/macro-tasks.controller'
 import { MacroTasksService } from './macro-tasks/macro-tasks.service'
-import { NotificationsModule } from '../../infrastructure/notifications/notifications.module'
 
 @Module({
-  imports: [NotificationsModule],
   controllers: [PlansController, ObjectivesController, GoalsController, PhasesController, MacroTasksController],
   providers: [PlansService, ObjectivesService, GoalsService, PhasesService, MacroTasksService, PhaseNotificationHandler],
   exports: [GoalsService],

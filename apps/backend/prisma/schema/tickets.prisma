@@ -1,0 +1,45 @@
+// Tickets context — owns:
+//   tickets, ticket_comments
+
+model Ticket {
+  id          String         @id @default(uuid())
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    String?
+  unitId      String         @map("unit_id")
+  reportedBy  String         @map("reported_by")
+  assignedTo  String?        @map("assigned_to")
+  resolvedAt  DateTime?      @map("resolved_at")
+  closedAt    DateTime?      @map("closed_at")
+  dueDate     DateTime?      @map("due_date")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  unit     Unit            @relation(fields: [unitId], references: [id])
+  reporter User            @relation("TicketReporter", fields: [reportedBy], references: [id])
+  assignee User?           @relation("TicketAssignee", fields: [assignedTo], references: [id])
+  comments TicketComment[]
+
+  @@index([unitId, status])
+  @@index([unitId, priority])
+  @@index([unitId, createdAt])
+  @@index([assignedTo, status])
+  @@map("tkt_tickets")
+}
+
+model TicketComment {
+  id         String   @id @default(uuid())
+  ticketId   String   @map("ticket_id")
+  userId     String   @map("user_id")
+  content    String
+  isInternal Boolean  @default(false) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("tkt_comments")
+}

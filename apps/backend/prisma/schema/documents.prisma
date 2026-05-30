@@ -1,0 +1,49 @@
+// Documents context — owns:
+//   document_folders, documents
+
+model DocumentFolder {
+  id        String   @id @default(uuid())
+  name      String
+  parentId  String?  @map("parent_id")
+  unitId    String   @map("unit_id")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent    DocumentFolder?  @relation("FolderTree", fields: [parentId], references: [id])
+  children  DocumentFolder[] @relation("FolderTree")
+  unit      Unit             @relation(fields: [unitId], references: [id])
+  documents Document[]
+
+  @@index([unitId])
+  @@map("doc_folders")
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  folderId      String?  @map("folder_id")
+  unitId        String   @map("unit_id")
+  fileKey       String   @map("file_key")
+  fileName      String   @map("file_name")
+  fileSize      Int      @map("file_size")
+  fileMime      String   @map("file_mime")
+  uploadedBy    String   @map("uploaded_by")
+  versionOf     String?  @map("version_of")
+  versionNumber Int      @default(1) @map("version_number")
+  isLatest      Boolean  @default(true) @map("is_latest")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  folder        DocumentFolder? @relation(fields: [folderId], references: [id])
+  unit          Unit            @relation(fields: [unitId], references: [id])
+  uploader      User            @relation("DocumentUploader", fields: [uploadedBy], references: [id])
+  baseDocument  Document?       @relation("DocumentVersions", fields: [versionOf], references: [id])
+  versions      Document[]      @relation("DocumentVersions")
+
+  @@index([unitId, folderId])
+  @@index([unitId, createdAt])
+  @@index([versionOf])
+  @@map("doc_documents")
+}

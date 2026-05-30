@@ -81,6 +81,7 @@ export class GroupsService {
         name: dto.name,
         description: dto.description,
         type: dto.type,
+        visibility: dto.visibility ?? 'PRIVATE_INVITE',
         parentId: dto.parentId,
         objectiveId: dto.objectiveId,
         unitId,
@@ -216,6 +217,46 @@ export class GroupsService {
         archiveAt: { lte: new Date() },
       },
       data: { isArchived: true },
+    })
+  }
+
+  async findDiscoverable(unitId: string, userId: string) {
+    // Public groups in this unit the user is NOT yet a member of.
+    return this.prisma.group.findMany({
+      where: {
+        unitId,
+        visibility: 'UNIT_PUBLIC',
+        isArchived: false,
+        members: { none: { userId } },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        type: true,
+        visibility: true,
+        avatarUrl: true,
+        createdAt: true,
+        _count: { select: { members: true, messages: true } },
+      },
+      orderBy: { name: 'asc' },
+    })
+  }
+
+  async join(unitId: string, groupId: string, userId: string) {
+    const group = await this.prisma.group.findFirst({
+      where: { id: groupId, unitId, isArchived: false },
+      select: { id: true, visibility: true },
+    })
+    if (!group) throw new NotFoundException('Grupo não encontrado.')
+    if (group.visibility !== 'UNIT_PUBLIC') {
+      throw new ForbiddenException('Este grupo não aceita adesão livre.')
+    }
+
+    return this.prisma.groupMember.upsert({
+      where: { groupId_userId: { groupId, userId } },
+      update: {},
+      create: { groupId, userId, role: 'MEMBER', addedBy: userId },
     })
   }
 }

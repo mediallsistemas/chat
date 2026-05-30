@@ -85,14 +85,14 @@ Para usuários MULTI: visão apenas das unidades que têm acesso, com seletor de
 
 - [x] Rota `/dashboard` (GET /api/dashboard/summary) com dados reais filtrados por escopo
 - [x] Componente de visão consolidada de planos (frontend conectado à API)
-- [ ] Faróis em tempo real via WebSocket
+- [x] Faróis em tempo real via WebSocket (`DashboardUpdatedEvent` + `dashboard:update`)
 - [x] Cards de resumo operacional (métricas: planos, impedimentos, tarefas atrasadas, metas em risco)
 - [x] Mapa de impedimentos (lista dos críticos escalados)
-- [ ] Drill-down por objetivo
-- [ ] Drill-down por unidade
-- [ ] Botão de contato rápido (abre chat)
-- [ ] Exportação PDF do relatório executivo
-- [ ] Exportação Excel
+- [x] Drill-down por objetivo (link plano → `/processos/[planId]/[objectiveId]`)
+- [x] Drill-down por unidade (`GET /dashboard/units/:unitId` + `/dashboard/unidades/[unitId]`)
+- [x] Botão de contato rápido (abre chat — ícone nos cards navega para `/mensagens?group=<generalGroupId>`)
+- [x] Exportação PDF do relatório executivo (`GET /reports/dashboard/pdf`)
+- [x] Exportação Excel (`GET /reports/dashboard/excel`)
 - [x] Sistema de alertas proativos (seção de alertas dinâmica no frontend)
-- [ ] Check-in periódico forçado com alertas
-- [ ] Filtros por unidade e período
+- [x] Check-in periódico forçado com alertas (`TaskCheckinJob` 9h diário + `GET /dashboard/stale-tasks`)
+- [x] Filtros por unidade e período (`?unitId=&from=&to=` no summary)

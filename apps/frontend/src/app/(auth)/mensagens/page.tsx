@@ -7,30 +7,42 @@ import { Avatar, Button, Modal } from '@/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
-  useUploadFile, useToggleReaction,
+  useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
+  useCustomEmojis, useCreateReminder,
+  useDiscoverableGroups, useJoinGroup,
+  useActiveHuddle, useStartHuddle, useJoinHuddle,
 } from '@/hooks/use-chat'
+import type { HuddleTokenResponse } from '@mediall/types'
+import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
+import { SearchPanel } from './search-panel'
+import { ThreadPanel } from './thread-panel'
+import dynamic from 'next/dynamic'
+
+// Load LiveKit-bundle component lazily; SSR-safe.
+const HuddleMini = dynamic(() => import('./huddle-mini').then((m) => m.HuddleMini), { ssr: false })
 import { useTaskSearch } from '@/hooks/use-task-files'
 import { useAuthStore } from '@/store/auth-store'
 import { useUnitStore } from '@/store/unit-store'
 import { api } from '@/lib/api'
 import { getSocket, connectSocket } from '@/lib/socket'
-import { GroupType, type Group, type Message } from '@mediall/types'
+import { GroupType, GroupVisibility, UserRole, type Group, type Message } from '@mediall/types'
 
-// ─── Mention helpers ──────────────────────────────────────────────────────────
+// ─── Mention + custom emoji helpers ───────────────────────────────────────────
 
-const MENTION_RE = /@\[([TO]):([a-f0-9-]+)\|([^\]]+)\]/g
+const MENTION_RE     = /@\[([TO]):([a-f0-9-]+)\|([^\]]+)\]/g
+const CUSTOM_EMOJI_RE = /:([a-z0-9_-]{2,32}):/g
 
-function renderContent(content: string) {
+function renderContent(content: string, customEmojis?: Map<string, string>) {
   const parts: React.ReactNode[] = []
   let last = 0
   let match: RegExpExecArray | null
   MENTION_RE.lastIndex = 0
   while ((match = MENTION_RE.exec(content)) !== null) {
-    if (match.index > last) parts.push(content.slice(last, match.index))
+    if (match.index > last) parts.push(renderInline(content.slice(last, match.index), customEmojis, `t-${match.index}`))
     const [, type, , title] = match
     parts.push(
       <span
-        key={match.index}
+        key={`m-${match.index}`}
         className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gd/10 text-gd text-[11px] font-medium"
       >
         <i className={clsx('ti text-[10px]', type === 'T' ? 'ti-subtask' : 'ti-target')} aria-hidden="true" />
@@ -39,8 +51,34 @@ function renderContent(content: string) {
     )
     last = match.index + match[0].length
   }
-  if (last < content.length) parts.push(content.slice(last))
+  if (last < content.length) parts.push(renderInline(content.slice(last), customEmojis, `t-tail`))
   return parts
+}
+
+function renderInline(text: string, customEmojis: Map<string, string> | undefined, keyPrefix: string) {
+  if (!customEmojis || customEmojis.size === 0) return text
+  const out: React.ReactNode[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  CUSTOM_EMOJI_RE.lastIndex = 0
+  while ((m = CUSTOM_EMOJI_RE.exec(text)) !== null) {
+    const url = customEmojis.get(m[1])
+    if (!url) continue
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push(
+      <img
+        key={`${keyPrefix}-e-${m.index}`}
+        src={url}
+        alt={`:${m[1]}:`}
+        title={`:${m[1]}:`}
+        className="inline-block align-text-bottom h-5 w-5 mx-0.5"
+      />,
+    )
+    last = m.index + m[0].length
+  }
+  if (last === 0) return text
+  if (last < text.length) out.push(text.slice(last))
+  return out
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,19 +109,33 @@ function MessageBubble({
   msg,
   isMine,
   currentUserId,
+  isBookmarked,
+  isFlashing,
+  customEmojis,
   onDelete,
   onPin,
   onReply,
   onReact,
+  onBookmark,
+  onOpenThread,
 }: {
   msg: Message
   isMine: boolean
   currentUserId: string
+  isBookmarked: boolean
+  isFlashing: boolean
+  customEmojis: Map<string, string>
   onDelete: () => void
   onPin: () => void
   onReply: () => void
   onReact: (emoji: string) => void
+  onBookmark: () => void
+  onOpenThread: () => void
 }) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isFlashing) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [isFlashing])
   const [hover, setHover] = useState(false)
   const [emojiOpen, setEmojiOpen] = useState(false)
 
@@ -109,7 +161,12 @@ function MessageBubble({
 
   return (
     <div
-      className={clsx('flex gap-2 mb-2 group', isMine && 'flex-row-reverse')}
+      ref={rootRef}
+      className={clsx(
+        'flex gap-2 mb-2 group rounded-xl p-1 -m-1 transition-colors',
+        isMine && 'flex-row-reverse',
+        isFlashing && 'bg-yellow-100',
+      )}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -164,7 +221,7 @@ function MessageBubble({
               <i className="ti ti-download text-base ml-auto shrink-0" aria-hidden="true" />
             </a>
           )}
-          {msg.content && <span>{renderContent(msg.content)}</span>}
+          {msg.content && <span>{renderContent(msg.content, customEmojis)}</span>}
           {msg.isPinned && (
             <i className="ti ti-pin text-[10px] ml-1.5 opacity-60" aria-hidden="true" />
           )}
@@ -176,6 +233,17 @@ function MessageBubble({
           </span>
           {msg.isEdited && <span className="text-[10px] text-gx">(editado)</span>}
         </div>
+
+        {/* Reply count indicator (opens thread) */}
+        {msg._count && msg._count.replies > 0 && (
+          <button
+            onClick={onOpenThread}
+            className="mt-1 px-2 py-0.5 self-start text-[11px] font-medium text-gd bg-gd/5 hover:bg-gd/10 rounded-full transition-colors flex items-center gap-1"
+          >
+            <i className="ti ti-message-circle-2 text-xs" aria-hidden="true" />
+            {msg._count.replies} {msg._count.replies === 1 ? 'resposta' : 'respostas'}
+          </button>
+        )}
 
         {/* Reaction bubbles */}
         {Object.keys(reactionSummary).length > 0 && (
@@ -246,12 +314,31 @@ function MessageBubble({
           <i className="ti ti-corner-up-left text-sm" aria-hidden="true" />
         </button>
         <button
+          onClick={onOpenThread}
+          className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
+          aria-label="Abrir conversa"
+          title="Abrir conversa"
+        >
+          <i className="ti ti-message-circle-2 text-sm" aria-hidden="true" />
+        </button>
+        <button
           onClick={onPin}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
           aria-label={msg.isPinned ? 'Desafixar' : 'Fixar'}
           title={msg.isPinned ? 'Desafixar' : 'Fixar'}
         >
           <i className={clsx('ti text-sm', msg.isPinned ? 'ti-pin-filled text-gd' : 'ti-pin')} aria-hidden="true" />
+        </button>
+        <button
+          onClick={onBookmark}
+          className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
+          aria-label={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
+          title={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
+        >
+          <i
+            className={clsx('ti text-sm', isBookmarked ? 'ti-bookmark-filled text-gd' : 'ti-bookmark')}
+            aria-hidden="true"
+          />
         </button>
         {isMine && (
           <button
@@ -396,12 +483,18 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [name, setName] = useState('')
   const [type, setType] = useState<GroupType>(GroupType.SECTOR)
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     create(
-      { name, type, description: description || undefined },
-      { onSuccess: () => { onClose(); setName(''); setDescription('') } },
+      {
+        name,
+        type,
+        description: description || undefined,
+        visibility: isPublic ? GroupVisibility.UNIT_PUBLIC : GroupVisibility.PRIVATE_INVITE,
+      },
+      { onSuccess: () => { onClose(); setName(''); setDescription(''); setIsPublic(false) } },
     )
   }
 
@@ -441,6 +534,20 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
             placeholder="Para que serve este grupo?"
           />
         </div>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-gd"
+          />
+          <span className="text-xs text-gray-700">
+            <span className="font-semibold">Público nesta unidade</span>
+            <span className="block text-[11px] text-gx mt-0.5">
+              Qualquer pessoa da unidade pode encontrar e entrar no grupo sem convite.
+            </span>
+          </span>
+        </label>
         <div className="flex justify-end gap-2 pt-2 border-t border-gs/60">
           <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
           <Button type="submit" disabled={!name.trim() || isPending}>
@@ -453,6 +560,14 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function MensagensPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gx text-sm">Carregando…</div>}>
+      <MensagensPageInner />
+    </Suspense>
+  )
+}
 
 function MensagensPageInner() {
   const user = useAuthStore((s) => s.user)
@@ -469,19 +584,76 @@ function MensagensPageInner() {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [mentionQuery, setMentionQuery] = useState('')
   const [mentionStart, setMentionStart] = useState(-1)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [flashMessageId, setFlashMessageId] = useState<string | null>(null)
+  const [threadParentId, setThreadParentId] = useState<string | null>(null)
+  const [sidebarTab, setSidebarTab] = useState<'mine' | 'discover'>('mine')
+  const canManageGroups = user
+    ? user.role === UserRole.SUPER_ADMIN ||
+      user.role === UserRole.DIRETORIA ||
+      user.role === UserRole.GESTOR
+    : false
+  const { data: discoverableGroups = [] } = useDiscoverableGroups()
+  const { mutate: joinGroup, isPending: joining } = useJoinGroup()
+  const { data: activeHuddle } = useActiveHuddle(activeGroupId)
+  const { mutateAsync: startHuddle, isPending: startingHuddle } = useStartHuddle()
+  const { mutateAsync: joinHuddleApi, isPending: joiningHuddle } = useJoinHuddle()
+  const [huddleSession, setHuddleSession] = useState<HuddleTokenResponse | null>(null)
+
+  async function handleStartHuddle() {
+    if (!activeGroupId) return
+    const session = await startHuddle(activeGroupId)
+    setHuddleSession(session)
+  }
+
+  async function handleJoinHuddle() {
+    if (!activeHuddle) return
+    const session = await joinHuddleApi(activeHuddle.id)
+    setHuddleSession(session)
+  }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const activeGroup = groups.find((g) => g.id === activeGroupId) ?? null
 
-  // Auto-select group from ?group= URL param
+  // Auto-select group from ?group= or ?groupId= URL param
   useEffect(() => {
-    const groupParam = searchParams.get('group')
+    const groupParam = searchParams.get('group') ?? searchParams.get('groupId')
     if (groupParam && groups.length > 0) {
       const found = groups.find((g) => g.id === groupParam)
       if (found) setActiveGroupId(groupParam)
     }
   }, [searchParams, groups])
+
+  // Deep-link: flash a specific messageId after opening a group via search
+  useEffect(() => {
+    const messageId = searchParams.get('messageId')
+    if (!messageId) return
+    setFlashMessageId(messageId)
+    const timer = setTimeout(() => setFlashMessageId(null), 3500)
+    return () => clearTimeout(timer)
+  }, [searchParams])
+
+  // Deep-link: open thread panel from ?thread=<messageId>
+  useEffect(() => {
+    const threadId = searchParams.get('thread')
+    if (threadId) setThreadParentId(threadId)
+  }, [searchParams])
+
+  // Ctrl+K / Cmd+K opens search panel
+  useEffect(() => {
+    function onKey(e: globalThis.KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen((v) => !v)
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
 
   // Auto-select first group (only if no URL param)
   useEffect(() => {
@@ -515,6 +687,15 @@ function MensagensPageInner() {
   const { mutate: deleteMsg } = useDeleteMessage(activeGroupId ?? '')
   const { mutate: pinMsg } = usePinMessage(activeGroupId ?? '')
   const { mutate: toggleReaction } = useToggleReaction(activeGroupId ?? '')
+  const { mutate: toggleBookmark } = useToggleBookmark()
+  const { data: bookmarksData } = useBookmarks()
+  const bookmarkedIds = new Set(
+    bookmarksData?.pages.flatMap((p) => p.bookmarks.map((b) => b.messageId)) ?? [],
+  )
+  const { data: customEmojiList = [] } = useCustomEmojis()
+  const customEmojis = new Map(customEmojiList.map((e) => [e.shortcode, e.url]))
+  const { mutateAsync: createReminder } = useCreateReminder()
+  const [slashFeedback, setSlashFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -545,9 +726,35 @@ function MensagensPageInner() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
-  function send() {
+  async function send() {
     const content = text.trim()
-    if (!content) return
+    if (!content || !activeGroupId) return
+
+    // Try to interpret as slash command first.
+    const parsed = parseSlash(content)
+    if (parsed) {
+      const result = await parsed.command.run(parsed.args, {
+        groupId: activeGroupId,
+        sendMessage: (text) => sendMsg({ content: text, replyToId: replyTo?.id ?? undefined }),
+        createReminder: async (input) => { await createReminder(input) },
+      })
+      if (result.kind === 'error') {
+        setSlashFeedback({ tone: 'error', text: result.message })
+        return
+      }
+      if (result.kind === 'noop' && result.message) {
+        setSlashFeedback({ tone: 'info', text: result.message })
+      } else {
+        setSlashFeedback(null)
+      }
+      setText('')
+      setReplyTo(null)
+      setMentionQuery('')
+      setMentionStart(-1)
+      return
+    }
+
+    setSlashFeedback(null)
     sendMsg({ content, replyToId: replyTo?.id })
     setText('')
     setReplyTo(null)
@@ -612,6 +819,33 @@ function MensagensPageInner() {
           <h2 className="text-sm font-semibold text-gray-800 font-sora">Mensagens</h2>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setSearchOpen((v) => !v)}
+              className={clsx(
+                'p-1.5 rounded-lg transition-colors',
+                searchOpen ? 'bg-gd/10 text-gd' : 'text-gx hover:bg-page-bg hover:text-gd',
+              )}
+              aria-label="Buscar mensagens (Ctrl+K)"
+              title="Buscar mensagens (Ctrl+K)"
+            >
+              <i className="ti ti-search text-base" aria-hidden="true" />
+            </button>
+            <a
+              href="/mensagens/salvos"
+              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+              aria-label="Mensagens salvas"
+              title="Mensagens salvas"
+            >
+              <i className="ti ti-bookmark text-base" aria-hidden="true" />
+            </a>
+            <a
+              href="/configuracoes/emojis"
+              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+              aria-label="Emojis customizados"
+              title="Emojis customizados"
+            >
+              <i className="ti ti-mood-smile text-base" aria-hidden="true" />
+            </a>
+            <button
               onClick={() => setDmOpen(true)}
               className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
               aria-label="Nova conversa direta"
@@ -619,41 +853,122 @@ function MensagensPageInner() {
             >
               <i className="ti ti-user-plus text-base" aria-hidden="true" />
             </button>
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
-              aria-label="Novo grupo"
-              title="Novo grupo"
-            >
-              <i className="ti ti-plus text-base" aria-hidden="true" />
-            </button>
+            {canManageGroups && (
+              <button
+                onClick={() => setCreateOpen(true)}
+                className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+                aria-label="Novo grupo"
+                title="Novo grupo"
+              >
+                <i className="ti ti-plus text-base" aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Tabs — only relevant when there's a Discover tab to show */}
+        {canManageGroups && (
+          <div className="flex px-2 pt-2 gap-1 shrink-0 border-b border-gs/40">
+            <button
+              onClick={() => setSidebarTab('mine')}
+              className={clsx(
+                'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2',
+                sidebarTab === 'mine'
+                  ? 'border-gd text-gd'
+                  : 'border-transparent text-gx hover:text-gray-700',
+              )}
+            >
+              Meus
+            </button>
+            <button
+              onClick={() => setSidebarTab('discover')}
+              className={clsx(
+                'flex-1 text-xs font-medium py-1.5 rounded-t-lg border-b-2 flex items-center justify-center gap-1',
+                sidebarTab === 'discover'
+                  ? 'border-gd text-gd'
+                  : 'border-transparent text-gx hover:text-gray-700',
+              )}
+            >
+              Descobrir
+              {discoverableGroups.length > 0 && (
+                <span className="text-[10px] bg-gd/10 text-gd px-1.5 py-0.5 rounded-full">
+                  {discoverableGroups.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {loadingGroups ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-12 rounded-xl bg-gs/30 animate-pulse mx-1 mb-1" />
-            ))
-          ) : groups.length === 0 ? (
-            <div className="py-10 text-center">
-              <i className="ti ti-message-off text-3xl text-gx mb-2 block" aria-hidden="true" />
-              <p className="text-xs text-gx">Nenhum grupo</p>
-            </div>
+          {sidebarTab === 'mine' ? (
+            loadingGroups ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-12 rounded-xl bg-gs/30 animate-pulse mx-1 mb-1" />
+              ))
+            ) : groups.length === 0 ? (
+              <div className="py-10 text-center">
+                <i className="ti ti-message-off text-3xl text-gx mb-2 block" aria-hidden="true" />
+                <p className="text-xs text-gx">Nenhum grupo</p>
+              </div>
+            ) : (
+              groups.map((g) => {
+                const memberIds = g.members?.map((m) => m.userId) ?? []
+                const onlineCount = memberIds.filter((id) => onlineIds.includes(id) && id !== user?.id).length
+                return (
+                  <GroupItem
+                    key={g.id}
+                    group={g}
+                    active={g.id === activeGroupId}
+                    onClick={() => setActiveGroupId(g.id)}
+                    onlineCount={onlineCount}
+                  />
+                )
+              })
+            )
           ) : (
-            groups.map((g) => {
-              const memberIds = g.members?.map((m) => m.userId) ?? []
-              const onlineCount = memberIds.filter((id) => onlineIds.includes(id) && id !== user?.id).length
-              return (
-                <GroupItem
+            discoverableGroups.length === 0 ? (
+              <div className="py-10 text-center px-2">
+                <i className="ti ti-compass-off text-3xl text-gx mb-2 block" aria-hidden="true" />
+                <p className="text-xs text-gx">Nenhum grupo público disponível.</p>
+              </div>
+            ) : (
+              discoverableGroups.map((g) => (
+                <div
                   key={g.id}
-                  group={g}
-                  active={g.id === activeGroupId}
-                  onClick={() => setActiveGroupId(g.id)}
-                  onlineCount={onlineCount}
-                />
-              )
-            })
+                  className="px-3 py-2.5 rounded-xl border border-gs/40 hover:border-gd/30 transition-colors mb-1"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <i
+                      className={clsx('ti text-base text-gd', GROUP_TYPE_ICON[g.type])}
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm font-semibold text-gray-800 truncate flex-1">{g.name}</p>
+                  </div>
+                  {g.description && (
+                    <p className="text-[11px] text-gx mb-2 line-clamp-2">{g.description}</p>
+                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-gx">
+                      {g._count.members} {g._count.members === 1 ? 'membro' : 'membros'}
+                    </span>
+                    <button
+                      onClick={() =>
+                        joinGroup(g.id, {
+                          onSuccess: () => {
+                            setSidebarTab('mine')
+                            setActiveGroupId(g.id)
+                          },
+                        })
+                      }
+                      disabled={joining}
+                      className="text-[11px] font-medium text-white bg-gd px-2 py-1 rounded-lg hover:opacity-90 disabled:opacity-40"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )
           )}
         </div>
       </aside>
@@ -674,6 +989,28 @@ function MensagensPageInner() {
                   {activeGroup._count?.members ?? 0} membros · {GROUP_TYPE_LABEL[activeGroup.type]}
                 </p>
               </div>
+              {!huddleSession && (
+                activeHuddle ? (
+                  <button
+                    onClick={handleJoinHuddle}
+                    disabled={joiningHuddle}
+                    className="ml-2 flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-gd rounded-full hover:opacity-90 disabled:opacity-50"
+                  >
+                    <i className="ti ti-headphones text-sm" aria-hidden="true" />
+                    Entrar no huddle ({activeHuddle.participantCount})
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartHuddle}
+                    disabled={startingHuddle}
+                    className="ml-2 flex items-center gap-1.5 px-2.5 py-1 text-xs text-gd border border-gd/30 rounded-full hover:bg-gd/5 disabled:opacity-50"
+                    title="Iniciar huddle"
+                  >
+                    <i className="ti ti-headphones text-sm" aria-hidden="true" />
+                    Huddle
+                  </button>
+                )
+              )}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -720,10 +1057,17 @@ function MensagensPageInner() {
                   msg={msg}
                   isMine={msg.senderId === user?.id}
                   currentUserId={user?.id ?? ''}
+                  isBookmarked={bookmarkedIds.has(msg.id)}
+                  isFlashing={flashMessageId === msg.id}
+                  customEmojis={customEmojis}
                   onDelete={() => deleteMsg(msg.id)}
                   onPin={() => pinMsg(msg.id)}
                   onReply={() => setReplyTo(msg)}
                   onReact={(emoji) => toggleReaction({ messageId: msg.id, emoji })}
+                  onBookmark={() =>
+                    toggleBookmark({ messageId: msg.id, isBookmarked: bookmarkedIds.has(msg.id) })
+                  }
+                  onOpenThread={() => { setThreadParentId(msg.id); setSearchOpen(false) }}
                 />
               ))
             )}
@@ -785,6 +1129,59 @@ function MensagensPageInner() {
             </div>
           )}
 
+          {/* Slash command suggestions */}
+          {text.startsWith('/') && !text.includes(' ') && (
+            <div className="px-4 pt-2 bg-white border-t border-gs/60 shrink-0">
+              <ul className="bg-white border border-gs/60 rounded-xl text-xs overflow-hidden">
+                {SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1))).map((c) => (
+                  <li
+                    key={c.name}
+                    onClick={() => {
+                      setText(`/${c.name} `)
+                      textareaRef.current?.focus()
+                    }}
+                    className="px-3 py-1.5 hover:bg-page-bg cursor-pointer flex items-baseline gap-2"
+                  >
+                    <code className="font-semibold text-gd">/{c.name}</code>
+                    <span className="text-gx">— {c.description}</span>
+                    <span className="ml-auto text-[10px] text-gx">{c.usage}</span>
+                  </li>
+                ))}
+                {SLASH_COMMANDS.filter((c) => c.name.startsWith(text.slice(1))).length === 0 && (
+                  <li className="px-3 py-1.5 text-gx italic">
+                    Nenhum comando encontrado para “{text}”.
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Slash feedback */}
+          {slashFeedback && (
+            <div
+              className={clsx(
+                'px-4 py-1.5 text-xs flex items-center gap-2 border-t border-gs/60',
+                slashFeedback.tone === 'error' ? 'bg-red-50 text-red-600' : 'bg-page-bg text-gd',
+              )}
+            >
+              <i
+                className={clsx(
+                  'ti text-sm',
+                  slashFeedback.tone === 'error' ? 'ti-alert-circle' : 'ti-info-circle',
+                )}
+                aria-hidden="true"
+              />
+              <span className="flex-1">{slashFeedback.text}</span>
+              <button
+                onClick={() => setSlashFeedback(null)}
+                className="text-gx hover:text-gray-700"
+                aria-label="Fechar"
+              >
+                <i className="ti ti-x text-sm" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
           {/* Input bar */}
           <div className="px-4 py-3 bg-white border-t border-gs/60 shrink-0">
             <div className="flex items-end gap-2 bg-page-bg rounded-2xl px-3 py-2 border border-gs/60 focus-within:border-gd transition-colors">
@@ -812,7 +1209,7 @@ function MensagensPageInner() {
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={onKeyDown}
-                placeholder="Mensagem... (@ para mencionar tarefa)"
+                placeholder="Mensagem... (@ para mencionar, / para comandos)"
                 rows={1}
                 className="flex-1 text-sm bg-transparent resize-none focus:outline-none max-h-32 leading-relaxed"
                 style={{ minHeight: '24px' }}
@@ -833,13 +1230,48 @@ function MensagensPageInner() {
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
           <i className="ti ti-message-2 text-5xl text-gx" aria-hidden="true" />
           <p className="text-sm text-gray-600 font-medium">Selecione um grupo para conversar</p>
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="text-sm text-gd hover:underline"
-          >
-            ou crie um novo grupo
-          </button>
+          {canManageGroups && (
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="text-sm text-gd hover:underline"
+            >
+              ou crie um novo grupo
+            </button>
+          )}
         </div>
+      )}
+
+      {threadParentId && activeGroupId ? (
+        <ThreadPanel
+          groupId={activeGroupId}
+          parentId={threadParentId}
+          currentUserId={user?.id ?? ''}
+          onClose={() => {
+            setThreadParentId(null)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('thread')
+            window.history.replaceState(null, '', url.toString())
+          }}
+        />
+      ) : searchOpen ? (
+        <SearchPanel
+          currentGroupId={activeGroupId}
+          onClose={() => setSearchOpen(false)}
+          onJumpToMessage={(r) => {
+            setActiveGroupId(r.groupId)
+            setFlashMessageId(r.id)
+            setSearchOpen(false)
+            window.history.replaceState(
+              null,
+              '',
+              `/mensagens?groupId=${r.groupId}&messageId=${r.id}`,
+            )
+          }}
+        />
+      ) : null}
+
+      {huddleSession && (
+        <HuddleMini session={huddleSession} onLeave={() => setHuddleSession(null)} />
       )}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />

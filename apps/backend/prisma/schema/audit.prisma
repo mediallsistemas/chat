@@ -1,0 +1,21 @@
+// Audit context — owns:
+//   audit_logs
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  unitId     String?  @map("unit_id")
+  action     String
+  entityId   String?  @map("entity_id")
+  entityType String?  @map("entity_type")
+  metadata   Json?
+  ipAddress  String   @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([unitId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_entries")
+}

@@ -8,7 +8,8 @@ import { UpdateTicketDto } from './dto/update-ticket.dto'
 import { PaginationDto } from '../../common/dto/pagination.dto'
 import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
 import { CurrentUser } from '../../shared/decorators/current-user.decorator'
-import { JwtPayload, TicketStatus } from '@mediall/types'
+import { Roles } from '../../shared/decorators/roles.decorator'
+import { JwtPayload, TicketStatus, UserRole } from '@mediall/types'
 
 class CommentDto {
   @IsString()
@@ -53,6 +54,7 @@ export class TicketsController extends BaseUnitController {
   }
 
   @Post('tickets')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   @ApiOperation({ summary: 'Create a new ticket' })
   create(
     @Param('unitId') unitId: string,
@@ -63,6 +65,7 @@ export class TicketsController extends BaseUnitController {
   }
 
   @Patch('tickets/:ticketId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   @ApiOperation({ summary: 'Update ticket (status, priority, assignment, etc.)' })
   update(
     @Param('unitId') unitId: string,

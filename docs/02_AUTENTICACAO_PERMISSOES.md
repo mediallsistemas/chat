@@ -166,8 +166,8 @@ units
 - [x] Decorator `@CurrentUser()` para injetar usuário nas rotas
 - [x] Endpoint `POST /api/auth/login`
 - [x] Endpoint `POST /api/auth/logout`
-- [ ] Endpoint `POST /api/auth/refresh` — token refresh não implementado
-- [ ] Middleware de timeout de inatividade no frontend
+- [x] Endpoint `POST /api/auth/refresh` — silent refresh via refresh cookie (Redis SHA-256)
+- [x] Middleware de timeout de inatividade no frontend — `InactivityGuard` (30min)
 - [x] Seletor de unidade no header (usuários MULTI) — header.tsx com dropdown e useUnits hook
-- [ ] Bloqueio de conta após tentativas falhas (schema tem failedLogins/lockedAt, lógica não implementada)
-- [ ] Audit log de login/logout (AuditLogInterceptor cobre mutations, mas login/logout específicos não)
+- [x] Bloqueio de conta após 5 tentativas falhas (failedLogins/lockedAt); desbloqueio via `PATCH /users/:id/unlock`
+- [x] Audit log de login/logout com userId, IP e timestamp

@@ -7,6 +7,11 @@ export enum GroupType {
   PRIVATE = 'PRIVATE',
 }
 
+export enum GroupVisibility {
+  PRIVATE_INVITE = 'PRIVATE_INVITE',
+  UNIT_PUBLIC = 'UNIT_PUBLIC',
+}
+
 export enum GroupMemberRole {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
@@ -25,6 +30,7 @@ export interface Group {
   name: string
   description: string | null
   type: GroupType
+  visibility: GroupVisibility
   parentId: string | null
   unitId: string
   createdBy: string
@@ -34,6 +40,17 @@ export interface Group {
   kanbanBoardId: string
   _count?: { members: number; messages: number }
   members?: GroupMember[]
+}
+
+export interface DiscoverableGroup {
+  id: string
+  name: string
+  description: string | null
+  type: GroupType
+  visibility: GroupVisibility
+  avatarUrl: string | null
+  createdAt: string
+  _count: { members: number; messages: number }
 }
 
 export interface GroupMember {
@@ -83,4 +100,86 @@ export interface Message {
   createdAt: string
   editedAt: string | null
   reactions?: MessageReactionItem[]
+  _count?: { replies: number }
+}
+
+export interface ThreadView {
+  parent: Message
+  replies: Message[]
+}
+
+export interface MessageBookmark {
+  id: string
+  userId: string
+  messageId: string
+  unitId: string
+  createdAt: string
+  message: Message & {
+    group: { id: string; name: string; type: GroupType }
+  }
+}
+
+export interface BookmarksPage {
+  bookmarks: MessageBookmark[]
+  nextCursor: string | null
+}
+
+export interface CustomEmoji {
+  id: string
+  unitId: string
+  shortcode: string
+  fileKey: string
+  createdBy: string
+  createdAt: string
+  url: string
+}
+
+export interface ChatReminder {
+  id: string
+  userId: string
+  unitId: string
+  groupId: string | null
+  text: string
+  remindAt: string
+  fired: boolean
+  createdAt: string
+}
+
+export interface Huddle {
+  id: string
+  groupId: string
+  unitId: string
+  startedBy: string
+  startedAt: string
+  endedAt: string | null
+  livekitRoomId: string
+  participantCount: number
+}
+
+export interface HuddleTokenResponse {
+  huddleId: string
+  groupId: string
+  roomId: string
+  token: string
+  wsUrl: string
+  participantCount: number
+}
+
+export interface ChatSearchResult {
+  id: string
+  groupId: string
+  groupName: string
+  senderId: string
+  senderName: string
+  senderAvatarUrl: string | null
+  content: string
+  /** Snippet com `<mark>…</mark>` no termo destacado. Não confiar no HTML — sanitize antes de renderizar. */
+  headline: string
+  rank: number
+  createdAt: string
+}
+
+export interface ChatSearchPage {
+  results: ChatSearchResult[]
+  nextCursor: string | null
 }

@@ -36,8 +36,9 @@ describe('Auth (e2e)', () => {
         .send({ email: process.env.TEST_ADMIN_EMAIL, password: process.env.TEST_ADMIN_PASSWORD })
 
       expect(res.status).toBe(200)
-      const cookies: string[] = res.headers['set-cookie'] as string[]
-      expect(cookies?.some((c) => c.startsWith('access_token'))).toBe(true)
+      const raw = res.headers['set-cookie']
+      const cookies: string[] = Array.isArray(raw) ? raw : raw ? [raw as string] : []
+      expect(cookies.some((c) => c.startsWith('access_token'))).toBe(true)
     })
   })
 

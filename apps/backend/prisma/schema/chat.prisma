@@ -1,0 +1,153 @@
+// Chat context — owns:
+//   groups, group_members, messages, message_reactions
+
+model Group {
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  type           GroupType
+  visibility     GroupVisibility @default(PRIVATE_INVITE)
+  parentId       String?         @map("parent_id")
+  sectorId       String?         @map("sector_id")
+  objectiveId    String?         @map("objective_id")
+  /// Nullable so PRIVATE direct chats can be user-to-user without a unit.
+  unitId         String?         @map("unit_id")
+  createdBy      String          @map("created_by")
+  avatarUrl      String?         @map("avatar_url")
+  isArchived     Boolean         @default(false) @map("is_archived")
+  archiveAt      DateTime?       @map("archive_at")
+  kanbanBoardId  String          @map("kanban_board_id")
+  onlyAdminsPost Boolean         @default(false) @map("only_admins_post")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  unit     Unit?         @relation(fields: [unitId], references: [id])
+  members  GroupMember[]
+  messages Message[]
+  meetings Meeting[]
+
+  @@map("chat_groups")
+}
+
+model GroupMember {
+  id         String          @id @default(uuid())
+  groupId    String          @map("group_id")
+  userId     String          @map("user_id")
+  role       GroupMemberRole @default(MEMBER)
+  isMuted    Boolean         @default(false) @map("is_muted")
+  joinedAt   DateTime        @default(now()) @map("joined_at")
+  addedBy    String          @map("added_by")
+  lastReadAt DateTime?       @map("last_read_at")
+
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@unique([groupId, userId])
+  @@map("chat_group_members")
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  groupId   String      @map("group_id")
+  senderId  String      @map("sender_id")
+  content   String
+  type      MessageType @default(TEXT)
+  replyToId String?     @map("reply_to_id")
+  fileKey   String?     @map("file_key")
+  fileName  String?     @map("file_name")
+  fileSize  Int?        @map("file_size")
+  fileMime  String?     @map("file_mime")
+  isPinned  Boolean     @default(false) @map("is_pinned")
+  isEdited  Boolean     @default(false) @map("is_edited")
+  editedAt  DateTime?   @map("edited_at")
+  isDeleted Boolean     @default(false) @map("is_deleted")
+  deletedAt DateTime?   @map("deleted_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  /// Maintained by trigger chat_messages_search_vector_trg.
+  /// Never write directly from Prisma client.
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  group     Group             @relation(fields: [groupId], references: [id])
+  sender    User              @relation("MessageSender", fields: [senderId], references: [id])
+  replyTo   Message?          @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies   Message[]         @relation("MessageReplies")
+  reactions MessageReaction[]
+  bookmarks MessageBookmark[]
+
+  @@index([groupId, createdAt])
+  @@index([groupId, isPinned])
+  @@index([senderId, createdAt])
+  @@index([replyToId])
+  @@map("chat_messages")
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  emoji     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@map("chat_message_reactions")
+}
+
+model MessageBookmark {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  messageId String   @map("message_id")
+  unitId    String   @map("unit_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId])
+  @@index([userId, unitId, createdAt])
+  @@map("chat_message_bookmarks")
+}
+
+model CustomEmoji {
+  id        String   @id @default(uuid())
+  unitId    String   @map("unit_id")
+  shortcode String
+  fileKey   String   @map("file_key")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([unitId, shortcode])
+  @@index([unitId])
+  @@map("chat_custom_emojis")
+}
+
+model Huddle {
+  id            String    @id @default(uuid())
+  groupId       String    @map("group_id")
+  unitId        String    @map("unit_id")
+  startedBy     String    @map("started_by")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  livekitRoomId String    @unique @map("livekit_room_id")
+
+  @@index([groupId, endedAt])
+  @@map("chat_huddles")
+}
+
+model ChatReminder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  unitId    String   @map("unit_id")
+  groupId   String?  @map("group_id")
+  text      String
+  remindAt  DateTime @map("remind_at")
+  jobId     String?  @map("job_id")
+  fired     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, remindAt])
+  @@map("chat_reminders")
+}

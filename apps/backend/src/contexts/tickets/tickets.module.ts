@@ -3,10 +3,9 @@ import { TicketsController } from './tickets.controller'
 import { TicketsService } from './tickets.service'
 import { TicketNotificationHandler } from './handlers/ticket-notification.handler'
 import { PrismaModule } from '../../prisma/prisma.module'
-import { NotificationsModule } from '../../infrastructure/notifications/notifications.module'
 
 @Module({
-  imports: [PrismaModule, NotificationsModule],
+  imports: [PrismaModule],
   controllers: [TicketsController],
   providers: [TicketsService, TicketNotificationHandler],
 })

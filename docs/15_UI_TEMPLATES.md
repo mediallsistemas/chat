@@ -438,9 +438,9 @@ components/ui/
 - [x] Schema zod para Novo Usuário form
 - [x] Schema zod para Nova Tarefa form
 - [x] `error.tsx` em `/processos` (Next.js error boundary)
-- [ ] `error.tsx` em rotas restantes (kanban, impedimentos, mensagens)
+- [x] `error.tsx` em todas as rotas autenticadas (auth, chamados, dashboard, documentos, impedimentos, kanban, mensagens, processos, processos/painel, reuniões)
 - [x] Skeleton screens para Dashboard, Processos, Kanban
-- [ ] Skeleton screens para Impedimentos (parcial)
+- [x] Skeleton screens para Impedimentos
 - [x] Sidebar: `aria-label` em todos os botões icon-only
 - [x] Modais com focus trap + Escape fecha
 - [x] KanbanBoard com `dynamic({ ssr: false })`

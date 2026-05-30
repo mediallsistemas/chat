@@ -25,6 +25,27 @@
 | 14 | `14_ROADMAP_FASES.md` | Cronograma, sprints, entregas por fase | 🔴 Geral |
 | 15 | `15_UI_TEMPLATES.md` | Templates e padrões de UI | 🟡 Geral |
 | 16 | `16_MELHORIAS_E_DIVIDA_TECNICA.md` | Diagnóstico completo + plano de ação por área | 🔴 Pós go-live |
+| 17 | `17_PLANO_MODULAR_MONOLITH.md` | Modular Monolith forte + extração seletiva (transcription, depois meetings+chat) | 🟣 Arquitetural |
+| 17a | `17a_OBSERVABILIDADE_FASE3.md` | Métricas para decidir Fase 4 (go/no-go) | 🟣 Arquitetural |
+| 17b | `17b_PLANO_REALTIME_SVC_FASE4.md` | Plano detalhado de extrair realtime-svc (chat+meetings) — condicional | 🟣 Arquitetural |
+| 17c | `17c_CHECKLIST_GOLIVE_FASE2.md` | Checklist passo-a-passo para deploy do transcription-svc | 🟣 Arquitetural |
+
+---
+
+## Plano arquitetural vigente
+
+A arquitetura atual é **Modular Monolith DDD** (4 camadas por contexto em `apps/backend/src/contexts/<domain>/`), conforme registrado em `melhorias_concluidos/39_ddd_reestruturacao_completo.md`.
+
+A evolução planejada está no **plano 17** — não vamos para micro-serviços completos. Caminho:
+
+1. Reviver EventBus (zero imports diretos entre contextos)
+2. Boundary lint no CI (eslint-plugin-boundaries ou dependency-cruiser)
+3. Schema Prisma multi-file por domínio
+4. Read models cross-domain (sem joins SQL cruzando fronteira)
+5. Extrair **apenas** `transcription` como serviço separado (Redis Streams)
+6. Avaliar e decidir antes de extrair `meetings`+`chat`
+
+**Os planos 11 e 12 descrevem a estrutura inicial (pré-DDD).** A estrutura atual é diferente — ver `melhorias_concluidos/39_ddd_reestruturacao_completo.md` e o `CLAUDE.md` raiz para a referência viva.
 
 ---
 

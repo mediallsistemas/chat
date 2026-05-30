@@ -23,7 +23,13 @@ export interface JwtPayload {
   exp?: number
 }
 
-export interface AuthUser {
+export interface UserStatus {
+  customStatus: string | null
+  customStatusEmoji: string | null
+  statusExpiresAt: string | null
+}
+
+export interface AuthUser extends UserStatus {
   id: string
   name: string
   email: string

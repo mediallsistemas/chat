@@ -17,6 +17,8 @@ import { RespondInviteDto } from './dto/respond-invite.dto'
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { UnitScopeGuard } from '../../shared/guards/unit-scope.guard'
+import { Roles } from '../../shared/decorators/roles.decorator'
+import { UserRole } from '@mediall/types'
 
 @Controller('units/:unitId/meetings')
 @UseGuards(JwtAuthGuard, RolesGuard, UnitScopeGuard)
@@ -51,11 +53,13 @@ export class MeetingsController {
   }
 
   @Post()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   create(@Param('unitId') unitId: string, @Req() req: any, @Body() dto: CreateMeetingDto) {
     return this.meetingsService.create(unitId, req.user.sub, dto)
   }
 
   @Patch(':meetingId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   update(
     @Param('unitId') unitId: string,
     @Param('meetingId') meetingId: string,

@@ -1,0 +1,133 @@
+// Strategic Planning context — owns:
+//   strategic_plans, objectives, goals, plan_phases, macro_tasks
+
+model StrategicPlan {
+  id        String     @id @default(uuid())
+  name      String
+  year      Int
+  vision    String?
+  mission   String?
+  values    String?
+  status    PlanStatus @default(DRAFT)
+  unitId    String     @map("unit_id")
+  createdBy String     @map("created_by")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  unit       Unit        @relation(fields: [unitId], references: [id])
+  objectives Objective[]
+
+  @@map("strat_plans")
+}
+
+model Objective {
+  id                  String       @id @default(uuid())
+  planId              String       @map("plan_id")
+  title               String
+  description         String?
+  benefits            String?
+  responsibleSectorId String?      @map("responsible_sector_id")
+  responsibleUserId   String       @map("responsible_user_id")
+  deadline            DateTime
+  status              GoalStatus   @default(NOT_STARTED)
+  progressPct         Decimal      @default(0) @map("progress_pct")
+  trafficLight        TrafficLight @default(GREEN) @map("traffic_light")
+  groupId             String?      @map("group_id")
+  unitId              String       @map("unit_id")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  plan  StrategicPlan @relation(fields: [planId], references: [id])
+  goals Goal[]
+
+  @@map("strat_objectives")
+}
+
+model Goal {
+  id           String     @id @default(uuid())
+  objectiveId  String     @map("objective_id")
+  title        String
+  description  String?
+  sectorId     String?    @map("sector_id")
+  investment   Decimal?
+  direction    Direction
+  calcMethod   CalcMethod @map("calc_method")
+  targetValue  Decimal?   @map("target_value")
+  currentValue Decimal    @default(0) @map("current_value")
+  initialValue Decimal    @default(0) @map("initial_value")
+  status       GoalStatus @default(NOT_STARTED)
+  progressPct  Decimal    @default(0) @map("progress_pct")
+  unitId       String     @map("unit_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  objective Objective   @relation(fields: [objectiveId], references: [id])
+  phases    PlanPhase[]
+
+  @@map("strat_goals")
+}
+
+model PlanPhase {
+  id                String      @id @default(uuid())
+  goalId            String      @map("goal_id")
+  title             String
+  description       String?
+  order             Int
+  status            PhaseStatus @default(LOCKED)
+  unitScope         UnitScope   @default(ALL) @map("unit_scope")
+  unitId            String?     @map("unit_id")
+  responsibleUserId String      @map("responsible_user_id")
+  startDate         DateTime?   @map("start_date")
+  dueDate           DateTime?   @map("due_date")
+  completedAt       DateTime?   @map("completed_at")
+  kanbanBoardId     String      @map("kanban_board_id")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  goal             Goal              @relation(fields: [goalId], references: [id])
+  kanbanBoard      KanbanBoard       @relation(fields: [kanbanBoardId], references: [id])
+  macroTasks       MacroTask[]
+  phaseScopeBoards PhaseScopeBoard[]
+
+  @@map("strat_plan_phases")
+}
+
+model PhaseScopeBoard {
+  id            String   @id @default(uuid())
+  phaseId       String   @map("phase_id")
+  unitId        String   @map("unit_id")
+  kanbanBoardId String   @map("kanban_board_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  phase       PlanPhase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  unit        Unit        @relation("PhaseScopeBoardUnit", fields: [unitId], references: [id], onDelete: Cascade)
+  kanbanBoard KanbanBoard @relation(fields: [kanbanBoardId], references: [id], onDelete: Cascade)
+
+  @@unique([phaseId, unitId])
+  @@map("strat_phase_scope_boards")
+}
+
+model MacroTask {
+  id                String     @id @default(uuid())
+  phaseId           String     @map("phase_id")
+  goalId            String     @map("goal_id")
+  objectiveId       String     @map("objective_id")
+  title             String
+  description       String?
+  responsibleUserId String     @map("responsible_user_id")
+  sectorId          String?    @map("sector_id")
+  unitId            String     @map("unit_id")
+  startDate         DateTime?  @map("start_date")
+  dueDate           DateTime?  @map("due_date")
+  status            TaskStatus @default(NOT_STARTED)
+  progressPct       Decimal    @default(0) @map("progress_pct")
+  groupId           String?    @map("group_id")
+  kanbanBoardId     String     @map("kanban_board_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  phase       PlanPhase   @relation(fields: [phaseId], references: [id])
+  kanbanBoard KanbanBoard @relation(fields: [kanbanBoardId], references: [id])
+
+  @@map("strat_macro_tasks")
+}

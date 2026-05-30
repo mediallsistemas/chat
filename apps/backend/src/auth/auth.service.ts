@@ -86,6 +86,9 @@ export class AuthService {
         role: payload.role,
         accessScope: payload.accessScope,
         units: payload.units,
+        customStatus: user.customStatus,
+        customStatusEmoji: user.customStatusEmoji,
+        statusExpiresAt: user.statusExpiresAt?.toISOString() ?? null,
       },
     }
   }
@@ -104,6 +107,9 @@ export class AuthService {
         email: true,
         avatarUrl: true,
         accessScope: true,
+        customStatus: true,
+        customStatusEmoji: true,
+        statusExpiresAt: true,
         unitAccess: {
           select: { unitId: true, role: true, isPrimary: true },
         },

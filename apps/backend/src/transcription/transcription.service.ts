@@ -1,16 +1,22 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import Anthropic from '@anthropic-ai/sdk'
+import { randomUUID } from 'crypto'
 import { PrismaService } from '../prisma/prisma.service'
-import { NotificationsService } from '../infrastructure/notifications/notifications.service'
+import { EventBusService, NotifyManyRequested, TranscriptionCompleted } from '../shared/events'
 import { NotificationType } from '@mediall/types'
+import { RedisStreamsPublisher } from '../shared/streams/redis-streams.service'
+import { STREAM_NAMES, TranscriptionRequestedSchema } from '@mediall/events'
 
 @Injectable()
 export class TranscriptionService {
+  private readonly logger = new Logger(TranscriptionService.name)
   private anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  private readonly useExternalSvc = process.env.TRANSCRIPTION_SVC_ENABLED === 'true'
 
   constructor(
     private prisma: PrismaService,
-    private notifications: NotificationsService,
+    private eventBus: EventBusService,
+    private streams: RedisStreamsPublisher,
   ) {}
 
   async processTranscript(
@@ -26,6 +32,26 @@ export class TranscriptionService {
 
     if (!meeting) throw new NotFoundException('Reunião não encontrada.')
     if (!transcript.trim()) throw new BadRequestException('Transcrição não pode estar vazia.')
+
+    /* Plano 17, Fase 2: when TRANSCRIPTION_SVC_ENABLED=true, dispatch the
+     * work to transcription-svc via Redis Streams instead of processing
+     * inline. Result comes back via TranscriptionCompleted stream — see
+     * transcription-stream.handler.ts. */
+    if (this.useExternalSvc) {
+      const event = {
+        version: '1' as const,
+        eventId: randomUUID(),
+        occurredAt: new Date().toISOString(),
+        meetingId,
+        recordingUrl: meeting.recordingUrl ?? `pending://${meetingId}`,
+        unitId,
+        requestedBy: userId,
+      }
+      TranscriptionRequestedSchema.parse(event)
+      await this.streams.publish(STREAM_NAMES.transcription.requested, event, { transcript })
+      this.logger.log(`transcription dispatched to svc meeting=${meetingId}`)
+      return { status: 'queued', meetingId }
+    }
 
     // Use Claude API to extract structured insights from the transcript
     const response = await this.anthropic.messages.create({
@@ -72,19 +98,23 @@ ${transcript.substring(0, 12000)}`,
       },
     })
 
-    // Notify all participants
+    // Publish completion event — handlers (notifications, etc.) reagem ao evento
+    this.eventBus.publish(new TranscriptionCompleted(meetingId, meetingId, unitId, parsed.summary))
+
     const participantIds = meeting.participants.map((p) => p.userId).filter((id) => id !== userId)
     if (participantIds.length > 0) {
-      await this.notifications.notifyMany(
-        participantIds.map((id) => ({
-          userId: id,
-          unitId,
-          type: NotificationType.TRANSCRIPT_READY,
-          title: 'Transcrição disponível',
-          body: `A transcrição da reunião "${meeting.title}" foi processada com IA e está disponível.`,
-          entityType: 'meeting',
-          entityId: meetingId,
-        })),
+      this.eventBus.publish(
+        new NotifyManyRequested(
+          participantIds.map((id) => ({
+            userId: id,
+            unitId,
+            type: NotificationType.TRANSCRIPT_READY as any,
+            title: 'Transcrição disponível',
+            body: `A transcrição da reunião "${meeting.title}" foi processada com IA e está disponível.`,
+            entityType: 'meeting',
+            entityId: meetingId,
+          })),
+        ),
       )
     }
 

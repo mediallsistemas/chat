@@ -1,0 +1,12 @@
+// Datasource and generator. Lives in the root of the schemas folder so it
+// loads first when Prisma assembles the multi-file schema.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
