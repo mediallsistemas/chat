@@ -10,17 +10,17 @@
 | # | Arquivo | Descrição | Prioridade |
 |---|---------|-----------|------------|
 | 01 | `01_INFRAESTRUTURA.md` | Servidor, Docker, Nginx, SSL, Banco de dados | 🔴 Fase 1 |
-| 02 | `02_AUTENTICACAO_PERMISSOES.md` | JWT, Guards, RBAC, Multi-unidade, Holding | 🔴 Fase 1 |
-| 03 | `03_GESTAO_ESTRATEGICA.md` | Planos, Objetivos, Metas, OKRs, Etapas, Kanban | 🔴 Fase 1 |
-| 04 | `04_IMPEDIMENTOS.md` | Módulo de impedimentos e escalonamento automático | 🔴 Fase 1 |
-| 05 | `05_PAINEL_DIRETORIA.md` | Dashboard consolidado, faróis, drill-down | 🔴 Fase 1 |
-| 06 | `06_COMUNICACAO_CHAT.md` | Chat, grupos, hierarquia, WebSocket | 🟡 Fase 2 |
+| 02 | `melhorias_concluidos/02_AUTENTICACAO_PERMISSOES.md` | JWT, Guards, RBAC, Multi-unidade, Holding | 🔴 Fase 1 |
+| 03 | `melhorias_concluidos/03_GESTAO_ESTRATEGICA.md` | Planos, Objetivos, Metas, OKRs, Etapas, Kanban | 🔴 Fase 1 |
+| 04 | `melhorias_concluidos/04_IMPEDIMENTOS.md` | Módulo de impedimentos e escalonamento automático | 🔴 Fase 1 |
+| 05 | `melhorias_concluidos/05_PAINEL_DIRETORIA.md` | Dashboard consolidado, faróis, drill-down | 🔴 Fase 1 |
+| 06 | `melhorias_concluidos/06_COMUNICACAO_CHAT.md` | Chat, grupos, hierarquia, WebSocket | 🟡 Fase 2 |
 | 07 | `07_ARQUIVOS.md` | Upload, MinIO, versionamento, permissões | 🟡 Fase 2 |
-| 08 | `08_NOTIFICACOES.md` | Sistema de notificações, push, e-mail | 🟡 Fase 2 |
-| 09 | `09_REUNIOES_VIDEO.md` | Agendamento, LiveKit, WebRTC, agenda integrada | 🟢 Fase 3 |
+| 08 | `melhorias_concluidos/08_NOTIFICACOES.md` | Sistema de notificações, push, e-mail | 🟡 Fase 2 |
+| 09 | `melhorias_concluidos/09_REUNIOES_VIDEO.md` | Agendamento, LiveKit, WebRTC, agenda integrada | 🟢 Fase 3 |
 | 10 | `10_MODELO_DADOS.md` | Todas as tabelas, relações e migrations Prisma | 🔴 Fase 1 |
 | 11 | `11_FRONTEND_ARQUITETURA.md` | Next.js, estrutura de pastas, rotas, componentes | 🔴 Fase 1 |
-| 12 | `12_BACKEND_ARQUITETURA.md` | NestJS, módulos, guards, interceptors, DTOs | 🔴 Fase 1 |
+| 12 | `melhorias_concluidos/12_BACKEND_ARQUITETURA.md` | NestJS, módulos, guards, interceptors, DTOs | 🔴 Fase 1 |
 | 13 | `13_MULTI_UNIDADE_HOLDING.md` | Arquitetura multi-tenant, isolamento por unidade | 🔴 Fase 1 |
 | 14 | `14_ROADMAP_FASES.md` | Cronograma, sprints, entregas por fase | 🔴 Geral |
 | 15 | `15_UI_TEMPLATES.md` | Templates e padrões de UI | 🟡 Geral |
@@ -28,7 +28,7 @@
 | 17 | `17_PLANO_MODULAR_MONOLITH.md` | Modular Monolith forte + extração seletiva (transcription, depois meetings+chat) | 🟣 Arquitetural |
 | 17a | `17a_OBSERVABILIDADE_FASE3.md` | Métricas para decidir Fase 4 (go/no-go) | 🟣 Arquitetural |
 | 17b | `17b_PLANO_REALTIME_SVC_FASE4.md` | Plano detalhado de extrair realtime-svc (chat+meetings) — condicional | 🟣 Arquitetural |
-| 17c | `17c_CHECKLIST_GOLIVE_FASE2.md` | Checklist passo-a-passo para deploy do transcription-svc | 🟣 Arquitetural |
+| 17c | `melhorias_concluidos/17c_CHECKLIST_GOLIVE_FASE2.md` | Checklist passo-a-passo para deploy do transcription-svc | 🟣 Arquitetural |
 
 ---
 

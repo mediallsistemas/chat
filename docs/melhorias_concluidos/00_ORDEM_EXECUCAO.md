@@ -314,6 +314,8 @@ Modificado por: 06, 16
 
 ## Checklist de Execução
 
+> **Todos os 20 planos concluídos.** Registros de conclusão em `docs/melhorias_concluidos/`.
+
 ### Sprint A — Segurança
 - [x] 01 — Helmet + Rate Limiting
 - [x] 02 — JWT Secret Hardening

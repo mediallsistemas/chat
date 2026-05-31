@@ -22,7 +22,7 @@ Arquivos podem ser enviados em qualquer contexto:
 
 PDF, Word, Excel, imagens (JPG, PNG, WEBP), vídeos (MP4), ZIP
 
-**Limite por arquivo:** 100MB (configurável pelo admin)
+**Limite por arquivo:** 20MB (limite atual do `FileInterceptor`; não configurável em runtime)
 
 ---
 

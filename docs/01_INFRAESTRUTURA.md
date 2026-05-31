@@ -88,7 +88,7 @@ services:
 - Cache 1 ano para assets estáticos
 - Gzip habilitado
 - Headers de segurança: `X-Frame-Options`, `X-Content-Type-Options`
-- Rate limiting: máximo 100 req/min por IP no login
+- Rate limiting: máximo 30 req/min por IP no login
 
 ---
 
