@@ -42,6 +42,7 @@ import { ExecutiveReportHandler } from './jobs/handlers/executive-report.handler
 import { TaskCheckinJob } from './jobs/task-checkin.job'
 import { DataRetentionJob } from './jobs/data-retention.job'
 import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
+import { HuddleCleanupJob } from './jobs/huddle-cleanup.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
 import { RolesGuard } from './shared/guards/roles.guard'
 import { UnitScopeGuard } from './shared/guards/unit-scope.guard'
@@ -106,6 +107,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     TaskCheckinJob,
     DataRetentionJob,
     UserStatusCleanupJob,
+    HuddleCleanupJob,
     TranscriptionStreamHandler,
   ],
 })

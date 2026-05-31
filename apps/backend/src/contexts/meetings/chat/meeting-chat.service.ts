@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
 import { AppGateway } from '../../../infrastructure/gateway/app.gateway'
-import { JwtPayload, MeetingStatus } from '@mediall/types'
+import { JwtPayload, MeetingStatus, ParticipantStatus } from '@mediall/types'
 
 const PAGE_SIZE = 40
 
@@ -36,11 +36,11 @@ export class MeetingChatService {
   async findByMeeting(unitId: string, meetingId: string, user: JwtPayload, cursor?: string) {
     const meeting = await this.prisma.meeting.findFirst({
       where: { id: meetingId, unitId },
-      select: { id: true },
+      select: { id: true, status: true },
     })
     if (!meeting) throw new NotFoundException('Reunião não encontrada.')
 
-    await this.assertParticipantOrAttended(meetingId, user.sub)
+    await this.assertCanReadHistory(meetingId, user.sub, meeting.status)
 
     const take = PAGE_SIZE + 1
     const messages = await this.prisma.meetingChatMessage.findMany({
@@ -67,23 +67,32 @@ export class MeetingChatService {
     if (!participant) throw new ForbiddenException('Você não foi convidado para esta reunião.')
   }
 
-  // After the meeting ends, only people who actually attended can read history.
-  private async assertParticipantOrAttended(meetingId: string, userId: string) {
+  // Read access rules:
+  //  - Must be a MeetingParticipant (invitees of this meeting only).
+  //  - Once the meeting is over (DONE/CANCELLED), only people who actually
+  //    attended may read the history — a mere invitee who never joined cannot.
+  //  - While SCHEDULED/IN_PROGRESS, any invitee may open it (the send() path
+  //    still gates posting to IN_PROGRESS).
+  private async assertCanReadHistory(
+    meetingId: string,
+    userId: string,
+    status: string,
+  ) {
     const participant = await this.prisma.meetingParticipant.findFirst({
       where: { meetingId, userId },
       select: { joinedAt: true, status: true },
     })
     if (!participant) throw new ForbiddenException('Você não foi convidado para esta reunião.')
 
-    // For read access we require that the user actually joined at some point
-    // (joinedAt set) OR that the meeting is still in progress / scheduled.
-    // The full attended check is also handled by ParticipantStatus.ATTENDED, so
-    // we permit either signal.
-    const isAttended = participant.status === 'ATTENDED' || participant.joinedAt !== null
-    if (!isAttended) {
-      // Still allow access before the meeting starts (e.g., user opens it early).
-      // The send() path enforces the IN_PROGRESS gate, so reading an empty list
-      // pre-meeting is fine.
+    const meetingOver = status === MeetingStatus.DONE || status === MeetingStatus.CANCELLED
+    if (!meetingOver) return
+
+    const attended =
+      participant.status === ParticipantStatus.ATTENDED || participant.joinedAt !== null
+    if (!attended) {
+      throw new ForbiddenException(
+        'Apenas quem participou da reunião pode ver o histórico do chat.',
+      )
     }
   }
 }

@@ -47,6 +47,6 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     SearchService,
     HuddlesService,
   ],
-  exports: [GroupsService],
+  exports: [GroupsService, HuddlesService],
 })
 export class ChatModule {}
