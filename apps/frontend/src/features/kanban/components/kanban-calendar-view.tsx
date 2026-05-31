@@ -43,6 +43,13 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate()
 }
 
+// Local YYYY-MM-DD key — avoids toISOString() shifting the date across timezones.
+function toLocalKey(d: Date) {
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
+}
+
 export function KanbanCalendarView({ board, onOpenDetail }: Props) {
   const now = new Date()
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -109,7 +116,7 @@ export function KanbanCalendarView({ board, onOpenDetail }: Props) {
           <div key={wi} className={clsx('grid grid-cols-7', wi < weeks.length - 1 && 'border-b border-gs/60')}>
             {week.map((day, di) => {
               const isToday = day ? isSameDay(day, now) : false
-              const dayKey = day ? day.toISOString().slice(0, 10) : null
+              const dayKey = day ? toLocalKey(day) : null
               const dayTasks = dayKey ? (tasksByDay.get(dayKey) ?? []) : []
 
               return (

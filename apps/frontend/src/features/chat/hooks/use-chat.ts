@@ -2,9 +2,9 @@
 
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
-import { api } from '@/shared/lib/api'
+import { api } from '@/lib/api'
 import { getSocket } from '@/shared/lib/socket'
-import { useUnitStore } from '@/shared/store/unit-store'
+import { useUnitStore } from '@/store/unit-store'
 import type {
   Group,
   Message,

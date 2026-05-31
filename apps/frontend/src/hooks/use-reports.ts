@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { api } from '@/lib/api'
 import { useUnitStore } from '@/store/unit-store'
+import { toast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/get-error-message'
 
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
@@ -27,6 +29,8 @@ export function useDownloadImpedimentsPdf() {
         responseType: 'blob',
       })
       triggerDownload(res.data as Blob, `impedimentos-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setIsPending(false)
     }
@@ -47,6 +51,8 @@ export function useDownloadImpedimentsExcel() {
         responseType: 'blob',
       })
       triggerDownload(res.data as Blob, `impedimentos-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setIsPending(false)
     }
@@ -67,6 +73,8 @@ export function useDownloadDashboardPdf() {
         responseType: 'blob',
       })
       triggerDownload(res.data as Blob, `relatorio-executivo-${new Date().toISOString().slice(0, 10)}.pdf`)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setIsPending(false)
     }

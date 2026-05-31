@@ -13,6 +13,7 @@ function Skeleton({ className }: { className: string }) {
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard()
+  const { download: downloadPdf, isPending: exportingPdf } = useDownloadDashboardPdf()
 
   if (isLoading) {
     return (
@@ -68,8 +69,6 @@ export default function DashboardPage() {
       iconColor: metrics.goalsAtRisk > 0 ? 'text-red-500' : undefined,
     },
   ]
-
-  const { download: downloadPdf, isPending: exportingPdf } = useDownloadDashboardPdf()
 
   const criticalImpediments = impediments
     .filter((i) => i.escalationLevel >= 1)

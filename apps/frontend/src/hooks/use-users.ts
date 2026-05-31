@@ -51,10 +51,11 @@ function patch<T>(url: string, body?: unknown): Promise<T> {
   return api.patch<{ data: T }>(url, body).then((r) => r.data.data)
 }
 
-export function useUsers(params?: { page?: number; limit?: number; search?: string }) {
+export function useUsers(params?: { page?: number; limit?: number; search?: string; role?: string }) {
   return useQuery<UsersResponse>({
     queryKey: ['users', params],
     queryFn: () => get<UsersResponse>('/users', params as Record<string, unknown>),
+    placeholderData: (prev) => prev,
   })
 }
 

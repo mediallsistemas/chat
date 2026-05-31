@@ -7,8 +7,6 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token')
   const { pathname } = request.nextUrl
 
-  console.log(`[mw] ${pathname} | token=${JSON.stringify(token)} | raw-cookie=${request.headers.get('cookie')}`)
-
   if (publicRoutes.some((r) => pathname.startsWith(r))) {
     return NextResponse.next()
   }

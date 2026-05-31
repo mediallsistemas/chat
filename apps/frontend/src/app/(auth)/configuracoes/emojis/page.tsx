@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Button, Input, EmptyState } from '@/components/ui'
+import { Button, Input, EmptyState, ConfirmDialog } from '@/components/ui'
 import {
   useCustomEmojis,
   useCreateCustomEmoji,
   useDeleteCustomEmoji,
 } from '@/hooks/use-chat'
 import { useAuthStore } from '@/store/auth-store'
-import { UserRole } from '@mediall/types'
+import { UserRole, type CustomEmoji } from '@mediall/types'
 
 const ADMIN_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR]
 
@@ -18,7 +18,8 @@ export default function EmojisPage() {
 
   const { data: emojis = [], isLoading } = useCustomEmojis()
   const { mutate: createEmoji, isPending: creating } = useCreateCustomEmoji()
-  const { mutate: deleteEmoji } = useDeleteCustomEmoji()
+  const { mutate: deleteEmoji, isPending: deleting } = useDeleteCustomEmoji()
+  const [confirmDelete, setConfirmDelete] = useState<CustomEmoji | null>(null)
 
   const [shortcode, setShortcode] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -125,9 +126,7 @@ export default function EmojisPage() {
               </div>
               {canManage && (
                 <button
-                  onClick={() => {
-                    if (confirm(`Remover :${e.shortcode}:?`)) deleteEmoji(e.id)
-                  }}
+                  onClick={() => setConfirmDelete(e)}
                   className="p-1 text-gx hover:text-red-500 transition-colors shrink-0"
                   aria-label="Remover"
                 >
@@ -138,6 +137,18 @@ export default function EmojisPage() {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete) deleteEmoji(confirmDelete.id, { onSuccess: () => setConfirmDelete(null) })
+        }}
+        title="Remover emoji"
+        message={`Remover o emoji :${confirmDelete?.shortcode}:? Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        loading={deleting}
+      />
     </div>
   )
 }

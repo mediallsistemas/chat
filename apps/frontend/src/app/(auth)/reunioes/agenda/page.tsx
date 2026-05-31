@@ -117,7 +117,7 @@ export default function AgendaPage() {
     } else if (item.type === 'task' && item.meta?.boardId) {
       router.push(`/kanban/${item.meta.boardId}`)
     } else if (item.type === 'objective' && item.meta?.planId) {
-      router.push(`/processos`)
+      router.push(`/processos/${item.meta.planId}/${item.id}`)
     }
   }
 
@@ -165,7 +165,7 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_300px] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
         {/* Calendar grid */}
         <div className="bg-white rounded-xl border border-gs/60 overflow-hidden">
           {/* Day of week headers */}

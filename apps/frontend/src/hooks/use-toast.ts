@@ -13,14 +13,27 @@ type Listener = (toasts: Toast[]) => void
 let listeners: Listener[] = []
 let toasts: Toast[] = []
 
+// Errors stay longer so users can read/act before auto-dismiss.
+const DURATION: Record<Toast['type'], number> = {
+  success: 4000,
+  warning: 6000,
+  error: 8000,
+}
+
+function emit() {
+  listeners.forEach((l) => l(toasts))
+}
+
+export function dismissToast(id: string) {
+  toasts = toasts.filter((t) => t.id !== id)
+  emit()
+}
+
 function notify(toast: Omit<Toast, 'id'>) {
   const id = Math.random().toString(36).slice(2)
   toasts = [...toasts, { ...toast, id }]
-  listeners.forEach((l) => l(toasts))
-  setTimeout(() => {
-    toasts = toasts.filter((t) => t.id !== id)
-    listeners.forEach((l) => l(toasts))
-  }, 4000)
+  emit()
+  setTimeout(() => dismissToast(id), DURATION[toast.type])
 }
 
 export const toast = {

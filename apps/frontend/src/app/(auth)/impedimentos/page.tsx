@@ -41,9 +41,11 @@ function ImpedimentCard({
   onResolve: (imp: ImpedimentWithTask) => void
 }) {
   const cfg = STATUS_CONFIG[imp.status]
-  const daysOpen = Math.floor(
-    (Date.now() - new Date(imp.createdAt).getTime()) / 86_400_000,
-  )
+  // For resolved impediments, measure up to resolution — not "now" (which would
+  // grow forever). Otherwise count days since it was opened.
+  const endTime = imp.resolvedAt ? new Date(imp.resolvedAt).getTime() : Date.now()
+  const daysOpen = Math.floor((endTime - new Date(imp.createdAt).getTime()) / 86_400_000)
+  const isResolved = imp.status === ImpedimentStatus.RESOLVED
 
   return (
     <div
@@ -77,7 +79,9 @@ function ImpedimentCard({
           )}
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-xs text-gx mb-1">{daysOpen}d aberto</p>
+          <p className="text-xs text-gx mb-1">
+            {daysOpen}d {isResolved ? 'até resolver' : 'aberto'}
+          </p>
           <Avatar name={imp.responsibleForResolution} size="sm" />
         </div>
       </div>

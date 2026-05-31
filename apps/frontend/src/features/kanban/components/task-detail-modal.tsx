@@ -2,7 +2,7 @@
 
 import { useState, useRef, KeyboardEvent } from 'react'
 import { clsx } from 'clsx'
-import { Modal } from '@/shared/components/ui'
+import { Modal, ConfirmDialog } from '@/shared/components/ui'
 import {
   useTaskDetail,
   useAddChecklistItem,
@@ -67,12 +67,13 @@ function ChecklistItem({
 
 function DependencyItem({
   dep,
+  isDone,
   onRemove,
 }: {
   dep: TaskDependency
+  isDone: boolean
   onRemove: () => void
 }) {
-  const isDone = !dep.dependsOn.columnId // columnId present means not done — we use a heuristic below
   return (
     <div className="flex items-center gap-2 group py-1">
       <i
@@ -143,6 +144,7 @@ export function TaskDetailModal({ open, onClose, taskId, unitId, boardId }: Prop
   const [newItemText, setNewItemText] = useState('')
   const [depSearch, setDepSearch] = useState('')
   const [showDepPicker, setShowDepPicker] = useState(false)
+  const [confirmRemoveFile, setConfirmRemoveFile] = useState<TaskFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -151,6 +153,11 @@ export function TaskDetailModal({ open, onClose, taskId, unitId, boardId }: Prop
   const doneCount = checklists.filter((c) => c.isDone).length
   const totalCount = checklists.length
   const progress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+
+  // Columns flagged as "done" — used to mark dependencies as completed.
+  const doneColumnIds = new Set(
+    (board?.columns ?? []).filter((c) => c.isDoneColumn).map((c) => c.id),
+  )
 
   // All tasks in the board except current + already-added deps
   const existingDepIds = new Set(dependencies.map((d) => d.dependsOnId))
@@ -288,6 +295,7 @@ export function TaskDetailModal({ open, onClose, taskId, unitId, boardId }: Prop
                   <DependencyItem
                     key={dep.id}
                     dep={dep}
+                    isDone={doneColumnIds.has(dep.dependsOn.columnId)}
                     onRemove={() => removeDep({ taskId, dependsOnId: dep.dependsOnId })}
                   />
                 ))}
@@ -393,7 +401,7 @@ export function TaskDetailModal({ open, onClose, taskId, unitId, boardId }: Prop
                   <FileAttachmentItem
                     key={f.id}
                     file={f}
-                    onRemove={() => removeFile(f.id)}
+                    onRemove={() => setConfirmRemoveFile(f)}
                   />
                 ))}
               </div>
@@ -401,6 +409,18 @@ export function TaskDetailModal({ open, onClose, taskId, unitId, boardId }: Prop
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmRemoveFile !== null}
+        onClose={() => setConfirmRemoveFile(null)}
+        onConfirm={() => {
+          if (confirmRemoveFile) removeFile(confirmRemoveFile.id)
+          setConfirmRemoveFile(null)
+        }}
+        title="Remover arquivo"
+        message={`Remover o anexo "${confirmRemoveFile?.fileName}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+      />
     </Modal>
   )
 }

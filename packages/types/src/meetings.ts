@@ -70,6 +70,7 @@ export interface AgendaItem {
 export interface RecordingConsentStatus {
   consentedCount: number
   totalRequired: number
+  declinedCount: number
   allConsented: boolean
 }
 

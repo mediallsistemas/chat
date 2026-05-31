@@ -205,7 +205,7 @@ export default function ChamadosPage() {
                       <span>{ticket.assignee.name.split(' ')[0]}</span>
                     </div>
                   )}
-                  <div>{format(new Date(ticket.createdAt), "d MMM", { locale: ptBR })}</div>
+                  <div>{format(new Date(ticket.createdAt), "d MMM yyyy", { locale: ptBR })}</div>
                   {ticket._count && ticket._count.comments > 0 && (
                     <div className="flex items-center gap-1 justify-end">
                       <i className="ti ti-message text-[12px]" />
@@ -309,7 +309,8 @@ export default function ChamadosPage() {
                       <button
                         key={s}
                         onClick={() => handleStatusChange(selectedTicket, s)}
-                        className={clsx('text-xs px-3 py-1.5 rounded-lg border border-gs/40 hover:border-gn transition-colors', STATUS_STYLE[s])}
+                        disabled={updateTicket.isPending}
+                        className={clsx('text-xs px-3 py-1.5 rounded-lg border border-gs/40 hover:border-gn transition-colors disabled:opacity-50 disabled:cursor-not-allowed', STATUS_STYLE[s])}
                       >
                         {STATUS_LABEL[s]}
                       </button>

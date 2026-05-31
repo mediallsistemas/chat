@@ -5,19 +5,27 @@ import { PrismaService } from '../prisma/prisma.service'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { PaginationDto } from '../shared/dto/pagination.dto'
-import { JwtPayload } from '@mediall/types'
+import { JwtPayload, UserRole } from '@mediall/types'
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, role?: UserRole) {
     const { page = 1, limit = 50, search } = pagination
     const skip = (page - 1) * limit
 
-    const where = search
-      ? { OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { email: { contains: search, mode: 'insensitive' as const } }] }
-      : {}
+    const where: Record<string, unknown> = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+      ]
+    }
+    if (role) {
+      // Match users who hold the given role in at least one unit.
+      where.unitAccess = { some: { role } }
+    }
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({

@@ -128,8 +128,17 @@ export function SearchPanel({ onClose, onJumpToMessage, currentGroupId }: Props)
           {results.map((r) => (
             <li
               key={r.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onJumpToMessage(r)}
-              className="px-4 py-3 hover:bg-page-bg cursor-pointer"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onJumpToMessage(r)
+                }
+              }}
+              aria-label={`Mensagem de ${r.senderName} em ${r.groupName}`}
+              className="px-4 py-3 hover:bg-page-bg cursor-pointer focus:outline-none focus:bg-page-bg focus:ring-2 focus:ring-inset focus:ring-gd/30"
             >
               <div className="flex items-center gap-2 text-[11px] text-gx mb-1">
                 <i className="ti ti-message-2 shrink-0" aria-hidden="true" />

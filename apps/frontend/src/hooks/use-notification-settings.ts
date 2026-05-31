@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { toast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/get-error-message'
 import type { NotificationSetting } from '@mediall/types'
 
 function unwrap<T>(res: { data: { data: T } }): T {
@@ -20,7 +22,11 @@ export function useNotificationSettings() {
   const { mutate: updateSettings, isPending: isSaving } = useMutation({
     mutationFn: (data: Partial<NotificationSetting>) =>
       api.patch('/notifications/settings', data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification-settings'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-settings'] })
+      toast.success('Preferências de notificação salvas.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
   })
 
   const { data: mutedGroups = [] } = useQuery({

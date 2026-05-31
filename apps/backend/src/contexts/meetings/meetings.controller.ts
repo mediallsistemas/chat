@@ -136,9 +136,15 @@ export class MeetingsController {
   submitConsent(
     @Param('unitId') unitId: string,
     @Param('meetingId') meetingId: string,
+    @Body() body: { consent?: boolean },
     @Req() req: any,
   ) {
-    return this.meetingsService.submitRecordingConsent(unitId, meetingId, req.user.sub)
+    return this.meetingsService.submitRecordingConsent(
+      unitId,
+      meetingId,
+      req.user.sub,
+      body?.consent ?? true,
+    )
   }
 
   @Post(':meetingId/recording/start')

@@ -30,6 +30,22 @@ api.interceptors.request.use(async (config) => {
   return config
 })
 
+// Single-flight refresh: concurrent 401s share one /auth/refresh call.
+let refreshing: Promise<boolean> | null = null
+
+async function tryRefresh(): Promise<boolean> {
+  if (!refreshing) {
+    refreshing = axios
+      .post(`${baseURL}/auth/refresh`, null, { withCredentials: true })
+      .then(() => true)
+      .catch(() => false)
+      .finally(() => {
+        refreshing = null
+      })
+  }
+  return refreshing
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -49,8 +65,14 @@ api.interceptors.response.use(
     }
 
     const isAuthEndpoint = error.config?.url?.includes('/auth/')
-    if (error.response?.status === 401 && !isAuthEndpoint) {
-      window.location.href = '/login'
+    if (error.response?.status === 401 && !isAuthEndpoint && !error.config?._retried) {
+      // Access token likely expired — try a silent refresh, then replay once.
+      const ok = await tryRefresh()
+      if (ok) {
+        error.config._retried = true
+        return api.request(error.config)
+      }
+      if (typeof window !== 'undefined') window.location.href = '/login'
     }
     return Promise.reject(error)
   },

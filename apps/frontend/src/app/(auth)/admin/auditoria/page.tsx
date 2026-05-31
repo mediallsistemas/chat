@@ -36,7 +36,13 @@ export default function AuditoriaPage() {
 
   const { data, isLoading } = useAuditLogs({ page, limit: 50, action: action || undefined, entityType: entityType || undefined })
 
-  function applyFilter() {
+  // Filters apply immediately on change; reset to the first page each time.
+  function onActionChange(value: string) {
+    setAction(value)
+    setPage(1)
+  }
+  function onEntityChange(value: string) {
+    setEntityType(value)
     setPage(1)
   }
 
@@ -50,7 +56,7 @@ export default function AuditoriaPage() {
           <label className="block text-xs font-medium text-gd mb-1">Ação</label>
           <select
             value={action}
-            onChange={(e) => setAction(e.target.value)}
+            onChange={(e) => onActionChange(e.target.value)}
             className="input text-sm h-8"
           >
             {ACTIONS.map((a) => (
@@ -62,7 +68,7 @@ export default function AuditoriaPage() {
           <label className="block text-xs font-medium text-gd mb-1">Entidade</label>
           <select
             value={entityType}
-            onChange={(e) => setEntityType(e.target.value)}
+            onChange={(e) => onEntityChange(e.target.value)}
             className="input text-sm h-8"
           >
             {ENTITY_TYPES.map((e) => (
@@ -70,9 +76,6 @@ export default function AuditoriaPage() {
             ))}
           </select>
         </div>
-        <Button size="sm" onClick={applyFilter}>
-          <i className="ti ti-filter" /> Filtrar
-        </Button>
       </div>
 
       {/* Table */}

@@ -21,6 +21,9 @@ export default function AuthError({ error, reset }: Props) {
         <p className="text-sm text-gs mt-1 max-w-xs">
           Ocorreu um erro inesperado. Se o problema persistir, entre em contato com o suporte.
         </p>
+        {error.digest && (
+          <p className="text-[11px] text-gx mt-2 font-mono">Código do erro: {error.digest}</p>
+        )}
       </div>
       <Button size="sm" variant="secondary" onClick={reset}>
         <i className="ti ti-refresh mr-1" aria-hidden="true" />

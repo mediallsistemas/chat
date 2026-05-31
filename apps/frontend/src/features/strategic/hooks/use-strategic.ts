@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/shared/lib/api'
+import { api } from '@/lib/api'
 import { toast } from '@/shared/hooks/use-toast'
 import { getErrorMessage } from '@/shared/lib/get-error-message'
 import type {

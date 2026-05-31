@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuthStore } from '@/store/auth-store'
+import { useAuth } from '@/hooks/use-auth'
 import { UserRole } from '@mediall/types'
 
 // Routes a colaborador / visualizador should NEVER reach by URL typing.
@@ -29,7 +29,7 @@ const RESTRICTED_ROLES: UserRole[] = [UserRole.COLABORADOR, UserRole.VISUALIZADO
 export function RoleGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const user = useAuthStore((s) => s.user)
+  const { user, isLoading } = useAuth()
 
   const blocked =
     !!user &&
@@ -39,6 +39,16 @@ export function RoleGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (blocked) router.replace('/meu')
   }, [blocked, router])
+
+  // Don't render restricted content before we know who the user is —
+  // otherwise it flashes for a frame before the redirect fires.
+  if (!user && isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <i className="ti ti-loader-2 animate-spin text-2xl text-gx" aria-hidden="true" />
+      </div>
+    )
+  }
 
   if (blocked) return null
   return <>{children}</>

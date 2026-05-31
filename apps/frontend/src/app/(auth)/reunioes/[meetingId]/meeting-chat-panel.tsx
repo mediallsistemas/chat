@@ -17,16 +17,30 @@ export function MeetingChatPanel({ meetingId, readOnly = false, onClose }: Props
   const { mutate: send, isPending: sending } = useSendMeetingChat(meetingId)
   const [text, setText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true)
 
   const messages = data?.pages.flatMap((p) => p.messages) ?? []
 
+  // Only autoscroll when the user is at the bottom — loading older pages
+  // (which also grows messages.length) must not jump the view down.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (atBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages.length])
+
+  function handleScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }
 
   function submit() {
     const content = text.trim()
     if (!content) return
+    // Jump to bottom to show the user's own message even if scrolled up.
+    atBottomRef.current = true
     send(content, {
       onSuccess: () => setText(''),
     })
@@ -56,7 +70,7 @@ export function MeetingChatPanel({ meetingId, readOnly = false, onClose }: Props
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {hasNextPage && (
           <button
             onClick={() => fetchNextPage()}

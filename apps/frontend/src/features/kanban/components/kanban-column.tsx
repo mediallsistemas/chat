@@ -67,6 +67,15 @@ export function KanbanColumn({ column, onAddTask, onOpenDetail }: Props) {
               onOpenDetail={onOpenDetail}
             />
           ))}
+          {column.tasks.length === 0 && (
+            <button
+              onClick={() => onAddTask(column.id)}
+              className="w-full flex flex-col items-center justify-center gap-1 py-6 text-xs text-gx hover:text-gd transition-colors"
+            >
+              <i className="ti ti-inbox text-xl opacity-50" aria-hidden="true" />
+              Nenhuma tarefa — adicionar
+            </button>
+          )}
         </div>
       </SortableContext>
     </div>

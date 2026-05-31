@@ -38,12 +38,23 @@ export function KanbanCard({ task, isDoneColumn, onOpenDetail }: Props) {
     transition,
   }
 
+  const ariaLabel = [
+    `Tarefa: ${task.title}`,
+    `prioridade ${PRIORITY_LABEL[task.priority]}`,
+    task.isBlocked && 'bloqueada',
+    isPending && 'aceitação pendente',
+    task._count.checklists > 0 && `${task._count.checklists} itens de checklist`,
+  ]
+    .filter(Boolean)
+    .join(', ')
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      aria-label={ariaLabel}
       onClick={() => !isDragging && onOpenDetail(task.id)}
       className={clsx(
         'bg-white rounded-xl border p-3 text-sm select-none',

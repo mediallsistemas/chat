@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { useUnitStore } from '@/store/unit-store'
+import { toast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/get-error-message'
 import type { TranscriptResult } from '@mediall/types'
 
 function url(unitId: string, meetingId: string) {
@@ -35,6 +37,8 @@ export function useProcessTranscript(meetingId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transcript', activeUnit?.id, meetingId] })
       qc.invalidateQueries({ queryKey: ['meeting', activeUnit?.id, meetingId] })
+      toast.success('Transcrição processada com sucesso.')
     },
+    onError: (err) => toast.error(getErrorMessage(err)),
   })
 }

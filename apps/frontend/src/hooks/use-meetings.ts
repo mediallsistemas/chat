@@ -161,10 +161,11 @@ export function useRequestRecordingConsent() {
 export function useSubmitRecordingConsent() {
   const unitId = useUnitStore((s) => s.activeUnit?.id)
   return useMutation({
-    mutationFn: (meetingId: string) =>
+    mutationFn: ({ meetingId, consent = true }: { meetingId: string; consent?: boolean }) =>
       axios
         .post<{ data: RecordingConsentStatus }>(
           getUrl(unitId!, `/${meetingId}/recording/consent`),
+          { consent },
         )
         .then((r) => r.data.data),
     onError: (err) => toast.error(getErrorMessage(err)),

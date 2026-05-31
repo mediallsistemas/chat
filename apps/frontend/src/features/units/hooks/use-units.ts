@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/shared/lib/api'
-import { useUnitStore } from '@/shared/store/unit-store'
+import { api } from '@/lib/api'
+import { useUnitStore } from '@/store/unit-store'
 import type { Unit } from '@mediall/types'
 
 export function useUnits() {

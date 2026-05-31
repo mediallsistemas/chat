@@ -70,6 +70,12 @@ export function ThreadPanel({ groupId, parentId, currentUserId, onClose }: Props
           <ThreadMessageRow key={r.id} msg={r} isParent={false} isMine={r.senderId === currentUserId} />
         ))}
 
+        {!isLoading && data?.parent && data.replies.length === 0 && (
+          <p className="text-xs text-gx text-center py-6">
+            Nenhuma resposta ainda. Seja o primeiro a responder.
+          </p>
+        )}
+
         <div ref={bottomRef} />
       </div>
 

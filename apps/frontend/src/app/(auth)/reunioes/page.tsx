@@ -9,7 +9,7 @@ import { format, isPast, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
 import { PageHeader } from '@/components/shared'
-import { Button, FormModal } from '@/components/ui'
+import { Button, FormModal, ConfirmDialog } from '@/components/ui'
 import { useMeetings, useCreateMeeting, useCancelMeeting } from '@/hooks/use-meetings'
 import { useAuthStore } from '@/store/auth-store'
 import { MeetingStatus, ParticipantStatus } from '@mediall/types'
@@ -164,6 +164,8 @@ function MeetingCard({
 export default function ReunioesPage() {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
+  const [cancelId, setCancelId] = useState<string | null>(null)
+  const [pastLimit, setPastLimit] = useState(10)
   const { data: meetings = [], isLoading } = useMeetings()
   const createMeeting = useCreateMeeting()
   const cancelMeeting = useCancelMeeting()
@@ -198,7 +200,7 @@ export default function ReunioesPage() {
   }
 
   function handleCancel(meetingId: string) {
-    if (confirm('Cancelar esta reunião?')) cancelMeeting.mutate(meetingId)
+    setCancelId(meetingId)
   }
 
   return (
@@ -278,7 +280,7 @@ export default function ReunioesPage() {
                 Anteriores
               </h2>
               <div className="space-y-3 opacity-70">
-                {past.slice(0, 10).map((m) => (
+                {past.slice(0, pastLimit).map((m) => (
                   <MeetingCard
                     key={m.id}
                     meeting={m}
@@ -287,6 +289,13 @@ export default function ReunioesPage() {
                   />
                 ))}
               </div>
+              {past.length > pastLimit && (
+                <div className="flex justify-center mt-3">
+                  <Button size="sm" variant="secondary" onClick={() => setPastLimit((n) => n + 10)}>
+                    Ver mais ({past.length - pastLimit})
+                  </Button>
+                </div>
+              )}
             </section>
           )}
         </>
@@ -352,6 +361,19 @@ export default function ReunioesPage() {
           </select>
         </div>
       </FormModal>
+
+      <ConfirmDialog
+        open={cancelId !== null}
+        onClose={() => setCancelId(null)}
+        onConfirm={() => {
+          if (cancelId) cancelMeeting.mutate(cancelId, { onSuccess: () => setCancelId(null) })
+        }}
+        title="Cancelar reunião"
+        message="Cancelar esta reunião? Os participantes serão notificados e a reunião não poderá ser reaberta."
+        confirmLabel="Cancelar reunião"
+        cancelLabel="Voltar"
+        loading={cancelMeeting.isPending}
+      />
     </div>
   )
 }

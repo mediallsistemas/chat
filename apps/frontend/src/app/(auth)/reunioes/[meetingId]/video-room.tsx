@@ -33,6 +33,7 @@ function RecordingControls({
     meetingId?: string
     consentedCount: number
     totalRequired: number
+    declinedCount: number
     allConsented: boolean
   } | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -52,9 +53,17 @@ function RecordingControls({
         meetingId: string
         consentedCount: number
         totalRequired: number
+        declinedCount: number
         allConsented: boolean
       }) => {
-        if (data.meetingId === meetingId) setConsentState({ requested: true, consentedCount: data.consentedCount, totalRequired: data.totalRequired, allConsented: data.allConsented })
+        if (data.meetingId === meetingId)
+          setConsentState({
+            requested: true,
+            consentedCount: data.consentedCount,
+            totalRequired: data.totalRequired,
+            declinedCount: data.declinedCount,
+            allConsented: data.allConsented,
+          })
       },
     )
 
@@ -76,11 +85,18 @@ function RecordingControls({
 
   async function handleRequestConsent() {
     await requestConsent.mutateAsync(meetingId)
-    setConsentState({ requested: true, consentedCount: 0, totalRequired: 0, allConsented: false })
+    setConsentState({ requested: true, consentedCount: 0, totalRequired: 0, declinedCount: 0, allConsented: false })
   }
 
   async function handleConsent() {
-    const result = await submitConsent.mutateAsync(meetingId)
+    const result = await submitConsent.mutateAsync({ meetingId, consent: true })
+    setConsentState({ requested: true, ...result })
+    setConsented(true)
+    setShowConsentModal(false)
+  }
+
+  async function handleDecline() {
+    const result = await submitConsent.mutateAsync({ meetingId, consent: false })
     setConsentState({ requested: true, ...result })
     setConsented(true)
     setShowConsentModal(false)
@@ -121,10 +137,19 @@ function RecordingControls({
               Iniciar gravação
             </button>
           ) : consentState ? (
-            <div className="flex items-center gap-2 px-4 py-2 bg-black/60 text-white text-sm rounded-lg">
-              <i className="ti ti-loader animate-spin text-[14px]" />
-              Aguardando consentimento ({consentState.consentedCount}/{consentState.totalRequired})
-            </div>
+            consentState.declinedCount > 0 ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-red-900/70 text-white text-sm rounded-lg">
+                <i className="ti ti-ban text-[14px]" />
+                {consentState.declinedCount === 1
+                  ? '1 participante recusou a gravação'
+                  : `${consentState.declinedCount} participantes recusaram a gravação`}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-black/60 text-white text-sm rounded-lg">
+                <i className="ti ti-loader animate-spin text-[14px]" />
+                Aguardando consentimento ({consentState.consentedCount}/{consentState.totalRequired})
+              </div>
+            )
           ) : (
             <button
               onClick={handleRequestConsent}
@@ -157,15 +182,16 @@ function RecordingControls({
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowConsentModal(false)}
-                className="flex-1 py-2 border border-gs/40 rounded-lg text-sm text-gd hover:bg-gs/10 transition-colors"
+                onClick={handleDecline}
+                disabled={submitConsent.isPending}
+                className="flex-1 py-2 border border-gs/40 rounded-lg text-sm text-gd hover:bg-gs/10 transition-colors disabled:opacity-50"
               >
                 Recusar
               </button>
               <button
                 onClick={handleConsent}
                 disabled={submitConsent.isPending}
-                className="flex-1 py-2 bg-gn text-gd rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+                className="flex-1 py-2 bg-gn text-gd rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 Aceitar
               </button>

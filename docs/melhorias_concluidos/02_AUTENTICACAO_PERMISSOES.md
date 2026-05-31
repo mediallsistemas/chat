@@ -166,7 +166,7 @@ units
 - [x] Decorator `@CurrentUser()` para injetar usuário nas rotas
 - [x] Endpoint `POST /api/auth/login`
 - [x] Endpoint `POST /api/auth/logout`
-- [x] Endpoint `POST /api/auth/refresh` — silent refresh via refresh cookie (Redis SHA-256)
+- [x] Endpoint `POST /api/auth/refresh` — access token 15min + refresh token 7d (cookie HttpOnly separado, path `/api/v1/auth`). Hash SHA-256 do refresh guardado em Redis (`refresh:<userId>`), com rotação a cada refresh e invalidação no logout. Frontend: interceptor de 401 em `api.ts` faz refresh silencioso single-flight e re-tenta a request uma vez.
 - [x] Middleware de timeout de inatividade no frontend — `InactivityGuard` (30min)
 - [x] Seletor de unidade no header (usuários MULTI) — header.tsx com dropdown e useUnits hook
 - [x] Bloqueio de conta após 5 tentativas falhas (failedLogins/lockedAt); desbloqueio via `PATCH /users/:id/unlock`

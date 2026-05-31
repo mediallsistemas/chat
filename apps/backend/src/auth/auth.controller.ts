@@ -38,10 +38,17 @@ export class AuthController {
     return this.authService.login(dto, res)
   }
 
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return this.authService.refresh(req.cookies?.refresh_token, res)
+  }
+
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@Res({ passthrough: true }) res: Response) {
-    return this.authService.logout(res)
+  logout(@CurrentUser() user: JwtPayload, @Res({ passthrough: true }) res: Response) {
+    return this.authService.logout(res, user)
   }
 
   @Get('me')

@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { api } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useUnitStore } from '@/store/unit-store'
+import { toast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/get-error-message'
 import type {
   Group,
   Message,
@@ -23,6 +25,11 @@ import type {
 
 function getUrl(unitId: string, path: string) {
   return `/units/${unitId}${path}`
+}
+
+// Surfaces any chat mutation failure to the user instead of failing silently.
+function onMutationError(err: unknown) {
+  toast.error(getErrorMessage(err))
 }
 
 // ─── Groups ───────────────────────────────────────────────────────────────────
@@ -53,6 +60,7 @@ export function useCreateGroup() {
       archiveAt?: string
     }) => api.post(getUrl(activeUnit!.id, '/groups'), dto),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -80,6 +88,7 @@ export function useJoinGroup() {
       qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] })
       qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id, 'discoverable'] })
     },
+    onError: onMutationError,
   })
 }
 
@@ -90,6 +99,7 @@ export function useArchiveGroup() {
     mutationFn: (groupId: string) =>
       api.patch(getUrl(activeUnit!.id, `/groups/${groupId}/archive`)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -231,6 +241,7 @@ export function useSendMessage(groupId: string) {
       fileSize?: number
       fileMime?: string
     }) => api.post(getUrl(activeUnit!.id, `/groups/${groupId}/messages`), dto),
+    onError: onMutationError,
   })
 }
 
@@ -239,6 +250,7 @@ export function useDeleteMessage(groupId: string) {
   return useMutation({
     mutationFn: (messageId: string) =>
       api.delete(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}`)),
+    onError: onMutationError,
   })
 }
 
@@ -249,6 +261,7 @@ export function usePinMessage(groupId: string) {
     mutationFn: (messageId: string) =>
       api.patch(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/pin`)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages', groupId, 'pinned'] }),
+    onError: onMutationError,
   })
 }
 
@@ -257,6 +270,7 @@ export function useToggleReaction(groupId: string) {
   return useMutation({
     mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
       api.post(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/reactions`), { emoji }),
+    onError: onMutationError,
   })
 }
 
@@ -292,6 +306,7 @@ export function useToggleBookmark() {
         : api.post(url, { messageId })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookmarks', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -328,6 +343,7 @@ export function useCreateCustomEmoji() {
       return res.data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-emojis', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -338,6 +354,7 @@ export function useDeleteCustomEmoji() {
     mutationFn: (id: string) =>
       api.delete(getUrl(activeUnit!.id, `/chat/custom-emojis/${id}`)),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['custom-emojis', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -355,6 +372,7 @@ export function useCreateReminder() {
       return res.data.data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reminders', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -433,6 +451,7 @@ export function useUploadFile() {
       })
       return res.data.data
     },
+    onError: onMutationError,
   })
 }
 
@@ -443,6 +462,7 @@ export function useStartDirect() {
     mutationFn: (targetUserId: string) =>
       api.post<{ data: Group }>(getUrl(activeUnit!.id, '/groups/direct'), { targetUserId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['groups', activeUnit?.id] }),
+    onError: onMutationError,
   })
 }
 
@@ -560,6 +580,7 @@ export function useStartHuddle() {
       )
       return res.data.data
     },
+    onError: onMutationError,
   })
 }
 
@@ -572,6 +593,7 @@ export function useJoinHuddle() {
       )
       return res.data.data
     },
+    onError: onMutationError,
   })
 }
 
@@ -580,5 +602,6 @@ export function useLeaveHuddle() {
   return useMutation({
     mutationFn: (huddleId: string) =>
       api.post(getUrl(activeUnit!.id, `/huddles/${huddleId}/leave`), {}),
+    onError: onMutationError,
   })
 }

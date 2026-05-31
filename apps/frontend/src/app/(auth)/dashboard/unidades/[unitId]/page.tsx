@@ -118,6 +118,17 @@ export default function UnitDetailPage() {
         </section>
       )}
 
+      {/* Empty state when the unit has nothing to show below the metrics */}
+      {plans.length === 0 && impediments.length === 0 && (
+        <div className="bg-white rounded-2xl border border-gs/60 py-16 text-center">
+          <i className="ti ti-folder-off text-4xl text-gx opacity-50 block mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-gray-800">Nada cadastrado nesta unidade</p>
+          <p className="text-xs text-gx mt-1">
+            Quando houver planos estratégicos ou impedimentos, eles aparecerão aqui.
+          </p>
+        </div>
+      )}
+
       {/* Impediments */}
       {impediments.length > 0 && (
         <section className="bg-white rounded-2xl border border-gs/60 overflow-hidden">

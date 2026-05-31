@@ -22,7 +22,7 @@ import { KanbanCalendarView } from './kanban-calendar-view'
 import { KanbanGanttView } from './kanban-gantt-view'
 import { useKanbanBoard, useMoveTask, type KanbanBoardData, type KanbanColumnItem } from '@/features/kanban/hooks/use-kanban'
 import { KanbanBoardSkeleton } from './kanban-board-skeleton'
-import { useUnitStore } from '@/shared/store/unit-store'
+import { useUnitStore } from '@/store/unit-store'
 
 type ViewMode = 'board' | 'list' | 'calendar' | 'gantt'
 
@@ -145,7 +145,19 @@ export function KanbanBoardClient({ boardId, boardName }: Props) {
   )
 
   if (isLoading) return <KanbanBoardSkeleton />
-  if (!board) return null
+  if (!board) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <i className="ti ti-layout-kanban-off text-4xl text-gx" aria-hidden="true" />
+        <div>
+          <p className="text-sm font-semibold text-gray-800">Board não encontrado</p>
+          <p className="text-xs text-gx mt-0.5">
+            Este quadro não existe ou não está disponível para a unidade ativa.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3 h-full">

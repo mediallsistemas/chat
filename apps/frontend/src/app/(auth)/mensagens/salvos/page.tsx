@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Avatar, Button } from '@/components/ui'
+import { Avatar, Button, ConfirmDialog } from '@/components/ui'
 import { useBookmarks, useToggleBookmark } from '@/hooks/use-chat'
 import { GroupType } from '@mediall/types'
 
@@ -17,7 +18,8 @@ const GROUP_TYPE_ICON: Record<GroupType, string> = {
 export default function SalvosPage() {
   const router = useRouter()
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useBookmarks()
-  const { mutate: toggleBookmark } = useToggleBookmark()
+  const { mutate: toggleBookmark, isPending: removing } = useToggleBookmark()
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
   const bookmarks = data?.pages.flatMap((p) => p.bookmarks) ?? []
 
@@ -113,7 +115,7 @@ export default function SalvosPage() {
               </div>
 
               <button
-                onClick={() => toggleBookmark({ messageId: b.messageId, isBookmarked: true })}
+                onClick={() => setConfirmRemoveId(b.messageId)}
                 className="p-1.5 rounded-lg text-gd hover:bg-page-bg transition-colors shrink-0"
                 aria-label="Remover dos salvos"
                 title="Remover dos salvos"
@@ -150,6 +152,23 @@ export default function SalvosPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmRemoveId !== null}
+        onClose={() => setConfirmRemoveId(null)}
+        onConfirm={() => {
+          if (confirmRemoveId) {
+            toggleBookmark(
+              { messageId: confirmRemoveId, isBookmarked: true },
+              { onSuccess: () => setConfirmRemoveId(null) },
+            )
+          }
+        }}
+        title="Remover dos salvos"
+        message="Remover esta mensagem das salvas? Você pode salvá-la novamente a qualquer momento."
+        confirmLabel="Remover"
+        loading={removing}
+      />
     </div>
   )
 }

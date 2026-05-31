@@ -319,6 +319,8 @@ import type { Plan, JwtPayload } from '@mediall/types'
 ### Concluído — outras dívidas (plano 16)
 - [x] `task-checkin.job.ts` implementado (cron 9h diário, publica `NotifyUserRequested` via EventBus)
 
+### Concluído — deadline-alert
+- [x] `deadline-alert.job.ts` separado — cron diário 7h, alerta tarefas que vencem em ≤48h (não concluídas/não bloqueadas), publica `NotifyUserRequested` com `NotificationType.TASK_DUE_SOON`. Registrado no `AppModule`.
+
 ### Pendente — não-bloqueante (escopo menor)
-- [ ] BullMQ real (hoje impediment-escalation usa @nestjs/schedule cron — funciona, mas BullMQ daria retry/dashboard)
-- [ ] `deadline-alert.job.ts` separado (hoje a função similar está coberta por TaskCheckinJob + NotificationType.TASK_DUE_SOON nos handlers)
+- [ ] BullMQ real (hoje impediment-escalation usa @nestjs/schedule cron — funciona, mas BullMQ daria retry/dashboard) — *refactor de infra de filas; comportamento atual já cobre o caso de uso, sem ganho funcional. Não codável sem decisão de produto sobre dashboard/retry.*

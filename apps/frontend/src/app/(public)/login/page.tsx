@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -10,10 +10,17 @@ import { LoginResponse } from '@mediall/types'
 export default function LoginPage() {
   const router = useRouter()
   const setUser = useAuthStore((s) => s.setUser)
+  const user = useAuthStore((s) => s.user)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+
+  // Already authenticated → skip the login form.
+  useEffect(() => {
+    if (user) router.replace('/dashboard')
+  }, [user, router])
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
@@ -25,7 +32,15 @@ export default function LoginPage() {
       router.push('/dashboard')
     },
     onError: (err: any) => {
-      setError(err.response?.data?.message || 'E-mail ou senha inválidos.')
+      const status = err.response?.status
+      const apiMessage = err.response?.data?.message
+      if (status === 423) {
+        setError(apiMessage || 'Conta bloqueada por excesso de tentativas. Contate um administrador.')
+      } else if (status === 429) {
+        setError('Muitas tentativas. Aguarde alguns instantes e tente novamente.')
+      } else {
+        setError(apiMessage || 'E-mail ou senha inválidos.')
+      }
     },
   })
 
@@ -35,50 +50,127 @@ export default function LoginPage() {
     mutate()
   }
 
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: 'var(--gd)' }}
-    >
-      {/* Subtle grid texture */}
-      <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 48px)',
-        }}
-      />
+  const inputStyle: React.CSSProperties = {
+    backgroundColor: 'var(--wh)',
+    border: '1px solid var(--gs)',
+    color: '#1a1a1a',
+  }
 
-      <div className="relative w-full max-w-sm mx-4">
-        {/* Logo / brand */}
-        <div className="mb-8 text-center">
+  return (
+    <div className="min-h-screen flex">
+      {/* ── Left brand panel ─────────────────────────────── */}
+      <div
+        className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden flex-col justify-between p-12 xl:p-16"
+        style={{ backgroundColor: 'var(--gd)' }}
+      >
+        {/* Subtle grid texture */}
+        <div
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 48px)',
+          }}
+        />
+        {/* Lime glow accent */}
+        <div
+          className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full pointer-events-none"
+          style={{ backgroundColor: 'var(--gn)', opacity: 0.12, filter: 'blur(80px)' }}
+        />
+
+        {/* Top — logo */}
+        <div className="relative flex items-center gap-3">
           <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4"
+            className="inline-flex items-center justify-center w-11 h-11 rounded-2xl"
             style={{ backgroundColor: 'var(--gn)' }}
           >
             <i className="ti ti-building-hospital text-2xl" style={{ color: 'var(--gd)' }} />
           </div>
-          <h1
-            className="text-2xl font-bold tracking-tight text-white"
+          <span
+            className="text-lg font-bold tracking-tight text-white"
             style={{ fontFamily: 'var(--font-sora)' }}
           >
             Mediall Brasil
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
-            Plataforma Corporativa Interna
-          </p>
+          </span>
         </div>
 
-        {/* Card */}
-        <div
-          className="rounded-2xl p-8"
-          style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-        >
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Middle — headline + texts */}
+        <div className="relative max-w-lg">
+          <h1
+            className="text-4xl xl:text-5xl font-bold leading-tight text-white"
+            style={{ fontFamily: 'var(--font-sora)' }}
+          >
+            Gestão integrada para
+            <span style={{ color: 'var(--gn)' }}> toda a holding</span>.
+          </h1>
+          <p className="mt-6 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            Acesse a plataforma corporativa interna para acompanhar planos estratégicos,
+            comunicação e tarefas de todas as unidades em um só lugar.
+          </p>
+
+          <ul className="mt-10 space-y-4">
+            {[
+              { icon: 'ti-target-arrow', text: 'Planejamento estratégico e OKRs' },
+              { icon: 'ti-messages', text: 'Comunicação e reuniões integradas' },
+              { icon: 'ti-layout-kanban', text: 'Tarefas e acompanhamento por unidade' },
+            ].map((item) => (
+              <li key={item.icon} className="flex items-center gap-3">
+                <span
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
+                  style={{ backgroundColor: 'rgba(191,239,69,0.15)' }}
+                >
+                  <i className={`ti ${item.icon} text-base`} style={{ color: 'var(--gn)' }} />
+                </span>
+                <span className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                  {item.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Bottom — copyright */}
+        <p className="relative text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
+          © {new Date().getFullYear()} Mediall Brasil · Plataforma Corporativa Interna
+        </p>
+      </div>
+
+      {/* ── Right form panel ─────────────────────────────── */}
+      <div
+        className="flex-1 flex items-center justify-center px-6 py-12"
+        style={{ backgroundColor: 'var(--bg)' }}
+      >
+        <div className="w-full max-w-md">
+          {/* Mobile logo (left panel is hidden) */}
+          <div className="lg:hidden flex items-center gap-3 mb-10">
+            <div
+              className="inline-flex items-center justify-center w-10 h-10 rounded-xl"
+              style={{ backgroundColor: 'var(--gd)' }}
+            >
+              <i className="ti ti-building-hospital text-xl" style={{ color: 'var(--gn)' }} />
+            </div>
+            <span
+              className="text-base font-bold tracking-tight"
+              style={{ fontFamily: 'var(--font-sora)', color: 'var(--gd)' }}
+            >
+              Mediall Brasil
+            </span>
+          </div>
+
+          <h2
+            className="text-2xl font-bold tracking-tight"
+            style={{ fontFamily: 'var(--font-sora)', color: 'var(--gd)' }}
+          >
+            Bem-vindo de volta
+          </h2>
+          <p className="text-sm mt-1.5" style={{ color: 'var(--gx)' }}>
+            Entre com suas credenciais para continuar.
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div>
               <label
                 className="block text-xs font-semibold mb-2 uppercase tracking-wider"
-                style={{ color: 'rgba(255,255,255,0.55)' }}
+                style={{ color: 'var(--gx)' }}
               >
                 E-mail
               </label>
@@ -90,47 +182,52 @@ export default function LoginPage() {
                 autoComplete="email"
                 placeholder="seu@email.com"
                 className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gn)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
+                style={inputStyle}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gd)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--gs)')}
               />
             </div>
 
             <div>
               <label
                 className="block text-xs font-semibold mb-2 uppercase tracking-wider"
-                style={{ color: 'rgba(255,255,255,0.55)' }}
+                style={{ color: 'var(--gx)' }}
               >
                 Senha
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gn)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="w-full rounded-xl px-4 py-3 pr-11 text-sm outline-none transition-all"
+                  style={inputStyle}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gd)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--gs)')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors"
+                  style={{ color: 'var(--gx)' }}
+                >
+                  <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'} text-base`} aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
             {error && (
               <div
+                role="alert"
+                aria-live="assertive"
                 className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
-                style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#fca5a5' }}
+                style={{ backgroundColor: 'rgba(239,68,68,0.10)', color: '#b91c1c' }}
               >
-                <i className="ti ti-alert-circle text-base" />
+                <i className="ti ti-alert-circle text-base shrink-0" aria-hidden="true" />
                 {error}
               </div>
             )}
@@ -138,7 +235,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isPending}
-              className="w-full rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-50"
+              className="w-full rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-50 hover:brightness-95"
               style={{
                 backgroundColor: 'var(--gn)',
                 color: 'var(--gd)',
@@ -156,10 +253,6 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-
-        <p className="text-center text-xs mt-6" style={{ color: 'rgba(255,255,255,0.25)' }}>
-          © {new Date().getFullYear()} Mediall Brasil
-        </p>
       </div>
     </div>
   )

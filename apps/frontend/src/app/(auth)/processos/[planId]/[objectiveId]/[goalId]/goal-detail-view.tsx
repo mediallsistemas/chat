@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { clsx } from 'clsx'
 import { usePlans, useGoals, useCompletePhase, useMacroTasks } from '@/hooks/use-strategic'
 import { useUnitStore } from '@/store/unit-store'
-import { KanbanBoard, KanbanBoardSkeleton } from '@/components/kanban'
-import { Button, ProgressBar } from '@/components/ui'
-import { EditPhaseModal, CreateMacroTaskModal, CreatePhaseModal } from '@/components/strategic'
+import { KanbanBoard, KanbanBoardSkeleton } from '@/features/kanban'
+import { Button, ProgressBar, ConfirmDialog } from '@/components/ui'
+import { EditPhaseModal, CreateMacroTaskModal, CreatePhaseModal } from '@/features/strategic/components'
 import { PhaseStatus, TaskStatus } from '@mediall/types'
 import type { GoalWithPhases } from '@/hooks/use-strategic'
 import type { MacroTask } from '@mediall/types'
@@ -41,6 +41,7 @@ function PhaseTimeline({
 }) {
   const [editingPhase, setEditingPhase] = useState<PhaseSummary | null>(null)
   const [addPhaseOpen, setAddPhaseOpen] = useState(false)
+  const [confirmComplete, setConfirmComplete] = useState(false)
   const activePhase = phases.find((p) => p.status === PhaseStatus.ACTIVE)
 
   return (
@@ -53,13 +54,29 @@ function PhaseTimeline({
             Nova etapa
           </Button>
           {activePhase && (
-            <Button size="sm" variant="secondary" loading={completing} onClick={() => onComplete(activePhase.id)}>
+            <Button size="sm" variant="secondary" loading={completing} onClick={() => setConfirmComplete(true)}>
               <i className="ti ti-check text-sm" aria-hidden="true" />
               Concluir etapa ativa
             </Button>
           )}
         </div>
       </div>
+
+      {activePhase && (
+        <ConfirmDialog
+          open={confirmComplete}
+          onClose={() => setConfirmComplete(false)}
+          onConfirm={() => {
+            onComplete(activePhase.id)
+            setConfirmComplete(false)
+          }}
+          title="Concluir etapa"
+          message={`Concluir a etapa "${activePhase.title}"? O quadro Kanban será arquivado, a próxima etapa será desbloqueada e os responsáveis serão notificados. Esta ação não pode ser desfeita.`}
+          confirmLabel="Concluir etapa"
+          variant="primary"
+          loading={completing}
+        />
+      )}
 
       <div className="flex items-start overflow-x-auto pb-1">
         {phases.map((phase, i) => {

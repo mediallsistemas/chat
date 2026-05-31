@@ -4,7 +4,7 @@ import { UsersService } from './users.service'
 import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { UpdateStatusDto } from './dto/update-status.dto'
-import { PaginationDto } from '../shared/dto/pagination.dto'
+import { ListUsersDto } from './dto/list-users.dto'
 import { Roles } from '../shared/decorators/roles.decorator'
 import { CurrentUser } from '../shared/decorators/current-user.decorator'
 import { UserRole, JwtPayload } from '@mediall/types'
@@ -26,8 +26,8 @@ export class UsersController {
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA)
-  findAll(@Query() pagination: PaginationDto) {
-    return this.usersService.findAll(pagination)
+  findAll(@Query() query: ListUsersDto) {
+    return this.usersService.findAll(query, query.role)
   }
 
   @Get(':id')

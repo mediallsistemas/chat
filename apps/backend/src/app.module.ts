@@ -40,6 +40,7 @@ import { MeetingReminderJob } from './jobs/meeting-reminder.job'
 import { ExecutiveReportJob } from './jobs/executive-report.job'
 import { ExecutiveReportHandler } from './jobs/handlers/executive-report.handler'
 import { TaskCheckinJob } from './jobs/task-checkin.job'
+import { DeadlineAlertJob } from './jobs/deadline-alert.job'
 import { DataRetentionJob } from './jobs/data-retention.job'
 import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
 import { HuddleCleanupJob } from './jobs/huddle-cleanup.job'
@@ -105,6 +106,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     ExecutiveReportJob,
     ExecutiveReportHandler,
     TaskCheckinJob,
+    DeadlineAlertJob,
     DataRetentionJob,
     UserStatusCleanupJob,
     HuddleCleanupJob,

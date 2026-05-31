@@ -42,6 +42,8 @@ export class MeetingsService {
 
   // meetingId → Set of userIds who consented to recording
   private recordingConsents = new Map<string, Set<string>>()
+  // meetingId → Set of userIds who explicitly declined recording
+  private recordingDeclines = new Map<string, Set<string>>()
   // meetingId → LiveKit egressId
   private activeEgresses = new Map<string, string>()
 
@@ -194,6 +196,7 @@ export class MeetingsService {
     })
 
     this.recordingConsents.delete(meetingId)
+    this.recordingDeclines.delete(meetingId)
     this.eventBus.publish(new MeetingEndedEvent(unitId, { meetingId }))
     return updated
   }
@@ -338,16 +341,31 @@ export class MeetingsService {
     }
 
     this.recordingConsents.set(meetingId, new Set())
+    this.recordingDeclines.set(meetingId, new Set())
     this.eventBus.publish(new RecordingConsentRequestedEvent(unitId, meetingId))
     return { requested: true }
   }
 
-  async submitRecordingConsent(unitId: string, meetingId: string, userId: string) {
+  async submitRecordingConsent(
+    unitId: string,
+    meetingId: string,
+    userId: string,
+    consent = true,
+  ) {
     await this.findOne(unitId, meetingId)
 
     const consents = this.recordingConsents.get(meetingId) ?? new Set()
-    consents.add(userId)
+    const declines = this.recordingDeclines.get(meetingId) ?? new Set()
+
+    if (consent) {
+      consents.add(userId)
+      declines.delete(userId)
+    } else {
+      declines.add(userId)
+      consents.delete(userId)
+    }
     this.recordingConsents.set(meetingId, consents)
+    this.recordingDeclines.set(meetingId, declines)
 
     const meeting = await this.prisma.meeting.findFirst({
       where: { id: meetingId },
@@ -360,18 +378,23 @@ export class MeetingsService {
     })
 
     const requiredIds = meeting?.participants.map((p) => p.userId) ?? []
-    const allConsented = requiredIds.every((id) => consents.has(id))
+    // A single decline blocks recording — everyone required must have consented
+    // and nobody may have declined.
+    const allConsented =
+      declines.size === 0 && requiredIds.every((id) => consents.has(id))
+
+    const status = {
+      consentedCount: consents.size,
+      totalRequired: requiredIds.length,
+      declinedCount: declines.size,
+      allConsented,
+    }
 
     this.eventBus.publish(
-      new RecordingConsentUpdatedEvent(unitId, {
-        meetingId,
-        consentedCount: consents.size,
-        totalRequired: requiredIds.length,
-        allConsented,
-      }),
+      new RecordingConsentUpdatedEvent(unitId, { meetingId, ...status }),
     )
 
-    return { consentedCount: consents.size, totalRequired: requiredIds.length, allConsented }
+    return status
   }
 
   async startRecording(unitId: string, meetingId: string, userId: string) {

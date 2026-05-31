@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth-store'
+import { useUIStore } from '@/store/ui-store'
 import { useUnits } from '@/hooks/use-units'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useUpdateStatus } from '@/hooks/use-auth'
@@ -38,13 +39,23 @@ function statusExpiryLabel(iso: string | null): string {
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Painel da Diretoria',
+  '/processos/painel': 'Painel Estratégico',
   '/processos': 'Planos Estratégicos',
   '/kanban': 'Kanban',
+  '/mensagens/salvos': 'Mensagens salvas',
   '/mensagens': 'Mensagens',
+  '/impedimentos': 'Impedimentos',
+  '/reunioes': 'Reuniões',
+  '/documentos': 'Documentos',
+  '/chamados': 'Chamados',
   '/agenda': 'Agenda',
   '/arquivos': 'Arquivos',
+  '/configuracoes/notificacoes': 'Notificações',
+  '/configuracoes/emojis': 'Emojis customizados',
   '/admin/usuarios': 'Usuários',
+  '/admin/auditoria': 'Auditoria',
   '/admin/unidades': 'Unidades',
+  '/meu': 'Minha visão',
 }
 
 function getPageTitle(pathname: string): string {
@@ -74,7 +85,10 @@ export function Header() {
   const [customStatusEmoji, setCustomStatusEmoji] = useState('💬')
   const { unreadCount } = useNotifications()
   const { mutate: updateStatus, isPending: savingStatus } = useUpdateStatus()
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const unitMenuRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   function applyPreset(preset: StatusPreset) {
     updateStatus({
@@ -105,16 +119,38 @@ export function Header() {
     setUserMenuOpen(false)
   }
 
-  // Close unit menu when clicking outside
+  // Close any open dropdown on outside click or Escape
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (unitMenuRef.current && !unitMenuRef.current.contains(e.target as Node)) {
-        setUnitMenuOpen(false)
-      }
+    const anyOpen = unitMenuOpen || notifOpen || userMenuOpen
+    if (!anyOpen) return
+
+    function closeAll() {
+      setUnitMenuOpen(false)
+      setNotifOpen(false)
+      setUserMenuOpen(false)
+      setStatusEditOpen(false)
     }
-    if (unitMenuOpen) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [unitMenuOpen])
+
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node
+      const insideAny =
+        unitMenuRef.current?.contains(target) ||
+        notifRef.current?.contains(target) ||
+        userMenuRef.current?.contains(target)
+      if (!insideAny) closeAll()
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeAll()
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [unitMenuOpen, notifOpen, userMenuOpen])
 
   const { mutate: logout } = useMutation({
     mutationFn: () => api.post('/auth/logout'),
@@ -130,10 +166,19 @@ export function Header() {
 
   return (
     <header className="h-14 bg-white border-b border-gs flex items-center justify-between px-5 shrink-0 z-10">
-      {/* Page title */}
-      <h1 className="text-[15px] font-semibold text-gray-800 font-sora">
-        {getPageTitle(pathname)}
-      </h1>
+      {/* Page title + mobile menu toggle */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={toggleSidebar}
+          aria-label="Abrir menu"
+          className="md:hidden p-2 -ml-2 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+        >
+          <i className="ti ti-menu-2 text-[20px]" aria-hidden="true" />
+        </button>
+        <h1 className="text-[15px] font-semibold text-gray-800 font-sora truncate">
+          {getPageTitle(pathname)}
+        </h1>
+      </div>
 
       {/* Unit selector — visible only for MULTI scope */}
       {user?.accessScope === AccessScope.MULTI && activeUnit && (
@@ -187,7 +232,7 @@ export function Header() {
       {/* Right actions */}
       <div className="flex items-center gap-1">
         {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notifRef}>
           <button
             onClick={() => setNotifOpen((v) => !v)}
             aria-label="Notificações"
@@ -205,7 +250,7 @@ export function Header() {
         </div>
 
         {/* User menu */}
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setUserMenuOpen((v) => !v)}
             className="flex items-center gap-2 pl-1 pr-2 py-1.5 rounded-lg hover:bg-page-bg transition-colors"
@@ -297,10 +342,10 @@ export function Header() {
                     <div className="flex gap-1">
                       <input
                         value={customStatusEmoji}
-                        onChange={(e) => setCustomStatusEmoji(e.target.value.slice(0, 2))}
+                        onChange={(e) => setCustomStatusEmoji(Array.from(e.target.value).slice(0, 2).join(''))}
                         className="w-10 text-center text-sm border border-gs rounded-lg px-1 py-1"
                         aria-label="Emoji do status"
-                        maxLength={2}
+                        maxLength={8}
                       />
                       <input
                         value={customStatusText}
@@ -329,8 +374,8 @@ export function Header() {
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-page-bg hover:text-gray-900 transition-colors"
                 onClick={() => router.push('/meu')}
               >
-                <i className="ti ti-user text-base" aria-hidden="true" />
-                Meu perfil
+                <i className="ti ti-layout-dashboard text-base" aria-hidden="true" />
+                Minha visão
               </button>
               <button
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"

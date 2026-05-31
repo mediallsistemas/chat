@@ -40,11 +40,12 @@ const DAY_WIDTH = 32 // px per day
 const VISIBLE_DAYS = 60
 
 export function KanbanGanttView({ board, onOpenDetail }: Props) {
-  const [viewStart] = useState(() => {
+  const defaultStart = () => {
     const d = new Date()
     d.setDate(d.getDate() - 7) // start 7 days before today
     return startOfDay(d)
-  })
+  }
+  const [viewStart, setViewStart] = useState(defaultStart)
 
   const tasks = useMemo<GanttTask[]>(() =>
     board.columns.flatMap((col) =>
@@ -122,8 +123,38 @@ export function KanbanGanttView({ board, onOpenDetail }: Props) {
   }
 
   return (
-    <div className="overflow-auto rounded-xl border border-gs/60 bg-white">
-      <div style={{ minWidth: totalWidth + 200 }}>
+    <div className="space-y-2">
+      {/* Window navigation */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gx">
+          {format(viewStart, "d MMM", { locale: ptBR })} – {format(addDays(viewStart, VISIBLE_DAYS - 1), "d MMM yyyy", { locale: ptBR })}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setViewStart((d) => startOfDay(addDays(d, -30)))}
+            className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gray-800 transition-colors"
+            aria-label="Período anterior"
+          >
+            <i className="ti ti-chevron-left text-sm" aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => setViewStart(defaultStart())}
+            className="text-xs px-2.5 py-1 rounded-lg border border-gs/40 text-gd hover:bg-page-bg transition-colors"
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => setViewStart((d) => startOfDay(addDays(d, 30)))}
+            className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gray-800 transition-colors"
+            aria-label="Próximo período"
+          >
+            <i className="ti ti-chevron-right text-sm" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-auto rounded-xl border border-gs/60 bg-white">
+        <div style={{ minWidth: totalWidth + 200 }}>
         {/* Header: day labels */}
         <div className="flex border-b border-gs/60 bg-page-bg sticky top-0 z-10">
           {/* Row label column */}
@@ -212,6 +243,7 @@ export function KanbanGanttView({ board, onOpenDetail }: Props) {
             </span>
           </div>
         )}
+        </div>
       </div>
     </div>
   )

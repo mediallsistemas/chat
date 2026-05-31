@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
-import { Button } from '@/components/ui'
+import { Button, ConfirmDialog } from '@/components/ui'
 import { useMeeting, useJoinMeeting, useStartMeeting, useEndMeeting } from '@/hooks/use-meetings'
 import { useTranscript, useProcessTranscript } from '@/hooks/use-transcription'
 import { useAuthStore } from '@/store/auth-store'
@@ -44,6 +44,7 @@ export default function MeetingDetailPage() {
   const [liveKitSession, setLiveKitSession] = useState<LiveKitTokenResponse | null>(null)
   const [transcriptText, setTranscriptText] = useState('')
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
 
   const { data: transcriptData } = useTranscript(meetingId)
   const processTranscript = useProcessTranscript(meetingId)
@@ -91,6 +92,7 @@ export default function MeetingDetailPage() {
 
   async function handleEnd() {
     await endMeeting.mutateAsync(meetingId)
+    setConfirmEnd(false)
     setLiveKitSession(null)
   }
 
@@ -101,7 +103,7 @@ export default function MeetingDetailPage() {
           <span className="text-white font-semibold truncate">{meeting.title}</span>
           <div className="flex items-center gap-2">
             {isOwner && meeting.status === MeetingStatus.IN_PROGRESS && (
-              <Button size="sm" variant="danger" onClick={handleEnd}>
+              <Button size="sm" variant="danger" onClick={() => setConfirmEnd(true)}>
                 Encerrar reunião
               </Button>
             )}
@@ -118,6 +120,15 @@ export default function MeetingDetailPage() {
             isOwner={isOwner}
           />
         </div>
+        <ConfirmDialog
+          open={confirmEnd}
+          onClose={() => setConfirmEnd(false)}
+          onConfirm={handleEnd}
+          title="Encerrar reunião"
+          message="Encerrar a reunião para todos os participantes? A sala será fechada e esta ação não pode ser desfeita."
+          confirmLabel="Encerrar"
+          loading={endMeeting.isPending}
+        />
       </div>
     )
   }

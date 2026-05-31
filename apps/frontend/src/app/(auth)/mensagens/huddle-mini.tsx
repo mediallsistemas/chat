@@ -10,6 +10,7 @@ import {
 import { useState } from 'react'
 import { clsx } from 'clsx'
 import { useLeaveHuddle } from '@/hooks/use-chat'
+import { ConfirmDialog } from '@/components/ui'
 import type { HuddleTokenResponse } from '@mediall/types'
 
 interface Props {
@@ -42,6 +43,7 @@ function HuddleControls({ huddleId, onLeave }: { huddleId: string; onLeave: () =
   const participants = useParticipants()
   const { mutate: leaveServer } = useLeaveHuddle()
   const [muted, setMuted] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
 
   function toggleMute() {
     const next = !muted
@@ -51,6 +53,7 @@ function HuddleControls({ huddleId, onLeave }: { huddleId: string; onLeave: () =
 
   function handleLeave() {
     leaveServer(huddleId)
+    setConfirmLeave(false)
     onLeave()
   }
 
@@ -85,13 +88,22 @@ function HuddleControls({ huddleId, onLeave }: { huddleId: string; onLeave: () =
         />
       </button>
       <button
-        onClick={handleLeave}
+        onClick={() => setConfirmLeave(true)}
         className="p-2 rounded-lg bg-red-500 hover:bg-red-600 transition-colors"
         aria-label="Sair do huddle"
         title="Sair do huddle"
       >
         <i className="ti ti-phone-off text-sm" aria-hidden="true" />
       </button>
+
+      <ConfirmDialog
+        open={confirmLeave}
+        onClose={() => setConfirmLeave(false)}
+        onConfirm={handleLeave}
+        title="Sair do huddle"
+        message="Sair da conversa de voz? Você pode entrar novamente enquanto o huddle estiver ativo."
+        confirmLabel="Sair"
+      />
     </div>
   )
 }

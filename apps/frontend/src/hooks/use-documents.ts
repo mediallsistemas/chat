@@ -71,13 +71,29 @@ export function useUploadDocument() {
   const { activeUnit } = useUnitStore()
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ file, name, description, folderId }: { file: File; name: string; description?: string; folderId?: string }) => {
+    mutationFn: async ({
+      file,
+      name,
+      description,
+      folderId,
+      onProgress,
+    }: {
+      file: File
+      name: string
+      description?: string
+      folderId?: string
+      onProgress?: (percent: number) => void
+    }) => {
       const form = new FormData()
       form.append('file', file)
       form.append('name', name)
       if (description) form.append('description', description)
       if (folderId) form.append('folderId', folderId)
-      const res = await api.post(`${base(activeUnit!.id)}/documents/upload`, form)
+      const res = await api.post(`${base(activeUnit!.id)}/documents/upload`, form, {
+        onUploadProgress: (e) => {
+          if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      })
       return res.data.data as Document
     },
     onSuccess: (_, vars) => {

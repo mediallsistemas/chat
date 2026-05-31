@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePlanDetail, useGoals, usePlanUnit } from '@/features/strategic/hooks/use-strategic'
 import { useUnits } from '@/features/units/hooks/use-units'
+import { toast } from '@/hooks/use-toast'
 import { ProgressBar, TrafficLight } from '@/shared/components/ui'
 import type { TrafficLightStatus } from '@/shared/components/ui'
 import { TrafficLight as TL, PhaseStatus } from '@mediall/types'
@@ -25,7 +26,10 @@ export function ObjectiveDetailView({ planId, objectiveId }: { planId: string; o
     if (!planUnit || !units.length) return
     if (activeUnit?.id === planUnit.unitId) return
     const target = units.find((u) => u.id === planUnit.unitId)
-    if (target) switchUnit(target)
+    if (target) {
+      switchUnit(target)
+      toast.warning(`Unidade alterada para "${target.name}" para abrir este plano.`)
+    }
   }, [planUnit, units, activeUnit?.id, switchUnit])
 
   const unitId = activeUnit?.id === planUnit?.unitId ? activeUnit?.id : undefined

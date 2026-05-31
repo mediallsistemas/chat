@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { clsx } from 'clsx'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 
 interface ModalProps {
   open: boolean
@@ -14,6 +15,8 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
+  useFocusTrap(dialogRef, open)
+
   useEffect(() => {
     if (!open) return
 
@@ -23,9 +26,6 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
 
     document.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
-
-    // Focus the dialog on open
-    dialogRef.current?.focus()
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)

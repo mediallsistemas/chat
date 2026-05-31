@@ -5,7 +5,7 @@ import { clsx } from 'clsx'
 import { PageHeader, MetricCard } from '@/shared/components'
 import { ProgressBar, TrafficLight } from '@/shared/components/ui'
 import { useStrategicPanel } from '@/features/strategic/hooks/use-strategic'
-import { useUnitStore } from '@/shared/store/unit-store'
+import { useUnitStore } from '@/store/unit-store'
 import type { TrafficLightStatus } from '@/shared/components/ui'
 
 const TRAFFIC_LIGHT_MAP: Record<string, TrafficLightStatus> = {
@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
 function PanelSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((n) => (
           <div key={n} className="h-24 rounded-2xl bg-gs/30 animate-pulse" />
         ))}
@@ -56,6 +56,16 @@ export default function PainelEstrategicoPage() {
       </div>
 
       {isLoading && <PanelSkeleton />}
+
+      {!isLoading && !data && (
+        <div className="bg-white rounded-2xl border border-gs/60 py-16 text-center">
+          <i className="ti ti-chart-bar-off text-4xl text-gx opacity-50 block mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-gray-800">Não foi possível carregar o painel</p>
+          <p className="text-xs text-gx mt-1">
+            Verifique se há uma unidade selecionada ou tente novamente em instantes.
+          </p>
+        </div>
+      )}
 
       {data && (
         <>
@@ -140,7 +150,7 @@ export default function PainelEstrategicoPage() {
                   <div className="divide-y divide-gs/30">
                     {plan.objectives.map((obj) => {
                       const progress = Math.round(Number(obj.progressPct))
-                      const tl = TRAFFIC_LIGHT_MAP[obj.trafficLight] ?? 'green'
+                      const tl = TRAFFIC_LIGHT_MAP[obj.trafficLight] ?? 'GREEN'
                       const activePhases = obj.goals.flatMap((g) => g.phases)
 
                       return (

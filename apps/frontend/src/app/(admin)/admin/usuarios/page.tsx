@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,7 +8,7 @@ import { clsx } from 'clsx'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PageHeader } from '@/components/shared'
-import { Button, Badge, Avatar, Modal, SkeletonList } from '@/components/ui'
+import { Button, Badge, Avatar, Modal, ConfirmDialog, SkeletonList } from '@/components/ui'
 import { UserRole, AccessScope } from '@mediall/types'
 import { useUsers, useCreateUser, useUpdateUser, useUnlockUser, type UserListItem } from '@/hooks/use-users'
 
@@ -41,8 +41,9 @@ function lastSeenLabel(lastSeenAt: string | null): string {
 }
 
 function UserRow({ user }: { user: UserListItem }) {
-  const { mutate: updateUser } = useUpdateUser(user.id)
+  const { mutate: updateUser, isPending: updating } = useUpdateUser(user.id)
   const { mutate: unlockUser } = useUnlockUser()
+  const [confirmToggle, setConfirmToggle] = useState(false)
 
   const primaryRole = user.unitAccess.find((u) => u.isPrimary)?.role ?? user.unitAccess[0]?.role
 
@@ -107,7 +108,7 @@ function UserRow({ user }: { user: UserListItem }) {
             </button>
           )}
           <button
-            onClick={() => updateUser({ isActive: !user.isActive })}
+            onClick={() => setConfirmToggle(true)}
             className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gray-800 transition-colors"
             aria-label={user.isActive ? `Desativar ${user.name}` : `Ativar ${user.name}`}
             title={user.isActive ? 'Desativar' : 'Ativar'}
@@ -115,19 +116,45 @@ function UserRow({ user }: { user: UserListItem }) {
             <i className={clsx('ti text-base', user.isActive ? 'ti-user-off' : 'ti-user-check')} aria-hidden="true" />
           </button>
         </div>
+        <ConfirmDialog
+          open={confirmToggle}
+          onClose={() => setConfirmToggle(false)}
+          onConfirm={() =>
+            updateUser(
+              { isActive: !user.isActive },
+              { onSuccess: () => setConfirmToggle(false) },
+            )
+          }
+          title={user.isActive ? 'Desativar usuário' : 'Ativar usuário'}
+          message={
+            user.isActive
+              ? `Desativar ${user.name}? A pessoa perderá o acesso à plataforma até ser reativada.`
+              : `Reativar o acesso de ${user.name}?`
+          }
+          confirmLabel={user.isActive ? 'Desativar' : 'Ativar'}
+          variant={user.isActive ? 'danger' : 'primary'}
+          loading={updating}
+        />
       </td>
     </tr>
   )
 }
 
 export default function UsuariosPage() {
+  const PAGE_SIZE = 20
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL')
+  const [page, setPage] = useState(1)
   const [modalOpen, setModalOpen] = useState(false)
-  const searchTimerRef = { current: null as ReturnType<typeof setTimeout> | null }
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { data, isLoading } = useUsers({ search: debouncedSearch || undefined, limit: 100 })
+  const { data, isLoading } = useUsers({
+    search: debouncedSearch || undefined,
+    role: roleFilter === 'ALL' ? undefined : roleFilter,
+    page,
+    limit: PAGE_SIZE,
+  })
   const { mutate: createUser, isPending: creating } = useCreateUser()
 
   const {
@@ -140,7 +167,15 @@ export default function UsuariosPage() {
   function onSearchChange(value: string) {
     setSearch(value)
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(value), 300)
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value)
+      setPage(1)
+    }, 300)
+  }
+
+  function onRoleChange(value: UserRole | 'ALL') {
+    setRoleFilter(value)
+    setPage(1)
   }
 
   function onSubmit(values: CreateForm) {
@@ -152,10 +187,9 @@ export default function UsuariosPage() {
     })
   }
 
-  const allUsers = data?.users ?? []
-  const filtered = roleFilter === 'ALL'
-    ? allUsers
-    : allUsers.filter((u) => u.unitAccess.some((ua) => ua.role === roleFilter))
+  const users = data?.users ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -185,7 +219,7 @@ export default function UsuariosPage() {
 
         <select
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
+          onChange={(e) => onRoleChange(e.target.value as UserRole | 'ALL')}
           className="text-sm bg-white border border-gs rounded-xl px-3 py-2 focus:outline-none focus:border-gd text-gray-700"
           aria-label="Filtrar por papel"
         >
@@ -197,7 +231,7 @@ export default function UsuariosPage() {
 
         {data && (
           <span className="text-xs text-gx ml-auto">
-            {filtered.length} de {data.total} usuários
+            {total} {total === 1 ? 'usuário' : 'usuários'}
           </span>
         )}
       </div>
@@ -222,20 +256,45 @@ export default function UsuariosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gs/40">
-              {filtered.map((user) => (
+              {users.map((user) => (
                 <UserRow key={user.id} user={user} />
               ))}
             </tbody>
           </table>
         )}
 
-        {!isLoading && filtered.length === 0 && (
+        {!isLoading && users.length === 0 && (
           <div className="py-12 text-center">
             <i className="ti ti-users-off text-3xl text-gx mb-2 block" aria-hidden="true" />
             <p className="text-sm text-gx">Nenhum usuário encontrado</p>
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {!isLoading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <i className="ti ti-chevron-left text-sm" aria-hidden="true" /> Anterior
+          </Button>
+          <span className="text-xs text-gx">
+            Página {page} de {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Próxima <i className="ti ti-chevron-right text-sm" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
 
       {/* New user modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Novo usuário" size="md">

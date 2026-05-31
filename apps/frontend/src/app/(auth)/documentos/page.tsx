@@ -8,7 +8,8 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
 import { PageHeader } from '@/components/shared'
-import { Button, FormModal } from '@/components/ui'
+import { Button, FormModal, ConfirmDialog } from '@/components/ui'
+import { toast } from '@/hooks/use-toast'
 import { FormField } from '@/components/ui/form-field'
 import {
   useDocumentFolders,
@@ -45,11 +46,17 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024 // 25 MB
+
 export default function DocumentosPage() {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadPct, setUploadPct] = useState(0)
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: 'folder' | 'document'; id: string; name: string } | null
+  >(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { data: folders = [], isLoading: foldersLoading } = useDocumentFolders()
@@ -79,14 +86,29 @@ export default function DocumentosPage() {
 
   async function handleUpload(data: UploadDocForm) {
     if (!uploadFile) return
+    setUploadPct(0)
     await uploadDoc.mutateAsync({
       file: uploadFile,
       name: data.name.trim(),
       folderId: activeFolderId ?? undefined,
+      onProgress: setUploadPct,
     })
     setUploadFile(null)
+    setUploadPct(0)
     uploadForm.reset()
     setShowUpload(false)
+  }
+
+  function handlePickFile(f: File | undefined) {
+    if (!f) return
+    if (f.size > MAX_UPLOAD_BYTES) {
+      toast.error(`Arquivo muito grande (${formatSize(f.size)}). Máximo ${formatSize(MAX_UPLOAD_BYTES)}.`)
+      return
+    }
+    setUploadFile(f)
+    if (!uploadForm.getValues('name')) {
+      uploadForm.setValue('name', f.name.replace(/\.[^.]+$/, ''))
+    }
   }
 
   return (
@@ -138,7 +160,7 @@ export default function DocumentosPage() {
                       <span className="text-xs text-gs ml-auto">{folder._count?.documents ?? 0}</span>
                     </button>
                     <button
-                      onClick={() => deleteFolder.mutate(folder.id)}
+                      onClick={() => setPendingDelete({ type: 'folder', id: folder.id, name: folder.name })}
                       className="opacity-0 group-hover:opacity-100 p-1 text-gs hover:text-red-500 transition-all"
                       aria-label="Excluir pasta"
                     >
@@ -206,7 +228,7 @@ export default function DocumentosPage() {
                       </a>
                     )}
                     <button
-                      onClick={() => deleteDoc.mutate(doc.id)}
+                      onClick={() => setPendingDelete({ type: 'document', id: doc.id, name: doc.name })}
                       className="p-1.5 rounded-lg text-gs hover:text-red-500 hover:bg-red-50 transition-colors"
                       aria-label="Excluir"
                     >
@@ -256,15 +278,7 @@ export default function DocumentosPage() {
           <input
             ref={fileInputRef}
             type="file"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) {
-                setUploadFile(f)
-                if (!uploadForm.getValues('name')) {
-                  uploadForm.setValue('name', f.name.replace(/\.[^.]+$/, ''))
-                }
-              }
-            }}
+            onChange={(e) => handlePickFile(e.target.files?.[0])}
             className="hidden"
           />
           <button
@@ -282,9 +296,21 @@ export default function DocumentosPage() {
               <div>
                 <i className="ti ti-upload text-2xl text-gs block mb-1" />
                 <p className="text-sm text-gs">Clique para selecionar</p>
+                <p className="text-[11px] text-gs mt-0.5">Máximo {formatSize(MAX_UPLOAD_BYTES)}</p>
               </div>
             )}
           </button>
+          {uploadDoc.isPending && (
+            <div className="mt-2">
+              <div className="h-1.5 w-full bg-gs/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gn transition-all"
+                  style={{ width: `${uploadPct}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-gs mt-1 text-center">Enviando… {uploadPct}%</p>
+            </div>
+          )}
         </div>
         <FormField label="Nome do documento" error={uploadForm.formState.errors.name} required>
           <input
@@ -294,6 +320,29 @@ export default function DocumentosPage() {
           />
         </FormField>
       </FormModal>
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return
+          const onSuccess = () => setPendingDelete(null)
+          if (pendingDelete.type === 'folder') {
+            deleteFolder.mutate(pendingDelete.id, { onSuccess })
+          } else {
+            deleteDoc.mutate(pendingDelete.id, { onSuccess })
+          }
+        }}
+        title={pendingDelete?.type === 'folder' ? 'Excluir pasta' : 'Excluir documento'}
+        message={
+          pendingDelete?.type === 'folder'
+            ? `Excluir a pasta "${pendingDelete?.name}" e todo o seu conteúdo? Esta ação não pode ser desfeita.`
+            : `Excluir o documento "${pendingDelete?.name}"? Esta ação não pode ser desfeita.`
+        }
+        confirmLabel="Excluir"
+        loading={deleteFolder.isPending || deleteDoc.isPending}
+      />
     </div>
   )
 }

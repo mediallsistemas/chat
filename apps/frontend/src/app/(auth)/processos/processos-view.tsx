@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { clsx } from 'clsx'
 import { ProgressBar, TrafficLight, Button } from '@/components/ui'
-import { PlanListSkeleton, ObjectivesSkeleton } from '@/components/strategic/plan-list-skeleton'
+import { PlanListSkeleton, ObjectivesSkeleton } from '@/features/strategic/components/plan-list-skeleton'
 import type { TrafficLightStatus } from '@/components/ui'
 import {
   usePlans,
@@ -23,7 +23,7 @@ import {
   EditPlanModal,
   EditObjectiveModal,
   EditGoalModal,
-} from '@/components/strategic'
+} from '@/features/strategic/components'
 import { useUnitStore } from '@/store/unit-store'
 import { PlanStatus, PhaseStatus, TrafficLight as TL } from '@mediall/types'
 import type { PlanPhase } from '@mediall/types'

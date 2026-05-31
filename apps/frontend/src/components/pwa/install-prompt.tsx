@@ -12,7 +12,8 @@ export function InstallPwaBanner() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('pwa-install-dismissed')
+    // Persist across sessions so we don't nag on every new tab/visit.
+    const stored = localStorage.getItem('pwa-install-dismissed')
     if (stored) {
       setDismissed(true)
       return
@@ -37,7 +38,7 @@ export function InstallPwaBanner() {
   }
 
   function handleDismiss() {
-    sessionStorage.setItem('pwa-install-dismissed', '1')
+    localStorage.setItem('pwa-install-dismissed', '1')
     setDismissed(true)
     setPromptEvent(null)
   }
@@ -45,7 +46,8 @@ export function InstallPwaBanner() {
   if (!promptEvent || dismissed) return null
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+    // Anchored bottom-left so it doesn't overlap the bottom-right toasts.
+    <div className="fixed bottom-4 left-4 z-40 w-full max-w-sm pr-4">
       <div className="bg-gd text-white rounded-xl shadow-xl p-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg bg-gn flex items-center justify-center shrink-0">
           <span className="text-gd font-bold text-lg leading-none">M</span>

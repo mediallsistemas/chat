@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/shared/lib/api'
+import { api } from '@/lib/api'
 
 export interface UnitDetailObjective {
   id: string

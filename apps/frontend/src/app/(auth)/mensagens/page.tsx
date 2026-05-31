@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, KeyboardEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { clsx } from 'clsx'
-import { Avatar, Button, Modal } from '@/components/ui'
+import { Avatar, Button, Modal, ConfirmDialog } from '@/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
@@ -56,7 +56,9 @@ function renderContent(content: string, customEmojis?: Map<string, string>) {
 }
 
 function renderInline(text: string, customEmojis: Map<string, string> | undefined, keyPrefix: string) {
-  if (!customEmojis || customEmojis.size === 0) return text
+  // First split on custom emojis (image substitution), then apply lightweight
+  // markdown to the remaining plain-text segments.
+  if (!customEmojis || customEmojis.size === 0) return renderMarkdown(text, `${keyPrefix}-md`)
   const out: React.ReactNode[] = []
   let last = 0
   let m: RegExpExecArray | null
@@ -64,7 +66,7 @@ function renderInline(text: string, customEmojis: Map<string, string> | undefine
   while ((m = CUSTOM_EMOJI_RE.exec(text)) !== null) {
     const url = customEmojis.get(m[1])
     if (!url) continue
-    if (m.index > last) out.push(text.slice(last, m.index))
+    if (m.index > last) out.push(...renderMarkdown(text.slice(last, m.index), `${keyPrefix}-md-${m.index}`))
     out.push(
       <img
         key={`${keyPrefix}-e-${m.index}`}
@@ -76,7 +78,59 @@ function renderInline(text: string, customEmojis: Map<string, string> | undefine
     )
     last = m.index + m[0].length
   }
-  if (last === 0) return text
+  if (last === 0) return renderMarkdown(text, `${keyPrefix}-md`)
+  if (last < text.length) out.push(...renderMarkdown(text.slice(last), `${keyPrefix}-md-tail`))
+  return out
+}
+
+// Lightweight inline markdown: **bold**, *italic*, `code`, ~~strike~~, [text](url)
+// and bare URLs. No dependency — keeps mentions/emojis untouched (handled above).
+const MD_RE =
+  /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)\s]+\)|https?:\/\/[^\s]+)/g
+
+function renderMarkdown(text: string, keyPrefix: string): React.ReactNode[] {
+  const out: React.ReactNode[] = []
+  let last = 0
+  let m: RegExpExecArray | null
+  MD_RE.lastIndex = 0
+  while ((m = MD_RE.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    const tok = m[0]
+    const key = `${keyPrefix}-${m.index}`
+    if (tok.startsWith('**')) {
+      out.push(<strong key={key}>{tok.slice(2, -2)}</strong>)
+    } else if (tok.startsWith('~~')) {
+      out.push(<del key={key}>{tok.slice(2, -2)}</del>)
+    } else if (tok.startsWith('*')) {
+      out.push(<em key={key}>{tok.slice(1, -1)}</em>)
+    } else if (tok.startsWith('`')) {
+      out.push(
+        <code key={key} className="px-1 py-0.5 rounded bg-black/5 text-[0.85em] font-mono">
+          {tok.slice(1, -1)}
+        </code>,
+      )
+    } else if (tok.startsWith('[')) {
+      const linkMatch = /^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/.exec(tok)
+      if (linkMatch) {
+        out.push(
+          <a key={key} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-gd underline hover:opacity-80">
+            {linkMatch[1]}
+          </a>,
+        )
+      } else {
+        out.push(tok)
+      }
+    } else {
+      // bare URL
+      out.push(
+        <a key={key} href={tok} target="_blank" rel="noopener noreferrer" className="text-gd underline hover:opacity-80 break-all">
+          {tok}
+        </a>,
+      )
+    }
+    last = m.index + tok.length
+  }
+  if (last === 0) return [text]
   if (last < text.length) out.push(text.slice(last))
   return out
 }
@@ -613,6 +667,10 @@ function MensagensPageInner() {
   }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // Whether the user is parked at the bottom — gates autoscroll so loading
+  // older history (which also grows messages.length) doesn't yank the view down.
+  const atBottomRef = useRef(true)
 
   const activeGroup = groups.find((g) => g.id === activeGroupId) ?? null
 
@@ -699,6 +757,7 @@ function MensagensPageInner() {
   const { onInputChange } = useTypingIndicator(activeGroupId)
   const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   // Flatten infinite pages into a single message array
   const messages = messagesData?.pages.flatMap((p) => p.messages) ?? []
@@ -721,14 +780,27 @@ function MensagensPageInner() {
     return () => { socket.off('user:typing', onTyping) }
   }, [])
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages — only when the user is already at the
+  // bottom (so reading history / loading older pages isn't interrupted).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (atBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages.length])
+
+  function handleMessagesScroll() {
+    const el = scrollContainerRef.current
+    if (!el) return
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  }
 
   async function send() {
     const content = text.trim()
     if (!content || !activeGroupId) return
+
+    // Sending always jumps the user to the bottom to see their own message,
+    // even if they had scrolled up to read history.
+    atBottomRef.current = true
 
     // Try to interpret as slash command first.
     const parsed = parseSlash(content)
@@ -1014,24 +1086,26 @@ function MensagensPageInner() {
             </div>
             <div className="flex items-center gap-1">
               <button
-                className="p-2 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+                onClick={() => setSearchOpen((v) => !v)}
+                className={clsx(
+                  'p-2 rounded-lg transition-colors',
+                  searchOpen ? 'bg-gd/10 text-gd' : 'text-gx hover:bg-page-bg hover:text-gd',
+                )}
                 aria-label="Pesquisar mensagens"
+                aria-pressed={searchOpen}
                 title="Pesquisar"
               >
                 <i className="ti ti-search text-base" aria-hidden="true" />
-              </button>
-              <button
-                className="p-2 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
-                aria-label="Membros"
-                title="Membros"
-              >
-                <i className="ti ti-users text-base" aria-hidden="true" />
               </button>
             </div>
           </div>
 
           {/* Messages area */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 bg-page-bg/30">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleMessagesScroll}
+            className="flex-1 overflow-y-auto px-5 py-4 bg-page-bg/30"
+          >
             {/* Load more */}
             {hasNextPage && (
               <div className="text-center mb-4">
@@ -1060,7 +1134,7 @@ function MensagensPageInner() {
                   isBookmarked={bookmarkedIds.has(msg.id)}
                   isFlashing={flashMessageId === msg.id}
                   customEmojis={customEmojis}
-                  onDelete={() => deleteMsg(msg.id)}
+                  onDelete={() => setConfirmDeleteId(msg.id)}
                   onPin={() => pinMsg(msg.id)}
                   onReply={() => setReplyTo(msg)}
                   onReact={(emoji) => toggleReaction({ messageId: msg.id, emoji })}
@@ -1088,7 +1162,9 @@ function MensagensPageInner() {
                     />
                   ))}
                 </span>
-                Alguém está digitando...
+                {typingUsers.size === 1
+                  ? 'Alguém está digitando…'
+                  : `${typingUsers.size} pessoas estão digitando…`}
               </span>
             </div>
           )}
@@ -1279,6 +1355,18 @@ function MensagensPageInner() {
         open={dmOpen}
         onClose={() => setDmOpen(false)}
         onSelect={handleStartDirect}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => {
+          if (confirmDeleteId) deleteMsg(confirmDeleteId)
+          setConfirmDeleteId(null)
+        }}
+        title="Excluir mensagem"
+        message="Excluir esta mensagem? Ela não poderá ser recuperada."
+        confirmLabel="Excluir"
       />
     </div>
   )
