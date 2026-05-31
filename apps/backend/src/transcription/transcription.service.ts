@@ -11,6 +11,9 @@ import { STREAM_NAMES, TranscriptionRequestedSchema } from '@mediall/events'
 export class TranscriptionService {
   private readonly logger = new Logger(TranscriptionService.name)
   private anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  // Keep the inline (rollback) path in sync with transcription-svc, which reads
+  // the same env var — otherwise a model override silently fails to apply here.
+  private readonly anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
   private readonly useExternalSvc = process.env.TRANSCRIPTION_SVC_ENABLED === 'true'
 
   constructor(
@@ -55,7 +58,7 @@ export class TranscriptionService {
 
     // Use Claude API to extract structured insights from the transcript
     const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: this.anthropicModel,
       max_tokens: 2000,
       system: `Você é um assistente especializado em análise de reuniões corporativas.
 Analise a transcrição fornecida e extraia as informações de forma estruturada em JSON.
