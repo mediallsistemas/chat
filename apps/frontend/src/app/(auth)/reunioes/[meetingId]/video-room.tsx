@@ -9,8 +9,8 @@ import {
   useSubmitRecordingConsent,
   useStartRecording,
   useStopRecording,
-} from '@/hooks/use-meetings'
-import { useSocket } from '@/lib/socket'
+} from '@/features/meetings/hooks/use-meetings'
+import { useSocket } from '@/shared/lib/socket'
 import { MeetingChatPanel } from './meeting-chat-panel'
 
 // ─── Recording Controls (rendered inside LiveKitRoom context) ─────────────────

@@ -18,6 +18,16 @@ async function getCsrfToken(): Promise<string> {
   return csrfToken!
 }
 
+/**
+ * The CSRF token is bound to the auth session (logged-out vs logged-in produce
+ * different session identifiers), so any in-memory token cached before a
+ * login/logout becomes stale. Call this to force a fresh fetch on the next
+ * mutation. Exported so the login/logout flows can invalidate proactively.
+ */
+export function invalidateCsrfToken(): void {
+  csrfToken = null
+}
+
 api.interceptors.request.use(async (config) => {
   if (typeof window === 'undefined') return config
 
@@ -33,12 +43,18 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (
+    // Match by status + code, not message: the backend rewrites the csrf-csrf
+    // message to "Invalid or missing CSRF token", so matching on the original
+    // "invalid csrf token" string never fired and the retry was dead code.
+    const data = error.response?.data
+    const isCsrfError =
       error.response?.status === 403 &&
-      error.response?.data?.message === 'invalid csrf token'
-    ) {
+      (data?.code === 'EBADCSRFTOKEN' ||
+        /csrf token/i.test(data?.message ?? ''))
+    if (isCsrfError && !error.config?._csrfRetried) {
       csrfToken = null
       const newToken = await getCsrfToken()
+      error.config._csrfRetried = true
       error.config.headers['x-csrf-token'] = newToken
       return api.request(error.config)
     }

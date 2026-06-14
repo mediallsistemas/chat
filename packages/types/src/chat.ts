@@ -38,8 +38,18 @@ export interface Group {
   onlyAdminsPost: boolean
   archiveAt: string | null
   kanbanBoardId: string
+  /** Cover image. Backend resolves the stored MinIO key to a signed URL on read. */
+  avatarUrl: string | null
+  /** Unread messages for the current user (newer than their lastReadAt). */
+  unreadCount?: number
   _count?: { members: number; messages: number }
   members?: GroupMember[]
+  /**
+   * For direct messages (PRIVATE groups): the other participant, resolved by the
+   * backend so the UI can show their name instead of the internal `direct:<id>:<id>`
+   * group name. Null if the peer could not be resolved.
+   */
+  directPeer?: { id: string; name: string; avatarUrl: string | null } | null
 }
 
 export interface DiscoverableGroup {
@@ -101,11 +111,29 @@ export interface Message {
   editedAt: string | null
   reactions?: MessageReactionItem[]
   _count?: { replies: number }
+  /**
+   * Client-only flag: set while an optimistic message is awaiting the server
+   * round-trip. Never sent by the backend. Used by the chat UI to render a
+   * "enviando…" state and to reconcile the temporary id with the real one.
+   */
+  pending?: boolean
+  /** Client-only flag: optimistic send failed (kept for retry/feedback). */
+  failed?: boolean
 }
 
 export interface ThreadView {
   parent: Message
   replies: Message[]
+}
+
+/** Payload to edit a group's identity/settings (PATCH /groups/:id). */
+export interface UpdateGroupInput {
+  name?: string
+  description?: string
+  /** MinIO key returned by POST /upload; backend resolves it to a signed cover URL. */
+  avatarKey?: string
+  onlyAdminsPost?: boolean
+  visibility?: GroupVisibility
 }
 
 export interface MessageBookmark {

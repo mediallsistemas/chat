@@ -1,4 +1,4 @@
-import { KanbanBoard } from '@/components/kanban'
+import { KanbanBoard } from '@/features/kanban/components'
 
 interface Props {
   params: { boardId: string }

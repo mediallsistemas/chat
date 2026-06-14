@@ -16,6 +16,8 @@ import { SearchService } from './search/search.service'
 import { SearchController } from './search/search.controller'
 import { HuddlesService } from './huddles/huddles.service'
 import { HuddlesController } from './huddles/huddles.controller'
+import { GroupSystemEventService } from './groups/group-system-event.service'
+import { ManagementToChatHandler } from './handlers/management-to-chat.handler'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { FilesModule } from '../../infrastructure/files/files.module'
 import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
@@ -46,7 +48,9 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     RemindersProcessor,
     SearchService,
     HuddlesService,
+    GroupSystemEventService,
+    ManagementToChatHandler,
   ],
-  exports: [GroupsService],
+  exports: [GroupsService, HuddlesService],
 })
 export class ChatModule {}

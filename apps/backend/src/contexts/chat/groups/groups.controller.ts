@@ -2,6 +2,8 @@ import { Controller, Get, Post, Patch, Delete, Param, Body } from '@nestjs/commo
 import { ApiTags } from '@nestjs/swagger'
 import { GroupsService } from './groups.service'
 import { CreateGroupDto, AddMemberDto } from './dto/create-group.dto'
+import { UpdateGroupDto } from './dto/update-group.dto'
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto'
 import { BaseUnitController } from '../../../shared/controllers/base-unit.controller'
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator'
 import { Roles } from '../../../shared/decorators/roles.decorator'
@@ -38,6 +40,15 @@ export class GroupsController extends BaseUnitController {
     return this.groupsService.findOne(unitId, groupId)
   }
 
+  @Post('groups/:groupId/read')
+  markRead(
+    @Param('unitId') unitId: string,
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.markRead(unitId, groupId, user.sub)
+  }
+
   @Post('groups')
   @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
   create(
@@ -56,6 +67,30 @@ export class GroupsController extends BaseUnitController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.groupsService.archive(unitId, groupId, user)
+  }
+
+  // Group editing is authorized by the caller's *group role* (ADMIN of the group),
+  // checked in the service — not by a system role. A non-admin GESTOR must not edit
+  // a group they don't administer.
+  @Patch('groups/:groupId')
+  update(
+    @Param('unitId') unitId: string,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateGroupDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.updateGroup(unitId, groupId, dto, user)
+  }
+
+  @Patch('groups/:groupId/members/:userId/role')
+  updateMemberRole(
+    @Param('unitId') unitId: string,
+    @Param('groupId') groupId: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: UpdateMemberRoleDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.groupsService.updateMemberRole(unitId, groupId, targetUserId, dto, user)
   }
 
   @Post('groups/:groupId/members')

@@ -7,14 +7,14 @@ import { z } from 'zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
-import { PageHeader } from '@/components/shared'
-import { Button, Modal, FormModal, SkeletonList, EmptyState, TicketStatusBadge, TicketPriorityBadge, FormField } from '@/components/ui'
+import { PageHeader } from '@/shared/components'
+import { Button, Modal, FormModal, SkeletonList, EmptyState, TicketStatusBadge, TicketPriorityBadge, FormField } from '@/shared/components/ui'
 import {
   useTickets,
   useTicketStats,
   useCreateTicket,
   useUpdateTicket,
-} from '@/hooks/use-tickets'
+} from '@/features/tickets/hooks/use-tickets'
 import { TicketStatus, TicketPriority } from '@mediall/types'
 import type { Ticket } from '@mediall/types'
 

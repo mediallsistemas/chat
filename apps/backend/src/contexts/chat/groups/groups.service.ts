@@ -1,15 +1,48 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../../../prisma/prisma.service'
+import { FilesService } from '../../../infrastructure/files/files.service'
+import { EventBusService } from '../../../shared/events'
 import { CreateGroupDto, AddMemberDto } from './dto/create-group.dto'
+import { UpdateGroupDto } from './dto/update-group.dto'
+import { UpdateMemberRoleDto } from './dto/update-member-role.dto'
+import { GroupUpdatedEvent } from './events/group-updated.event'
 import { JwtPayload } from '@mediall/types'
 
 @Injectable()
 export class GroupsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private filesService: FilesService,
+    private eventBus: EventBusService,
+  ) {}
+
+  /**
+   * The group cover is stored as a MinIO object key in `avatarUrl` (bucket is
+   * private). Resolve it to a short-lived signed URL for the client. Returns the
+   * value untouched if it's already an absolute URL or empty.
+   */
+  private async resolveAvatar<T extends { avatarUrl: string | null }>(group: T): Promise<T> {
+    if (group.avatarUrl && !group.avatarUrl.startsWith('http')) {
+      return { ...group, avatarUrl: await this.filesService.getSignedUrl(group.avatarUrl) }
+    }
+    return group
+  }
+
+  /** Throws unless the user is an ADMIN member of the group within the unit. */
+  private async assertAdmin(unitId: string, groupId: string, userId: string) {
+    const member = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId, group: { unitId } },
+      select: { role: true },
+    })
+    if (!member || member.role !== 'ADMIN') {
+      throw new ForbiddenException('Somente administradores do grupo podem fazer isso.')
+    }
+  }
 
   async findAll(unitId: string, userId: string) {
-    // Return groups where user is a member OR the group belongs to the unit
-    return this.prisma.group.findMany({
+    // Return groups where the user is a member.
+    const groups = await this.prisma.group.findMany({
       where: {
         unitId,
         isArchived: false,
@@ -19,11 +52,80 @@ export class GroupsService {
         _count: { select: { members: true, messages: true } },
         members: {
           where: { userId },
-          select: { role: true },
+          select: { role: true, lastReadAt: true },
         },
       },
       orderBy: { updatedAt: 'desc' },
     })
+
+    // Unread counts per group for this user: messages newer than the member's
+    // lastReadAt, excluding their own messages, system notices and deleted ones.
+    // Done in a single batched query to avoid N+1. NULL lastReadAt → all count.
+    const groupIds = groups.map((g) => g.id)
+    const unreadByGroup = new Map<string, number>()
+    if (groupIds.length > 0) {
+      const rows = await this.prisma.$queryRaw<{ group_id: string; unread: bigint }[]>`
+        SELECT m.group_id, COUNT(*)::bigint AS unread
+        FROM chat_messages m
+        JOIN chat_group_members gm
+          ON gm.group_id = m.group_id AND gm.user_id = ${userId}
+        WHERE m.group_id IN (${Prisma.join(groupIds)})
+          AND m.is_deleted = false
+          AND m.sender_id <> ${userId}
+          AND m.type <> 'SYSTEM'
+          AND (gm.last_read_at IS NULL OR m.created_at > gm.last_read_at)
+        GROUP BY m.group_id
+      `
+      for (const r of rows) unreadByGroup.set(r.group_id, Number(r.unread))
+    }
+
+    // For direct messages (PRIVATE groups) the stored `name` is an internal
+    // `direct:<idA>:<idB>` token. Resolve the *other* participant so the UI can
+    // show their name instead of the raw id. Done in two batched queries to
+    // avoid N+1.
+    const directGroupIds = groups.filter((g) => g.type === 'PRIVATE').map((g) => g.id)
+    const peerByGroup = new Map<string, { id: string; name: string; avatarUrl: string | null } | null>()
+    if (directGroupIds.length > 0) {
+      const peerMemberships = await this.prisma.groupMember.findMany({
+        where: { groupId: { in: directGroupIds }, userId: { not: userId } },
+        select: { groupId: true, userId: true },
+      })
+      const peerUsers = await this.prisma.user.findMany({
+        where: { id: { in: peerMemberships.map((m) => m.userId) } },
+        select: { id: true, name: true, avatarUrl: true },
+      })
+      const userById = new Map(peerUsers.map((u) => [u.id, u]))
+      for (const m of peerMemberships) {
+        peerByGroup.set(m.groupId, userById.get(m.userId) ?? null)
+      }
+    }
+
+    // Resolve the cover image key → signed URL for every group, attach the unread
+    // count, and the direct-message peer where applicable.
+    return Promise.all(
+      groups.map(async (g) => {
+        const withAvatar = await this.resolveAvatar(g)
+        const base = { ...withAvatar, unreadCount: unreadByGroup.get(g.id) ?? 0 }
+        return g.type === 'PRIVATE'
+          ? { ...base, directPeer: peerByGroup.get(g.id) ?? null }
+          : base
+      }),
+    )
+  }
+
+  /** Marks all messages in a group as read for the user (lastReadAt = now). */
+  async markRead(unitId: string, groupId: string, userId: string) {
+    const member = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId, group: { unitId } },
+      select: { id: true },
+    })
+    if (!member) throw new ForbiddenException('Você não é membro deste grupo.')
+
+    await this.prisma.groupMember.update({
+      where: { id: member.id },
+      data: { lastReadAt: new Date() },
+    })
+    return { ok: true }
   }
 
   async findOne(unitId: string, groupId: string) {
@@ -116,6 +218,62 @@ export class GroupsService {
       where: { id: groupId },
       data: { isArchived: true },
     })
+  }
+
+  /** Edit group identity/settings. Only a group ADMIN may do this. */
+  async updateGroup(unitId: string, groupId: string, dto: UpdateGroupDto, user: JwtPayload) {
+    await this.assertAdmin(unitId, groupId, user.sub)
+
+    const group = await this.prisma.group.update({
+      where: { id: groupId },
+      data: {
+        name: dto.name,
+        description: dto.description,
+        // Store the MinIO key; resolveAvatar() turns it into a signed URL on read.
+        ...(dto.avatarKey !== undefined ? { avatarUrl: dto.avatarKey } : {}),
+        onlyAdminsPost: dto.onlyAdminsPost,
+        visibility: dto.visibility,
+      },
+    })
+
+    const resolved = await this.resolveAvatar(group)
+    this.eventBus.publish(new GroupUpdatedEvent(groupId, unitId, resolved))
+    return resolved
+  }
+
+  /** Promote/demote a member's role. Guards against removing the last admin. */
+  async updateMemberRole(
+    unitId: string,
+    groupId: string,
+    targetUserId: string,
+    dto: UpdateMemberRoleDto,
+    user: JwtPayload,
+  ) {
+    await this.assertAdmin(unitId, groupId, user.sub)
+
+    if (dto.role !== 'ADMIN') {
+      const target = await this.prisma.groupMember.findFirst({
+        where: { groupId, userId: targetUserId, group: { unitId } },
+        select: { role: true },
+      })
+      if (!target) throw new NotFoundException('Membro não encontrado.')
+      if (target.role === 'ADMIN') {
+        const adminCount = await this.prisma.groupMember.count({
+          where: { groupId, role: 'ADMIN', group: { unitId } },
+        })
+        if (adminCount <= 1) {
+          throw new ForbiddenException('O grupo precisa de ao menos um administrador.')
+        }
+      }
+    }
+
+    const member = await this.prisma.groupMember.update({
+      where: { groupId_userId: { groupId, userId: targetUserId } },
+      data: { role: dto.role },
+    })
+
+    this.eventBus.publish(new GroupUpdatedEvent(groupId, unitId, { id: groupId }))
+    return member
   }
 
   async addMember(unitId: string, groupId: string, dto: AddMemberDto, user: JwtPayload) {

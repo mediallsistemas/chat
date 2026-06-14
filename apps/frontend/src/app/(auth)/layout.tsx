@@ -1,8 +1,8 @@
-import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
-import { RoleGuard } from '@/components/layout/role-guard'
-import { InstallPwaBanner } from '@/components/pwa/install-prompt'
-import { ToastContainer } from '@/components/ui/toast-container'
+import { Sidebar } from '@/shared/components/layout/sidebar'
+import { Header } from '@/shared/components/layout/header'
+import { RoleGuard } from '@/shared/components/layout/role-guard'
+import { InstallPwaBanner } from '@/shared/components/pwa/install-prompt'
+import { ToastContainer } from '@/shared/components/ui/toast-container'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mediall-v1'
+const CACHE_NAME = 'mediall-v2'
 const STATIC_PRECACHE = ['/offline.html', '/manifest.json']
 
 // ─── Install: precache offline page ──────────────────────────────────────────
@@ -19,7 +19,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// ─── Fetch: network-first for API, cache-first for static assets ──────────────
+// ─── Fetch: network-first for navigation/HTML, cache-first for static assets ──
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
@@ -29,23 +29,36 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return
   if (url.pathname.startsWith('/socket.io/')) return
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
+  // Network-first for page navigations (HTML). Cache-first here serves stale
+  // pages after a deploy — always prefer fresh markup, fall back to cache only
+  // when offline.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          // Cache successful same-origin GET responses
           if (response.ok && url.origin === self.location.origin) {
             const clone = response.clone()
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
           }
           return response
         })
-        .catch(() => {
-          // Offline fallback: return cached page or offline.html for navigation
-          if (request.mode === 'navigate') {
-            return caches.match('/offline.html')
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/offline.html'))),
+    )
+    return
+  }
+
+  // Cache-first for static assets (CSS/JS/images/fonts).
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const networkFetch = fetch(request)
+        .then((response) => {
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
           }
+          return response
         })
+        .catch(() => cached)
 
       return cached || networkFetch
     }),

@@ -1,7 +1,7 @@
 'use client'
 
-import { Modal, Button } from '@/components/ui'
-import { useBoardColumns, useMoveMyTask } from '@/hooks/use-me'
+import { Modal, Button } from '@/shared/components/ui'
+import { useBoardColumns, useMoveMyTask } from '@/features/me/hooks/use-me'
 import { clsx } from 'clsx'
 import type { MyTask } from '@mediall/types'
 

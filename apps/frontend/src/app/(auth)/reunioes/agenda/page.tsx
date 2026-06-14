@@ -17,7 +17,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
-import { useAgenda } from '@/hooks/use-meetings'
+import { useAgenda } from '@/features/meetings/hooks/use-meetings'
 import type { AgendaItem } from '@mediall/types'
 
 const TYPE_CONFIG: Record<

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter, usePathname } from 'next/navigation'
-import { api } from '@/shared/lib/api'
+import { api, invalidateCsrfToken } from '@/shared/lib/api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { useUnits } from '@/features/units/hooks/use-units'
 import { useNotifications } from '@/features/notifications/hooks/use-notifications'
@@ -61,10 +61,12 @@ export function Header() {
   const { mutate: logout } = useMutation({
     mutationFn: () => api.post('/auth/logout'),
     onSuccess: () => {
+      invalidateCsrfToken()
       setUser(null)
       router.push('/login')
     },
     onError: () => {
+      invalidateCsrfToken()
       setUser(null)
       router.push('/login')
     },

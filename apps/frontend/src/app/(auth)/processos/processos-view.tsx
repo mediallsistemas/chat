@@ -4,9 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { clsx } from 'clsx'
-import { ProgressBar, TrafficLight, Button } from '@/components/ui'
-import { PlanListSkeleton, ObjectivesSkeleton } from '@/components/strategic/plan-list-skeleton'
-import type { TrafficLightStatus } from '@/components/ui'
+import { ProgressBar, TrafficLight, Button } from '@/shared/components/ui'
+import { PlanListSkeleton, ObjectivesSkeleton } from '@/features/strategic/components/plan-list-skeleton'
+import type { TrafficLightStatus } from '@/shared/components/ui'
 import {
   usePlans,
   useObjectives,
@@ -14,7 +14,7 @@ import {
   type GoalWithPhases,
   type ObjectiveWithGoals,
   type PlanWithObjectiveCount,
-} from '@/hooks/use-strategic'
+} from '@/features/strategic/hooks/use-strategic'
 import {
   CreatePlanModal,
   CreateObjectiveModal,
@@ -23,8 +23,8 @@ import {
   EditPlanModal,
   EditObjectiveModal,
   EditGoalModal,
-} from '@/components/strategic'
-import { useUnitStore } from '@/store/unit-store'
+} from '@/features/strategic/components'
+import { useUnitStore } from '@/shared/store/unit-store'
 import { PlanStatus, PhaseStatus, TrafficLight as TL } from '@mediall/types'
 import type { PlanPhase } from '@mediall/types'
 

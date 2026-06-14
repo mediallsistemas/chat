@@ -34,7 +34,9 @@ export class MessagesService {
     const take = PAGE_SIZE + 1
 
     const messages = await this.prisma.message.findMany({
-      where: { groupId, group: { unitId }, isDeleted: false },
+      // Channel timeline shows only root messages; thread replies (replyToId set)
+      // live inside their thread panel, Slack-style.
+      where: { groupId, group: { unitId }, isDeleted: false, replyToId: null },
       orderBy: { createdAt: 'desc' },
       take,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -59,7 +61,7 @@ export class MessagesService {
   }
 
   async send(unitId: string, groupId: string, dto: SendMessageDto, user: JwtPayload) {
-    await this.assertMembership(unitId, groupId, user.sub)
+    await this.assertCanPost(unitId, groupId, user.sub)
 
     const type = dto.fileKey
       ? dto.fileMime?.startsWith('image/') ? MessageType.IMAGE : MessageType.FILE
@@ -314,5 +316,24 @@ export class MessagesService {
       where: { groupId, userId, group: { unitId } },
     })
     if (!member) throw new ForbiddenException('Você não é membro deste grupo.')
+  }
+
+  /**
+   * Posting requires membership AND posting rights:
+   *  - VIEWER members are read-only.
+   *  - In `onlyAdminsPost` groups, only ADMIN members may post.
+   */
+  private async assertCanPost(unitId: string, groupId: string, userId: string) {
+    const member = await this.prisma.groupMember.findFirst({
+      where: { groupId, userId, group: { unitId } },
+      select: { role: true, group: { select: { onlyAdminsPost: true } } },
+    })
+    if (!member) throw new ForbiddenException('Você não é membro deste grupo.')
+    if (member.role === 'VIEWER') {
+      throw new ForbiddenException('Você tem acesso somente leitura neste grupo.')
+    }
+    if (member.group.onlyAdminsPost && member.role !== 'ADMIN') {
+      throw new ForbiddenException('Somente administradores podem postar neste grupo.')
+    }
   }
 }

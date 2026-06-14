@@ -74,7 +74,7 @@ export class AuthService {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 8 * 60 * 60 * 1000, // 8 hours — covers the 7h inactivity window
     })
 
     return {

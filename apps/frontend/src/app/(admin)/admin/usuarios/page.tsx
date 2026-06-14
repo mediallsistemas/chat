@@ -7,10 +7,10 @@ import { z } from 'zod'
 import { clsx } from 'clsx'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { PageHeader } from '@/components/shared'
-import { Button, Badge, Avatar, Modal, SkeletonList } from '@/components/ui'
+import { PageHeader } from '@/shared/components'
+import { Button, Badge, Avatar, Modal, SkeletonList } from '@/shared/components/ui'
 import { UserRole, AccessScope } from '@mediall/types'
-import { useUsers, useCreateUser, useUpdateUser, useUnlockUser, type UserListItem } from '@/hooks/use-users'
+import { useUsers, useCreateUser, useUpdateUser, useUnlockUser, type UserListItem } from '@/features/users/hooks/use-users'
 
 const ROLE_LABEL: Record<UserRole, string> = {
   [UserRole.SUPER_ADMIN]: 'Super Admin',

@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Avatar, Button } from '@/components/ui'
-import { useBookmarks, useToggleBookmark } from '@/hooks/use-chat'
+import { Avatar, Button } from '@/shared/components/ui'
+import { useBookmarks, useToggleBookmark } from '@/features/chat/hooks/use-chat'
 import { GroupType } from '@mediall/types'
 
 const GROUP_TYPE_ICON: Record<GroupType, string> = {

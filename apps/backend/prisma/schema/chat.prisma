@@ -133,6 +133,13 @@ model Huddle {
   endedAt       DateTime? @map("ended_at")
   livekitRoomId String    @unique @map("livekit_room_id")
 
+  // Presence is reconciled against LiveKit (the source of truth), not an
+  // in-memory set. participantCount is the last reconciled real count;
+  // lonelySince marks when the call dropped to <= 1 participant (null when
+  // there are >= 2), used to auto-end idle calls after a timeout.
+  participantCount Int       @default(0) @map("participant_count")
+  lonelySince      DateTime? @map("lonely_since")
+
   @@index([groupId, endedAt])
   @@map("chat_huddles")
 }

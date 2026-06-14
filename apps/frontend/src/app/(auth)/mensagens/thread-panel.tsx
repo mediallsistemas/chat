@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, KeyboardEvent, useEffect, useRef } from 'react'
-import { Avatar } from '@/components/ui'
-import { useThread, useSendMessage } from '@/hooks/use-chat'
+import { Avatar } from '@/shared/components/ui'
+import { useThread, useSendMessage } from '@/features/chat/hooks/use-chat'
 import type { Message } from '@mediall/types'
 
 interface Props {

@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Button, Input, EmptyState } from '@/components/ui'
+import { Button, Input, EmptyState } from '@/shared/components/ui'
 import {
   useCustomEmojis,
   useCreateCustomEmoji,
   useDeleteCustomEmoji,
-} from '@/hooks/use-chat'
-import { useAuthStore } from '@/store/auth-store'
+} from '@/features/chat/hooks/use-chat'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 import { UserRole } from '@mediall/types'
 
 const ADMIN_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR]

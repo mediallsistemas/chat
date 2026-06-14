@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { MetricCard, PageHeader } from '@/components/shared'
-import { TrafficLight, ProgressBar, Button } from '@/components/ui'
-import { useDashboard } from '@/hooks/use-dashboard'
-import { useDownloadDashboardPdf } from '@/hooks/use-reports'
-import type { TrafficLightStatus } from '@/components/ui'
+import { MetricCard, PageHeader } from '@/shared/components'
+import { TrafficLight, ProgressBar, Button } from '@/shared/components/ui'
+import { useDashboard } from '@/features/dashboard/hooks/use-dashboard'
+import { useDownloadDashboardPdf } from '@/features/reports/hooks/use-reports'
+import type { TrafficLightStatus } from '@/shared/components/ui'
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-gs/60 rounded-xl ${className}`} />

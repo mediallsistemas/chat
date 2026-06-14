@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { clsx } from 'clsx'
-import { Avatar, Button } from '@/components/ui'
-import { useAuthStore } from '@/store/auth-store'
-import { useMyDashboard } from '@/hooks/use-me'
+import { Avatar, Button } from '@/shared/components/ui'
+import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useMyDashboard } from '@/features/me/hooks/use-me'
 import { ImpedimentStatus, type MyTask } from '@mediall/types'
 import { TaskStatusModal } from './task-status-modal'
 

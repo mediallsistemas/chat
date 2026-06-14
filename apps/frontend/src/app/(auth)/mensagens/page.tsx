@@ -1,30 +1,35 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, KeyboardEvent, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, memo, KeyboardEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { clsx } from 'clsx'
-import { Avatar, Button, Modal } from '@/components/ui'
+import { Avatar, Button, Modal } from '@/shared/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
-  useUploadFile, useToggleReaction, useBookmarks, useToggleBookmark,
+  useToggleReaction, useBookmarks, useToggleBookmark,
   useCustomEmojis, useCreateReminder,
   useDiscoverableGroups, useJoinGroup,
   useActiveHuddle, useStartHuddle, useJoinHuddle,
-} from '@/hooks/use-chat'
+  useGroupSystemEvents, useMarkGroupRead,
+} from '@/features/chat/hooks/use-chat'
+import { useFileAttachment } from '@/features/chat/hooks/use-file-attachment'
+import { GroupSettingsModal } from '@/features/chat/components'
 import type { HuddleTokenResponse } from '@mediall/types'
-import { parseSlash, SLASH_COMMANDS } from '@/lib/slash-commands'
+import { parseSlash, SLASH_COMMANDS } from '@/shared/lib/slash-commands'
 import { SearchPanel } from './search-panel'
 import { ThreadPanel } from './thread-panel'
 import dynamic from 'next/dynamic'
 
 // Load LiveKit-bundle component lazily; SSR-safe.
 const HuddleMini = dynamic(() => import('./huddle-mini').then((m) => m.HuddleMini), { ssr: false })
-import { useTaskSearch } from '@/hooks/use-task-files'
-import { useAuthStore } from '@/store/auth-store'
-import { useUnitStore } from '@/store/unit-store'
-import { api } from '@/lib/api'
-import { getSocket, connectSocket } from '@/lib/socket'
+import { useTaskSearch } from '@/features/kanban/hooks/use-task-files'
+import { useAuthStore } from '@/features/auth/store/auth-store'
+import { useUnitStore } from '@/shared/store/unit-store'
+import { api } from '@/shared/lib/api'
+import { getSocket, connectSocket } from '@/shared/lib/socket'
+import { toast } from '@/shared/hooks/use-toast'
+import { getErrorMessage } from '@/shared/lib/get-error-message'
 import { GroupType, GroupVisibility, UserRole, type Group, type Message } from '@mediall/types'
 
 // ─── Mention + custom emoji helpers ───────────────────────────────────────────
@@ -89,7 +94,7 @@ const GROUP_TYPE_ICON: Record<GroupType, string> = {
   [GroupType.SUBSECTOR]: 'ti-users',
   [GroupType.PROJECT]:   'ti-target',
   [GroupType.TEMPORARY]: 'ti-clock',
-  [GroupType.PRIVATE]:   'ti-lock',
+  [GroupType.PRIVATE]:   'ti-message-circle',
 }
 
 const GROUP_TYPE_LABEL: Record<GroupType, string> = {
@@ -101,11 +106,22 @@ const GROUP_TYPE_LABEL: Record<GroupType, string> = {
   [GroupType.PRIVATE]:   'Privado',
 }
 
+/**
+ * Display name for a group. Direct messages (PRIVATE) store an internal
+ * `direct:<id>:<id>` name, so show the other participant's name instead.
+ */
+function groupDisplayName(group: Group): string {
+  if (group.type === GroupType.PRIVATE) {
+    return group.directPeer?.name ?? 'Conversa direta'
+  }
+  return group.name
+}
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏']
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   msg,
   isMine,
   currentUserId,
@@ -125,12 +141,12 @@ function MessageBubble({
   isBookmarked: boolean
   isFlashing: boolean
   customEmojis: Map<string, string>
-  onDelete: () => void
-  onPin: () => void
-  onReply: () => void
-  onReact: (emoji: string) => void
-  onBookmark: () => void
-  onOpenThread: () => void
+  onDelete: (msg: Message) => void
+  onPin: (msg: Message) => void
+  onReply: (msg: Message) => void
+  onReact: (messageId: string, emoji: string) => void
+  onBookmark: (msg: Message, isBookmarked: boolean) => void
+  onOpenThread: (messageId: string) => void
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -166,6 +182,7 @@ function MessageBubble({
         'flex gap-2 mb-2 group rounded-xl p-1 -m-1 transition-colors',
         isMine && 'flex-row-reverse',
         isFlashing && 'bg-yellow-100',
+        msg.pending && 'opacity-60',
       )}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -232,12 +249,24 @@ function MessageBubble({
             {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>
           {msg.isEdited && <span className="text-[10px] text-gx">(editado)</span>}
+          {msg.pending && (
+            <span className="text-[10px] text-gx flex items-center gap-0.5" title="Enviando…">
+              <i className="ti ti-clock text-[11px]" aria-hidden="true" />
+              enviando…
+            </span>
+          )}
+          {msg.failed && (
+            <span className="text-[10px] text-red-400 flex items-center gap-0.5" title="Falha no envio">
+              <i className="ti ti-alert-circle text-[11px]" aria-hidden="true" />
+              não enviada
+            </span>
+          )}
         </div>
 
         {/* Reply count indicator (opens thread) */}
         {msg._count && msg._count.replies > 0 && (
           <button
-            onClick={onOpenThread}
+            onClick={() => onOpenThread(msg.id)}
             className="mt-1 px-2 py-0.5 self-start text-[11px] font-medium text-gd bg-gd/5 hover:bg-gd/10 rounded-full transition-colors flex items-center gap-1"
           >
             <i className="ti ti-message-circle-2 text-xs" aria-hidden="true" />
@@ -251,7 +280,7 @@ function MessageBubble({
             {Object.entries(reactionSummary).map(([emoji, { count, isMine: mine }]) => (
               <button
                 key={emoji}
-                onClick={() => onReact(emoji)}
+                onClick={() => onReact(msg.id, emoji)}
                 className={clsx(
                   'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors',
                   mine
@@ -268,11 +297,11 @@ function MessageBubble({
         )}
       </div>
 
-      {/* Hover actions */}
+      {/* Hover actions — hidden while the message is still optimistic (no real id yet) */}
       <div
         className={clsx(
           'self-center flex items-center gap-1 transition-opacity relative',
-          hover ? 'opacity-100' : 'opacity-0',
+          hover && !msg.pending ? 'opacity-100' : 'opacity-0 pointer-events-none',
         )}
       >
         {/* Emoji picker */}
@@ -295,7 +324,7 @@ function MessageBubble({
               {QUICK_EMOJIS.map((e) => (
                 <button
                   key={e}
-                  onClick={() => { onReact(e); setEmojiOpen(false) }}
+                  onClick={() => { onReact(msg.id, e); setEmojiOpen(false) }}
                   className="text-lg hover:scale-125 transition-transform p-0.5 rounded-lg hover:bg-page-bg"
                   aria-label={`Reagir com ${e}`}
                 >
@@ -306,7 +335,7 @@ function MessageBubble({
           )}
         </div>
         <button
-          onClick={onReply}
+          onClick={() => onReply(msg)}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
           aria-label="Responder"
           title="Responder"
@@ -314,7 +343,7 @@ function MessageBubble({
           <i className="ti ti-corner-up-left text-sm" aria-hidden="true" />
         </button>
         <button
-          onClick={onOpenThread}
+          onClick={() => onOpenThread(msg.id)}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
           aria-label="Abrir conversa"
           title="Abrir conversa"
@@ -322,7 +351,7 @@ function MessageBubble({
           <i className="ti ti-message-circle-2 text-sm" aria-hidden="true" />
         </button>
         <button
-          onClick={onPin}
+          onClick={() => onPin(msg)}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
           aria-label={msg.isPinned ? 'Desafixar' : 'Fixar'}
           title={msg.isPinned ? 'Desafixar' : 'Fixar'}
@@ -330,7 +359,7 @@ function MessageBubble({
           <i className={clsx('ti text-sm', msg.isPinned ? 'ti-pin-filled text-gd' : 'ti-pin')} aria-hidden="true" />
         </button>
         <button
-          onClick={onBookmark}
+          onClick={() => onBookmark(msg, isBookmarked)}
           className="p-1 rounded-lg text-gx hover:bg-page-bg hover:text-gray-700 transition-colors"
           aria-label={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
           title={isBookmarked ? 'Remover dos salvos' : 'Salvar'}
@@ -342,7 +371,7 @@ function MessageBubble({
         </button>
         {isMine && (
           <button
-            onClick={onDelete}
+            onClick={() => onDelete(msg)}
             className="p-1 rounded-lg text-gx hover:bg-red-50 hover:text-red-400 transition-colors"
             aria-label="Excluir"
             title="Excluir"
@@ -353,7 +382,7 @@ function MessageBubble({
       </div>
     </div>
   )
-}
+})
 
 // ─── Group list item ──────────────────────────────────────────────────────────
 
@@ -368,10 +397,7 @@ function GroupItem({
   onClick: () => void
   onlineCount?: number
 }) {
-  const displayName =
-    group.type === GroupType.PRIVATE
-      ? 'Conversa direta'
-      : group.name
+  const displayName = groupDisplayName(group)
 
   return (
     <button
@@ -384,14 +410,29 @@ function GroupItem({
       <div className="relative shrink-0">
         <div
           className={clsx(
-            'w-9 h-9 rounded-xl flex items-center justify-center',
+            'w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden',
             active ? 'bg-gd/20' : 'bg-page-bg',
           )}
         >
-          <i
-            className={clsx('ti text-lg', GROUP_TYPE_ICON[group.type], active ? 'text-gd' : 'text-gx')}
-            aria-hidden="true"
-          />
+          {group.type === GroupType.PRIVATE && group.directPeer?.avatarUrl ? (
+            // Direct message: show the other participant's photo when available.
+            <img
+              src={group.directPeer.avatarUrl}
+              alt={group.directPeer.name}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <i
+              className={clsx(
+                'ti text-lg',
+                // DMs without a photo fall back to a user icon, not the type icon.
+                group.type === GroupType.PRIVATE ? 'ti-user' : GROUP_TYPE_ICON[group.type],
+                active ? 'text-gd' : 'text-gx',
+              )}
+              aria-hidden="true"
+            />
+          )}
         </div>
         {onlineCount > 0 && (
           <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
@@ -403,8 +444,10 @@ function GroupItem({
         </p>
         <p className="text-[11px] text-gx">{GROUP_TYPE_LABEL[group.type]}</p>
       </div>
-      {(group._count?.messages ?? 0) > 0 && (
-        <span className="text-[11px] text-gx shrink-0">{group._count!.messages}</span>
+      {(group.unreadCount ?? 0) > 0 && (
+        <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-gd text-white text-[10px] font-semibold flex items-center justify-center">
+          {group.unreadCount! > 99 ? '99+' : group.unreadCount}
+        </span>
       )}
     </button>
   )
@@ -603,19 +646,35 @@ function MensagensPageInner() {
 
   async function handleStartHuddle() {
     if (!activeGroupId) return
-    const session = await startHuddle(activeGroupId)
-    setHuddleSession(session)
+    try {
+      const session = await startHuddle(activeGroupId)
+      setHuddleSession(session)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
   }
 
   async function handleJoinHuddle() {
     if (!activeHuddle) return
-    const session = await joinHuddleApi(activeHuddle.id)
-    setHuddleSession(session)
+    try {
+      const session = await joinHuddleApi(activeHuddle.id)
+      setHuddleSession(session)
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
   }
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const activeGroup = groups.find((g) => g.id === activeGroupId) ?? null
+  // Current user's role in the active group (findAll returns only the caller's membership).
+  const myRole = activeGroup?.members?.[0]?.role ?? null
+  const isGroupAdmin = myRole === 'ADMIN'
+  // Posting is blocked for read-only viewers and for non-admins in admins-only groups.
+  const canPost =
+    !!activeGroup &&
+    myRole !== 'VIEWER' &&
+    !(activeGroup.onlyAdminsPost && !isGroupAdmin)
 
   // Auto-select group from ?group= or ?groupId= URL param
   useEffect(() => {
@@ -690,19 +749,48 @@ function MensagensPageInner() {
   const { mutate: toggleReaction } = useToggleReaction(activeGroupId ?? '')
   const { mutate: toggleBookmark } = useToggleBookmark()
   const { data: bookmarksData } = useBookmarks()
-  const bookmarkedIds = new Set(
-    bookmarksData?.pages.flatMap((p) => p.bookmarks.map((b) => b.messageId)) ?? [],
+  const bookmarkedIds = useMemo(
+    () => new Set(bookmarksData?.pages.flatMap((p) => p.bookmarks.map((b) => b.messageId)) ?? []),
+    [bookmarksData],
   )
   const { data: customEmojiList = [] } = useCustomEmojis()
-  const customEmojis = new Map(customEmojiList.map((e) => [e.shortcode, e.url]))
+  const customEmojis = useMemo(
+    () => new Map(customEmojiList.map((e) => [e.shortcode, e.url])),
+    [customEmojiList],
+  )
   const { mutateAsync: createReminder } = useCreateReminder()
   const [slashFeedback, setSlashFeedback] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
   const { onInputChange } = useTypingIndicator(activeGroupId)
-  const { mutateAsync: uploadFile, isPending: uploading } = useUploadFile()
+  const { sendFiles, uploading } = useFileAttachment(activeGroupId)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragActive, setDragActive] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { notices: systemNotices, dismiss: dismissNotice } = useGroupSystemEvents(activeGroupId)
+  const { mutate: markGroupRead } = useMarkGroupRead()
 
-  // Flatten infinite pages into a single message array
-  const messages = messagesData?.pages.flatMap((p) => p.messages) ?? []
+  // Stable per-message handlers so the memoized MessageBubble doesn't re-render
+  // every keystroke. Mutate fns from TanStack Query are already stable refs.
+  const handleDeleteMsg = useCallback((m: Message) => deleteMsg(m.id), [deleteMsg])
+  const handlePinMsg = useCallback((m: Message) => pinMsg(m.id), [pinMsg])
+  const handleReplyMsg = useCallback((m: Message) => setReplyTo(m), [])
+  const handleReactMsg = useCallback(
+    (messageId: string, emoji: string) => toggleReaction({ messageId, emoji }),
+    [toggleReaction],
+  )
+  const handleBookmarkMsg = useCallback(
+    (m: Message, isBookmarked: boolean) => toggleBookmark({ messageId: m.id, isBookmarked }),
+    [toggleBookmark],
+  )
+  const handleOpenThread = useCallback((messageId: string) => {
+    setThreadParentId(messageId)
+    setSearchOpen(false)
+  }, [])
+
+  // Flatten infinite pages into a single chronological (oldest → newest) array.
+  // Page 0 holds the newest messages and each subsequent page (fetched via the
+  // "load older" cursor) holds older ones, so pages must be reversed before the
+  // flatten — otherwise the newest block renders above the older block.
+  const messages = [...(messagesData?.pages ?? [])].reverse().flatMap((p) => p.messages)
 
 
   // Connect socket on mount
@@ -726,6 +814,12 @@ function MensagensPageInner() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
+
+  // Mark the open group as read — on open and whenever a new message arrives
+  // while it's the active conversation. Clears its unread badge.
+  useEffect(() => {
+    if (activeGroupId) markGroupRead(activeGroupId)
+  }, [activeGroupId, messages.length, markGroupRead])
 
   async function send() {
     const content = text.trim()
@@ -763,18 +857,43 @@ function MensagensPageInner() {
     setMentionStart(-1)
   }
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
     e.target.value = ''
-    const uploaded = await uploadFile(file)
-    sendMsg({
-      content: '',
-      fileKey: uploaded.key,
-      fileName: uploaded.fileName,
-      fileSize: uploaded.size,
-      fileMime: uploaded.mimeType,
-    })
+    void sendFiles(files)
+  }
+
+  // Drag-and-drop: dropping files anywhere over the chat panel uploads + sends them.
+  function handleDragOver(e: React.DragEvent) {
+    if (!activeGroupId) return
+    if (!Array.from(e.dataTransfer.types).includes('Files')) return
+    e.preventDefault()
+    setDragActive(true)
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    // Only clear when leaving the panel itself, not when moving over children.
+    if (e.currentTarget === e.target) setDragActive(false)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    if (!activeGroupId) return
+    e.preventDefault()
+    setDragActive(false)
+    if (e.dataTransfer.files.length > 0) void sendFiles(e.dataTransfer.files)
+  }
+
+  // Clipboard paste of an image/file (e.g. a screenshot) attaches it.
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.items)
+      .filter((it) => it.kind === 'file')
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => f !== null)
+    if (files.length > 0) {
+      e.preventDefault()
+      void sendFiles(files)
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -976,7 +1095,19 @@ function MensagensPageInner() {
 
       {/* Chat panel */}
       {activeGroup ? (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div
+          className="flex-1 flex flex-col overflow-hidden relative"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Drag-and-drop overlay */}
+          {dragActive && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-page-bg/90 border-2 border-dashed border-gd rounded-2xl pointer-events-none">
+              <i className="ti ti-upload text-4xl text-gd" aria-hidden="true" />
+              <p className="text-sm font-medium text-gd">Solte para enviar</p>
+            </div>
+          )}
           {/* Chat header */}
           <div className="h-14 bg-white border-b border-gs/60 px-5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
@@ -985,9 +1116,11 @@ function MensagensPageInner() {
                 aria-hidden="true"
               />
               <div>
-                <p className="text-sm font-semibold text-gray-800">{activeGroup.name}</p>
+                <p className="text-sm font-semibold text-gray-800">{groupDisplayName(activeGroup)}</p>
                 <p className="text-[11px] text-gx">
-                  {activeGroup._count?.members ?? 0} membros · {GROUP_TYPE_LABEL[activeGroup.type]}
+                  {activeGroup.type === GroupType.PRIVATE
+                    ? 'Conversa direta'
+                    : `${activeGroup._count?.members ?? 0} membros · ${GROUP_TYPE_LABEL[activeGroup.type]}`}
                 </p>
               </div>
               {!huddleSession && (
@@ -998,17 +1131,17 @@ function MensagensPageInner() {
                     className="ml-2 flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-gd rounded-full hover:opacity-90 disabled:opacity-50"
                   >
                     <i className="ti ti-headphones text-sm" aria-hidden="true" />
-                    Entrar no huddle ({activeHuddle.participantCount})
+                    Entrar na chamada ({activeHuddle.participantCount})
                   </button>
                 ) : (
                   <button
                     onClick={handleStartHuddle}
                     disabled={startingHuddle}
                     className="ml-2 flex items-center gap-1.5 px-2.5 py-1 text-xs text-gd border border-gd/30 rounded-full hover:bg-gd/5 disabled:opacity-50"
-                    title="Iniciar huddle"
+                    title="Iniciar chamada"
                   >
                     <i className="ti ti-headphones text-sm" aria-hidden="true" />
-                    Huddle
+                    Chamada
                   </button>
                 )
               )}
@@ -1028,6 +1161,16 @@ function MensagensPageInner() {
               >
                 <i className="ti ti-users text-base" aria-hidden="true" />
               </button>
+              {isGroupAdmin && activeGroup.type !== GroupType.PRIVATE && (
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="p-2 rounded-lg text-gx hover:bg-page-bg hover:text-gd transition-colors"
+                  aria-label="Configurações do grupo"
+                  title="Configurações do grupo"
+                >
+                  <i className="ti ti-settings text-base" aria-hidden="true" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -1061,17 +1204,44 @@ function MensagensPageInner() {
                   isBookmarked={bookmarkedIds.has(msg.id)}
                   isFlashing={flashMessageId === msg.id}
                   customEmojis={customEmojis}
-                  onDelete={() => deleteMsg(msg.id)}
-                  onPin={() => pinMsg(msg.id)}
-                  onReply={() => setReplyTo(msg)}
-                  onReact={(emoji) => toggleReaction({ messageId: msg.id, emoji })}
-                  onBookmark={() =>
-                    toggleBookmark({ messageId: msg.id, isBookmarked: bookmarkedIds.has(msg.id) })
-                  }
-                  onOpenThread={() => { setThreadParentId(msg.id); setSearchOpen(false) }}
+                  onDelete={handleDeleteMsg}
+                  onPin={handlePinMsg}
+                  onReply={handleReplyMsg}
+                  onReact={handleReactMsg}
+                  onBookmark={handleBookmarkMsg}
+                  onOpenThread={handleOpenThread}
                 />
               ))
             )}
+
+            {/* Ephemeral system notices (impediments etc.) — not persisted */}
+            {systemNotices.map((n) => (
+              <div
+                key={n.id}
+                className={clsx(
+                  'flex items-center gap-2 mx-auto my-2 max-w-md px-3 py-1.5 rounded-full text-xs border',
+                  n.tone === 'danger' && 'bg-red-50 border-red-200 text-red-600',
+                  n.tone === 'warning' && 'bg-amber-50 border-amber-200 text-amber-700',
+                  n.tone === 'success' && 'bg-gd/5 border-gd/20 text-gd',
+                  n.tone === 'info' && 'bg-page-bg border-gs/60 text-gx',
+                )}
+              >
+                <i className={clsx('ti shrink-0', `ti-${n.icon}`)} aria-hidden="true" />
+                <span className="flex-1">{n.text}</span>
+                {n.href && (
+                  <a href={n.href} className="font-medium underline shrink-0">
+                    Ver
+                  </a>
+                )}
+                <button
+                  onClick={() => dismissNotice(n.id)}
+                  className="shrink-0 opacity-60 hover:opacity-100"
+                  aria-label="Dispensar aviso"
+                >
+                  <i className="ti ti-x text-[11px]" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
 
             <div ref={bottomRef} />
           </div>
@@ -1183,7 +1353,17 @@ function MensagensPageInner() {
             </div>
           )}
 
-          {/* Input bar */}
+          {/* Input bar — hidden for viewers and non-admins in admins-only groups */}
+          {!canPost ? (
+            <div className="px-4 py-3 bg-white border-t border-gs/60 shrink-0 text-center">
+              <p className="text-xs text-gx flex items-center justify-center gap-1.5">
+                <i className="ti ti-eye text-sm" aria-hidden="true" />
+                {myRole === 'VIEWER'
+                  ? 'Você tem acesso somente leitura neste grupo.'
+                  : 'Somente administradores podem enviar mensagens neste grupo.'}
+              </p>
+            </div>
+          ) : (
           <div className="px-4 py-3 bg-white border-t border-gs/60 shrink-0">
             <div className="flex items-end gap-2 bg-page-bg rounded-2xl px-3 py-2 border border-gs/60 focus-within:border-gd transition-colors">
               <button
@@ -1201,6 +1381,7 @@ function MensagensPageInner() {
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 onChange={handleFileSelect}
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
@@ -1210,6 +1391,7 @@ function MensagensPageInner() {
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={onKeyDown}
+                onPaste={handlePaste}
                 placeholder="Mensagem... (@ para mencionar, / para comandos)"
                 rows={1}
                 className="flex-1 text-sm bg-transparent resize-none focus:outline-none max-h-32 leading-relaxed"
@@ -1226,6 +1408,7 @@ function MensagensPageInner() {
             </div>
             <p className="text-[10px] text-gx mt-1 pl-1">Enter para enviar · Shift+Enter para nova linha</p>
           </div>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
@@ -1281,6 +1464,14 @@ function MensagensPageInner() {
         onClose={() => setDmOpen(false)}
         onSelect={handleStartDirect}
       />
+      {activeGroup && (
+        <GroupSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          group={activeGroup}
+          currentUserId={user?.id}
+        />
+      )}
     </div>
   )
 }

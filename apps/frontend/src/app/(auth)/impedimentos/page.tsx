@@ -5,15 +5,15 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { clsx } from 'clsx'
-import { PageHeader, MetricCard } from '@/components/shared'
-import { Button, Avatar, FormModal } from '@/components/ui'
+import { PageHeader, MetricCard } from '@/shared/components'
+import { Button, Avatar, FormModal } from '@/shared/components/ui'
 import {
   useImpediments,
   useImpedimentAnalytics,
   useResolveImpediment,
   type ImpedimentWithTask,
-} from '@/hooks/use-impediments'
-import { useDownloadImpedimentsPdf, useDownloadImpedimentsExcel } from '@/hooks/use-reports'
+} from '@/features/impediments/hooks/use-impediments'
+import { useDownloadImpedimentsPdf, useDownloadImpedimentsExcel } from '@/features/reports/hooks/use-reports'
 import { ImpedimentStatus } from '@mediall/types'
 
 const STATUS_CONFIG: Record<ImpedimentStatus, { label: string; bg: string; text: string; dot: string }> = {

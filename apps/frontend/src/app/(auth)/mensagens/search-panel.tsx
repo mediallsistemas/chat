@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { clsx } from 'clsx'
-import { Avatar, Button } from '@/components/ui'
-import { useChatSearch } from '@/hooks/use-chat'
+import { Avatar, Button } from '@/shared/components/ui'
+import { useChatSearch } from '@/features/chat/hooks/use-chat'
 import type { ChatSearchResult } from '@mediall/types'
 
 // Allow only `<mark>` / `</mark>` from ts_headline output; escape all

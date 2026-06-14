@@ -4,6 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Engineering Rules — read before implementing
+
+Actionable, code-verified rules live in **`.claude/rules/`**. Read the relevant file **before**
+writing any improvement, and respect rules marked **🔴 OBRIGATÓRIO** (blocking):
+
+- **`.claude/rules/architecture.md`** — backend contexts, EventBus boundaries, Prisma multi-file, API contract, jobs
+- **`.claude/rules/ui.md`** — feature-first layout, shared UI primitives, design tokens, forms, TanStack Query, loading/error
+- **`.claude/rules/security.md`** — auth/session, CSRF, **per-unit data isolation (rule #1)**, secrets, uploads, RBAC
+
+When a rule and the actual code disagree, the code wins — update the rule. See `.claude/rules/README.md`.
+
+---
+
 ## Project Overview
 
 **Mediall Brasil** — internal corporate platform for a healthcare holding with multiple units (UPAs, hospitals, etc.).

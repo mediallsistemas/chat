@@ -39,10 +39,7 @@ export class HuddlesController extends BaseUnitController {
   }
 
   @Post('huddles/:huddleId/leave')
-  leave(
-    @Param('huddleId') huddleId: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    return this.huddlesService.leave(huddleId, user)
+  leave(@Param('huddleId') huddleId: string) {
+    return this.huddlesService.leave(huddleId)
   }
 }

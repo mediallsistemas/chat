@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, KeyboardEvent } from 'react'
-import { Avatar } from '@/components/ui'
-import { useMeetingChat, useSendMeetingChat } from '@/hooks/use-meetings'
-import { useAuthStore } from '@/store/auth-store'
+import { Avatar } from '@/shared/components/ui'
+import { useMeetingChat, useSendMeetingChat } from '@/features/meetings/hooks/use-meetings'
+import { useAuthStore } from '@/features/auth/store/auth-store'
 
 interface Props {
   meetingId: string

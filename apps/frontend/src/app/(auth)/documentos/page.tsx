@@ -7,9 +7,9 @@ import { z } from 'zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
-import { PageHeader } from '@/components/shared'
-import { Button, FormModal } from '@/components/ui'
-import { FormField } from '@/components/ui/form-field'
+import { PageHeader } from '@/shared/components'
+import { Button, FormModal } from '@/shared/components/ui'
+import { FormField } from '@/shared/components/ui/form-field'
 import {
   useDocumentFolders,
   useDocuments,
@@ -17,7 +17,7 @@ import {
   useDeleteFolder,
   useUploadDocument,
   useDeleteDocument,
-} from '@/hooks/use-documents'
+} from '@/features/documents/hooks/use-documents'
 import type { DocumentFolder } from '@mediall/types'
 
 const createFolderSchema = z.object({

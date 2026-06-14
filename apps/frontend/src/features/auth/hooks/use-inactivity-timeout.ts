@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/shared/lib/api'
+import { api, invalidateCsrfToken } from '@/shared/lib/api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 
-const INACTIVITY_MS = 30 * 60 * 1000 // 30 minutes
+const INACTIVITY_MS = 7 * 60 * 60 * 1000 // 7 hours
 const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click']
 
 export function useInactivityTimeout() {
@@ -19,6 +19,7 @@ export function useInactivityTimeout() {
     } catch {
       // ignore — we're logging out anyway
     }
+    invalidateCsrfToken()
     setUser(null)
     router.push('/login')
   }, [router, setUser])

@@ -1,30 +1,30 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)",
-      "Bash(npm install *)",
-      "Bash(npx prisma *)",
-      "Bash(docker compose *)",
-      "Bash(docker logs *)",
-      "Bash(turbo run *)",
-      "Bash(code .)",
-      "Bash(pm2 list)",
-      "Bash(pm2 list *)",
-      "Bash(pm2 logs *)",
-      "Bash(pm2 show *)",
-      "Bash(pm2 start *)",
-      "Bash(pm2 restart *)",
-      "Bash(pm2 stop *)",
-      "Bash(tasklist)",
-      "Bash(tasklist *)",
-      "Bash(git status)",
-      "Bash(git log *)",
-      "Bash(git diff *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git push *)",
-      "Bash(git pull)",
-      "Bash(wsl --list *)"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Agent(*)",
+      "Web Fetch(*)",
+      "Fetch(*)",
+      "PowerShell(git push origin development)",
+      "PowerShell($v = \\(Get-Command vercel -ErrorAction SilentlyContinue\\); if \\($v\\) { Write-Output \"vercel: $\\($v.Source\\)\"; vercel whoami } else { Write-Output \"vercel CLI not found\" })",
+      "PowerShell(vercel ls 2>&1)",
+      "PowerShell($url = \"https://patrimonio-o50flb6il-rafaelmoreira18s-projects.vercel.app\"; for \\($i=0; $i -lt 30; $i++\\) { $line = \\(vercel ls 2>&1 | Select-String -Pattern \"o50flb6il\" -Context 0,1\\); $status = \\(vercel inspect $url 2>&1 | Select-String -Pattern \"status\\\\s+\" | Select-Object -First 1\\); Write-Output \"[$i] $status\"; if \\(\"$status\" -match \"Ready|Error|Canceled\"\\) { break }; Start-Sleep -Seconds 15 })",
+      "PowerShell($base = \"https://patrimonio-o50flb6il-rafaelmoreira18s-projects.vercel.app\"; foreach \\($p in @\\(\"/Logo_mediall.png\",\"/sw.js\",\"/login\"\\)\\) { try { $r = Invoke-WebRequest -Uri \"$base$p\" -Method Head -MaximumRedirection 0 -ErrorAction Stop; Write-Output \"$p -> $\\($r.StatusCode\\)\" } catch { $code = $_.Exception.Response.StatusCode.value__; Write-Output \"$p -> $code\" } })",
+      "PowerShell(git push origin main)",
+      "PowerShell($base = \"https://linensistem.vercel.app\"; foreach \\($p in @\\(\"/Logo_mediall.png\",\"/sw.js\",\"/login\"\\)\\) { try { $r = Invoke-WebRequest -Uri \"$base$p\" -Method Head -MaximumRedirection 0 -ErrorAction Stop; $ct = $r.Headers[\"Content-Type\"]; Write-Output \"$p -> $\\($r.StatusCode\\) [$ct]\" } catch { $code = $_.Exception.Response.StatusCode.value__; Write-Output \"$p -> $code\" } })"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -r *)",
+      "Bash(git push*)",
+      "Bash(git push --force*)",
+      "Bash(del *)",
+      "Bash(rmdir *)"
     ]
   }
 }

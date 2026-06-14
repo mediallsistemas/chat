@@ -14,6 +14,8 @@ import { MessageSentEvent } from '../../contexts/chat/messages/events/message-se
 import { MessageEditedEvent } from '../../contexts/chat/messages/events/message-edited.event'
 import { MessageDeletedEvent } from '../../contexts/chat/messages/events/message-deleted.event'
 import { MessageReactionEvent } from '../../contexts/chat/messages/events/message-reaction.event'
+import { GroupUpdatedEvent } from '../../contexts/chat/groups/events/group-updated.event'
+import { GroupSystemEvent } from '../../contexts/chat/groups/events/group-system-event.event'
 
 @Injectable()
 export class RealtimeEventHandler {
@@ -82,5 +84,15 @@ export class RealtimeEventHandler {
   @OnEvent('message.reaction')
   onMessageReaction(event: MessageReactionEvent) {
     this.gateway.emitToGroup(event.groupId, 'message:reaction', event.payload)
+  }
+
+  @OnEvent('group.updated')
+  onGroupUpdated(event: GroupUpdatedEvent) {
+    this.gateway.emitToGroup(event.groupId, 'group:updated', event.payload)
+  }
+
+  @OnEvent('group.system_event')
+  onGroupSystemEvent(event: GroupSystemEvent) {
+    this.gateway.emitToGroup(event.groupId, 'group:system-event', event.payload)
   }
 }

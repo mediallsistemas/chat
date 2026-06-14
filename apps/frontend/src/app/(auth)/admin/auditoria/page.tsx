@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { clsx } from 'clsx'
-import { PageHeader } from '@/components/shared'
-import { Button } from '@/components/ui'
-import { useAuditLogs } from '@/hooks/use-audit-logs'
+import { PageHeader } from '@/shared/components'
+import { Button } from '@/shared/components/ui'
+import { useAuditLogs } from '@/features/audit/hooks/use-audit-logs'
 
 const ACTION_CONFIG: Record<string, { label: string; color: string }> = {
   CREATE: { label: 'Criação', color: 'text-green-700 bg-green-50' },

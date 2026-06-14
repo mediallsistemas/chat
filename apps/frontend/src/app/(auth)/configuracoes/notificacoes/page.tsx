@@ -3,8 +3,8 @@
 import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { clsx } from 'clsx'
-import { useNotificationSettings } from '@/hooks/use-notification-settings'
-import { usePushSubscription } from '@/hooks/use-push-subscription'
+import { useNotificationSettings } from '@/features/notifications/hooks/use-notification-settings'
+import { usePushSubscription } from '@/features/notifications/hooks/use-push-subscription'
 import { NotificationType } from '@mediall/types'
 import type { NotificationSetting } from '@mediall/types'
 
