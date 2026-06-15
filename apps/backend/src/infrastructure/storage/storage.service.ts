@@ -17,7 +17,10 @@ export class StorageService {
     this.client = new Minio.Client({
       endPoint: process.env.MINIO_ENDPOINT || 'localhost',
       port: parseInt(process.env.MINIO_PORT || '9000', 10),
-      useSSL: process.env.NODE_ENV === 'production',
+      // Internal MinIO (minio:9000) speaks plain HTTP. Tie TLS to an explicit
+      // flag, not NODE_ENV — otherwise production forces HTTPS against a non-TLS
+      // endpoint and every upload/signed-URL fails.
+      useSSL: process.env.MINIO_USE_SSL === 'true',
       accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
       secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
     })
