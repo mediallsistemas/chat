@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { clsx } from 'clsx'
 import { useLeaveHuddle } from '@/features/chat/hooks/use-chat'
 import { toast } from '@/shared/hooks/use-toast'
+import { useElapsed } from '@/shared/hooks/use-elapsed'
 import { getSocket } from '@/shared/lib/socket'
 import type { HuddleTokenResponse } from '@mediall/types'
 
@@ -60,7 +61,7 @@ export function HuddleMini({ session, onLeave }: Props) {
       style={{ display: 'contents' }}
     >
       <RoomAudioRenderer />
-      <HuddleControls huddleId={session.huddleId} onLeave={onLeave} />
+      <HuddleControls huddleId={session.huddleId} startedAt={session.startedAt} onLeave={onLeave} />
     </LiveKitRoom>
   )
 }
@@ -70,12 +71,22 @@ interface Position {
   top: number
 }
 
-function HuddleControls({ huddleId, onLeave }: { huddleId: string; onLeave: () => void }) {
+function HuddleControls({
+  huddleId,
+  startedAt,
+  onLeave,
+}: {
+  huddleId: string
+  startedAt: string
+  onLeave: () => void
+}) {
   const { localParticipant } = useLocalParticipant()
   const participants = useParticipants()
   const { mutate: leaveServer } = useLeaveHuddle()
   // Start muted: we connect without auto-publishing audio (see LiveKitRoom).
   const [muted, setMuted] = useState(true)
+  // Running call duration since it started on the server (same for everyone).
+  const elapsed = useElapsed(startedAt)
 
   const count = participants.length
 
@@ -220,6 +231,8 @@ function HuddleControls({ huddleId, onLeave }: { huddleId: string; onLeave: () =
               <p className="truncate text-sm font-semibold">Chamada ativa</p>
             </div>
             <p className="truncate text-[11px] text-white/70">
+              <span className="font-semibold tabular-nums text-gn">{elapsed}</span>
+              {' · '}
               {count} {count === 1 ? 'pessoa' : 'pessoas'}
             </p>
           </div>

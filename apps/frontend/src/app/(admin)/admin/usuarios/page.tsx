@@ -10,7 +10,11 @@ import { ptBR } from 'date-fns/locale'
 import { PageHeader } from '@/shared/components'
 import { Button, Badge, Avatar, Modal, SkeletonList } from '@/shared/components/ui'
 import { UserRole, AccessScope } from '@mediall/types'
-import { useUsers, useCreateUser, useUpdateUser, useUnlockUser, type UserListItem } from '@/features/users/hooks/use-users'
+import {
+  useUsers, useCreateUser, useUpdateUser, useUnlockUser,
+  useAllUnits, useAssignUserUnit, useRemoveUserUnit,
+  type UserListItem,
+} from '@/features/users/hooks/use-users'
 
 const ROLE_LABEL: Record<UserRole, string> = {
   [UserRole.SUPER_ADMIN]: 'Super Admin',
@@ -43,6 +47,7 @@ function lastSeenLabel(lastSeenAt: string | null): string {
 function UserRow({ user }: { user: UserListItem }) {
   const { mutate: updateUser } = useUpdateUser(user.id)
   const { mutate: unlockUser } = useUnlockUser()
+  const [unitsOpen, setUnitsOpen] = useState(false)
 
   const primaryRole = user.unitAccess.find((u) => u.isPrimary)?.role ?? user.unitAccess[0]?.role
 
@@ -107,6 +112,14 @@ function UserRow({ user }: { user: UserListItem }) {
             </button>
           )}
           <button
+            onClick={() => setUnitsOpen(true)}
+            className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gray-800 transition-colors"
+            aria-label={`Gerenciar unidades de ${user.name}`}
+            title="Gerenciar unidades"
+          >
+            <i className="ti ti-building-community text-base" aria-hidden="true" />
+          </button>
+          <button
             onClick={() => updateUser({ isActive: !user.isActive })}
             className="p-1.5 rounded-lg text-gx hover:bg-page-bg hover:text-gray-800 transition-colors"
             aria-label={user.isActive ? `Desativar ${user.name}` : `Ativar ${user.name}`}
@@ -115,8 +128,120 @@ function UserRow({ user }: { user: UserListItem }) {
             <i className={clsx('ti text-base', user.isActive ? 'ti-user-off' : 'ti-user-check')} aria-hidden="true" />
           </button>
         </div>
+        <ManageUnitsModal user={user} open={unitsOpen} onClose={() => setUnitsOpen(false)} />
       </td>
     </tr>
+  )
+}
+
+function ManageUnitsModal({
+  user,
+  open,
+  onClose,
+}: {
+  user: UserListItem
+  open: boolean
+  onClose: () => void
+}) {
+  const { data: units = [], isLoading } = useAllUnits()
+  const { mutate: assign, isPending: assigning } = useAssignUserUnit()
+  const { mutate: removeUnit } = useRemoveUserUnit()
+  const [unitId, setUnitId] = useState('')
+  const [role, setRole] = useState<UserRole>(UserRole.COLABORADOR)
+
+  const assignedIds = new Set(user.unitAccess.map((ua) => ua.unitId))
+  const available = units.filter((u) => !assignedIds.has(u.id))
+
+  function handleAdd() {
+    if (!unitId) return
+    assign(
+      // The first unit becomes primary so SINGLE/MULTI users have a home unit.
+      { unitId, userId: user.id, role, isPrimary: user.unitAccess.length === 0 },
+      { onSuccess: () => setUnitId('') },
+    )
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Unidades de ${user.name}`} size="md">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-700 mb-2">Unidades atuais</p>
+          {user.unitAccess.length === 0 ? (
+            <p className="text-xs text-gx">
+              Nenhuma unidade atribuída. O usuário não aparece em conversas nem nos recursos da
+              unidade até ser atribuído a pelo menos uma.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {user.unitAccess.map((ua) => (
+                <div
+                  key={ua.unitId}
+                  className="flex items-center justify-between gap-2 px-3 py-2 bg-page-bg rounded-xl"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{ua.unit.name}</p>
+                    <p className="text-[11px] text-gx">
+                      {ROLE_LABEL[ua.role]}
+                      {ua.isPrimary ? ' · Principal' : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeUnit({ unitId: ua.unitId, userId: user.id })}
+                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                    aria-label={`Remover ${user.name} de ${ua.unit.name}`}
+                    title="Remover desta unidade"
+                  >
+                    <i className="ti ti-trash text-base" aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-3 border-t border-gs/60 space-y-2">
+          <p className="text-xs font-semibold text-gray-700">Adicionar a uma unidade</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={unitId}
+              onChange={(e) => setUnitId(e.target.value)}
+              disabled={isLoading || available.length === 0}
+              className="flex-1 px-3 py-2 text-sm border border-gs rounded-xl focus:outline-none focus:border-gd text-gray-700 disabled:opacity-50"
+              aria-label="Unidade"
+            >
+              <option value="">
+                {isLoading
+                  ? 'Carregando...'
+                  : available.length === 0
+                    ? 'Sem unidades disponíveis'
+                    : 'Selecione a unidade...'}
+              </option>
+              {available.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="px-3 py-2 text-sm border border-gs rounded-xl focus:outline-none focus:border-gd text-gray-700"
+              aria-label="Papel na unidade"
+            >
+              {Object.values(UserRole).map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="button" onClick={handleAdd} disabled={!unitId || assigning} className="w-full">
+            {assigning ? 'Adicionando...' : 'Adicionar à unidade'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   )
 }
 

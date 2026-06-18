@@ -28,6 +28,10 @@ function patch<T>(url: string, body?: unknown): Promise<T> {
   return api.patch<{ data: T }>(url, body).then((r) => r.data.data)
 }
 
+function del<T>(url: string): Promise<T> {
+  return api.delete<{ data: T }>(url).then((r) => r.data.data)
+}
+
 // ─── Extended types (with includes) ──────────────────────────────────────────
 
 export interface GoalWithPhases extends Goal {
@@ -351,6 +355,65 @@ export function useArchivePlan(unitId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['plans', unitId] })
       toast.success('Plano arquivado')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+// ─── Plano ↔ Unidade (atribuição) — plano 24 ──────────────────────────────────
+
+export interface PlanUnitInfo {
+  id: string
+  planId: string
+  unitId: string
+  status: PlanStatus
+  progressPct: number
+  trafficLight: string
+  unit: { id: string; name: string; type: string }
+}
+
+export function usePlanUnits(planId: string | undefined) {
+  return useQuery<PlanUnitInfo[]>({
+    queryKey: ['plan-units', planId],
+    queryFn: () => get<PlanUnitInfo[]>(`/plans/${planId}/units`),
+    enabled: !!planId,
+  })
+}
+
+export function useAttachPlanUnits(planId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (unitIds: string[]) => post<unknown>(`/plans/${planId}/units`, { unitIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plan-units', planId] })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Unidades do plano atualizadas.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useDetachPlanUnit(planId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (unitId: string) => del<unknown>(`/plans/${planId}/units/${unitId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plan-units', planId] })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Plano removido da unidade.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export function useDeletePlan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (planId: string) => del<unknown>(`/plans/${planId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['plan-units'] })
+      toast.success('Plano excluído.')
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   })

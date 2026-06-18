@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole, AccessScope, UnitType } from '@prisma/client'
 import * as bcrypt from 'bcrypt'
+import { ensureTenantAndBackfill } from './tenant-backfill'
 
 const prisma = new PrismaClient()
 
@@ -305,6 +306,12 @@ async function main() {
   }
 
   console.log('✅ UserUnit assignments created')
+
+  // ─── Multitenancy (plano 23.x) ────────────────────────────────────────────────
+  // Seed uses a raw PrismaClient (no tenant middleware), so rows are created with
+  // tenant_id NULL. Tag them all here so login works (a user needs a tenant).
+  await ensureTenantAndBackfill(prisma)
+  console.log('✅ Tenant assigned')
 
   // ─── Summary ──────────────────────────────────────────────────────────────────
 

@@ -51,7 +51,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -61,7 +61,7 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }: M
         ref={dialogRef}
         tabIndex={-1}
         className={clsx(
-          'relative bg-white rounded-2xl shadow-2xl flex flex-col outline-none',
+          'relative bg-white rounded-2xl shadow-2xl flex flex-col outline-none animate-scale-in',
           'max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] overflow-hidden',
           {
             'w-full max-w-sm': size === 'sm',

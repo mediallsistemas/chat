@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { PlansController } from './plans/plans.controller'
+import { PlansAdminController } from './plans/plans-admin.controller'
 import { PlansService } from './plans/plans.service'
 import { ObjectivesController } from './objectives/objectives.controller'
 import { ObjectivesService } from './objectives/objectives.service'
@@ -12,7 +13,7 @@ import { MacroTasksController } from './macro-tasks/macro-tasks.controller'
 import { MacroTasksService } from './macro-tasks/macro-tasks.service'
 
 @Module({
-  controllers: [PlansController, ObjectivesController, GoalsController, PhasesController, MacroTasksController],
+  controllers: [PlansController, PlansAdminController, ObjectivesController, GoalsController, PhasesController, MacroTasksController],
   providers: [PlansService, ObjectivesService, GoalsService, PhasesService, MacroTasksService, PhaseNotificationHandler],
   exports: [GoalsService],
 })

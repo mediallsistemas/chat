@@ -15,6 +15,7 @@ import {
 } from '@/features/chat/hooks/use-chat'
 import { useFileAttachment } from '@/features/chat/hooks/use-file-attachment'
 import { GroupSettingsModal } from '@/features/chat/components'
+import { useElapsed } from '@/shared/hooks/use-elapsed'
 import type { HuddleTokenResponse } from '@mediall/types'
 import { parseSlash, SLASH_COMMANDS } from '@/shared/lib/slash-commands'
 import { SearchPanel } from './search-panel'
@@ -643,6 +644,8 @@ function MensagensPageInner() {
   const { mutateAsync: startHuddle, isPending: startingHuddle } = useStartHuddle()
   const { mutateAsync: joinHuddleApi, isPending: joiningHuddle } = useJoinHuddle()
   const [huddleSession, setHuddleSession] = useState<HuddleTokenResponse | null>(null)
+  // Running call duration shown next to the conversation name in the header.
+  const callElapsed = useElapsed(activeHuddle?.startedAt ?? null)
 
   async function handleStartHuddle() {
     if (!activeGroupId) return
@@ -1116,7 +1119,18 @@ function MensagensPageInner() {
                 aria-hidden="true"
               />
               <div>
-                <p className="text-sm font-semibold text-gray-800">{groupDisplayName(activeGroup)}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-800">{groupDisplayName(activeGroup)}</p>
+                  {activeHuddle && (
+                    <span
+                      className="flex items-center gap-1 rounded-full bg-gn/15 px-2 py-0.5 text-[11px] font-semibold text-gd tabular-nums"
+                      title="Tempo de chamada em andamento"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
+                      {callElapsed}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-gx">
                   {activeGroup.type === GroupType.PRIVATE
                     ? 'Conversa direta'

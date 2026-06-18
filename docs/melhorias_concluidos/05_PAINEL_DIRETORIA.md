@@ -85,14 +85,14 @@ Para usuários MULTI: visão apenas das unidades que têm acesso, com seletor de
 
 - [x] Rota `/dashboard` (GET /api/dashboard/summary) com dados reais filtrados por escopo
 - [x] Componente de visão consolidada de planos (frontend conectado à API)
-- [x] Faróis em tempo real via WebSocket — DashboardUpdatedEvent emitido após recalculateProgress, RealtimeEventHandler → gateway.emitToUnit('dashboard:update'), useDashboard invalida query no evento
+- [x] Faróis em tempo real via WebSocket (`DashboardUpdatedEvent` + `dashboard:update`)
 - [x] Cards de resumo operacional (métricas: planos, impedimentos, tarefas atrasadas, metas em risco)
 - [x] Mapa de impedimentos (lista dos críticos escalados)
-- [x] Drill-down por objetivo (link de plano → /processos/[planId]/[objectiveId])
-- [x] Drill-down por unidade (GET /dashboard/units/:unitId + /dashboard/unidades/[unitId])
-- [x] Botão de contato rápido — ícone de chat nos cards de unidade que link para /mensagens?group=<generalGroupId>
-- [x] Exportação PDF do relatório executivo
-- [x] Exportação Excel — exportDashboardExcel(), GET /reports/dashboard/excel, useDownloadDashboardExcel
+- [x] Drill-down por objetivo (link plano → `/processos/[planId]/[objectiveId]`)
+- [x] Drill-down por unidade (`GET /dashboard/units/:unitId` + `/dashboard/unidades/[unitId]`)
+- [x] Botão de contato rápido (abre chat — ícone nos cards navega para `/mensagens?group=<generalGroupId>`)
+- [x] Exportação PDF do relatório executivo (`GET /reports/dashboard/pdf`)
+- [x] Exportação Excel (`GET /reports/dashboard/excel`)
 - [x] Sistema de alertas proativos (seção de alertas dinâmica no frontend)
-- [x] Check-in periódico forçado com alertas — GET /dashboard/stale-tasks + seção "Tarefas sem atualização" no dashboard
-- [x] Filtros por unidade e período (query params ?unitId=&from=&to= no /dashboard/summary)
+- [x] Check-in periódico forçado com alertas (`TaskCheckinJob` 9h diário + `GET /dashboard/stale-tasks`)
+- [x] Filtros por unidade e período (`?unitId=&from=&to=` no summary)

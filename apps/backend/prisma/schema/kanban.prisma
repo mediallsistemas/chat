@@ -6,6 +6,7 @@
 
 model KanbanBoard {
   id        String     @id @default(uuid())
+  tenantId  String?    @map("tenant_id")
   name      String
   ownerType BoardOwner @map("owner_type")
   ownerId   String     @map("owner_id")
@@ -18,11 +19,13 @@ model KanbanBoard {
   macroTasks       MacroTask[]
   phaseScopeBoards PhaseScopeBoard[]
 
+  @@index([tenantId])
   @@map("kb_boards")
 }
 
 model KanbanColumn {
   id           String   @id @default(uuid())
+  tenantId     String?  @map("tenant_id")
   boardId      String   @map("board_id")
   name         String
   position     Int
@@ -34,11 +37,13 @@ model KanbanColumn {
   board KanbanBoard @relation(fields: [boardId], references: [id])
   tasks Task[]
 
+  @@index([tenantId])
   @@map("kb_columns")
 }
 
 model Task {
   id                String           @id @default(uuid())
+  tenantId          String?          @map("tenant_id")
   boardId           String           @map("board_id")
   columnId          String           @map("column_id")
   macroTaskId       String?          @map("macro_task_id")
@@ -59,8 +64,8 @@ model Task {
   updatedAt         DateTime         @updatedAt @map("updated_at")
   completedAt       DateTime?        @map("completed_at")
 
-  board      KanbanBoard      @relation(fields: [boardId], references: [id])
-  column     KanbanColumn     @relation(fields: [columnId], references: [id])
+  board        KanbanBoard      @relation(fields: [boardId], references: [id])
+  column       KanbanColumn     @relation(fields: [columnId], references: [id])
   impediments  TaskImpediment[]
   checklists   TaskChecklist[]
   files        TaskFile[]
@@ -72,11 +77,13 @@ model Task {
   @@index([unitId, completedAt])
   @@index([unitId, dueDate])
   @@index([unitId, updatedAt])
+  @@index([tenantId])
   @@map("kb_tasks")
 }
 
 model TaskDependency {
   id          String   @id @default(uuid())
+  tenantId    String?  @map("tenant_id")
   taskId      String   @map("task_id")
   dependsOnId String   @map("depends_on_id")
   createdAt   DateTime @default(now()) @map("created_at")
@@ -85,11 +92,13 @@ model TaskDependency {
   dependsOn Task @relation("TaskDependents", fields: [dependsOnId], references: [id])
 
   @@unique([taskId, dependsOnId])
+  @@index([tenantId])
   @@map("kb_task_dependencies")
 }
 
 model TaskChecklist {
   id          String   @id @default(uuid())
+  tenantId    String?  @map("tenant_id")
   taskId      String   @map("task_id")
   description String
   isDone      Boolean  @default(false) @map("is_done")
@@ -97,20 +106,23 @@ model TaskChecklist {
 
   task Task @relation(fields: [taskId], references: [id])
 
+  @@index([tenantId])
   @@map("kb_task_checklists")
 }
 
 model TaskFile {
-  id           String   @id @default(uuid())
-  taskId       String   @map("task_id")
-  fileKey      String   @map("file_key")
-  fileName     String   @map("file_name")
-  fileSize     Int      @map("file_size")
-  fileMime     String   @map("file_mime")
-  uploadedBy   String   @map("uploaded_by")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  tenantId   String?  @map("tenant_id")
+  taskId     String   @map("task_id")
+  fileKey    String   @map("file_key")
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  fileMime   String   @map("file_mime")
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   task Task @relation(fields: [taskId], references: [id])
 
+  @@index([tenantId])
   @@map("kb_task_files")
 }

@@ -5,7 +5,7 @@ import { clsx } from 'clsx'
 
 const inputBase =
   'w-full rounded-lg border border-gs bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gx ' +
-  'focus:outline-none focus:ring-2 focus:ring-gd/30 focus:border-gd transition-colors ' +
+  'focus:outline-none focus:ring-2 focus:ring-gd/30 focus:border-gd focus:shadow-glow-gd transition-all duration-200 ' +
   'disabled:opacity-50 disabled:cursor-not-allowed'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {

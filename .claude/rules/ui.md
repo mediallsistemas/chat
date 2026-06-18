@@ -54,8 +54,8 @@ Use sempre os tokens do `tailwind.config.ts`, nunca cores hex literais no JSX:
   `RED` (Atrasado) / `GRAY` (Sem dados). Use o componente `TrafficLight`, não recrie as cores.
 - Fontes: `font-sora` (títulos/logo), `font-sans` = DM Sans (corpo).
 - Tema **claro apenas** (sem dark mode hoje). Não introduza dark mode sem decisão de produto.
-- ⚠️ Dívida: `tailwind.config.ts` `content` ainda não inclui `./src/features/**` e
-  `./src/shared/**`. Ao tocar em estilos, adicione esses globs ou classes novas serão purgadas.
+- ✅ `tailwind.config.ts` `content` já inclui `./src/app/**`, `./src/features/**` e
+  `./src/shared/**` — classes com tokens (`gd/gn/gs/gx/page-bg`) em features/shared são geradas.
 
 ## 4. Formulários 🔴 OBRIGATÓRIO
 
@@ -187,8 +187,19 @@ if (isError) return (
   adicione o prefixo em `RESTRICTED_PREFIXES`.
 - **Permissão de UI nunca é segurança** — esconder botão não basta; o backend (guard stack)
   é a fonte de verdade. UI só melhora a experiência.
-- Seletor de unidade (Header) só aparece para `AccessScope.MULTI`. Trocar unidade invalida
-  queries — não duplique essa lógica.
+- **Seletor de escopo (Header)** aparece para `AccessScope.MULTI` **e** `GLOBAL` (plano 25.1 —
+  implementado). GLOBAL/MULTI têm a opção agregada **"Toda a holding"** no topo, acima da lista de
+  unidades. O `unitStore` tem `scope: 'ALL' | 'UNIT'`: selecionar "Toda a holding" zera o
+  `activeUnit` (`scope='ALL'`); selecionar uma unidade seta `activeUnit` (`scope='UNIT'`). Trocar
+  de escopo invalida queries (`useUnits().switchUnit` / `switchToHolding`) — não duplique essa
+  lógica. `SINGLE` continua sem seletor (cai na sua única unidade).
+- Telas mono-unidade tratam `scope==='ALL'` (`activeUnit` null) pedindo "Selecione uma unidade"
+  (padrão em `processos-view.tsx`), nunca quebrando. O auto-select de unidade (`use-units.ts`) só
+  age em `scope==='UNIT'` — não force unidade no modo holding.
+- **Alvo (plano 25):** query keys passam a incluir `tenantId`; card "planos da holding" com
+  breakdown por unidade (depende do plano 24); ações inline no painel.
+- **Alvo (plano 23 — multitenant):** o tenant é resolvido pelo **subdomínio** (`acme.app.com`) no
+  boot do app; `tenantId` viaja no JWT. Nunca trate `tenantId` como editável pelo usuário.
 
 ## 10. Server vs Client Components 🟡 PADRÃO
 

@@ -16,10 +16,51 @@ import { MessageDeletedEvent } from '../../contexts/chat/messages/events/message
 import { MessageReactionEvent } from '../../contexts/chat/messages/events/message-reaction.event'
 import { GroupUpdatedEvent } from '../../contexts/chat/groups/events/group-updated.event'
 import { GroupSystemEvent } from '../../contexts/chat/groups/events/group-system-event.event'
+import {
+  ImpedimentCreatedEvent,
+  ImpedimentResolvedEvent,
+  ImpedimentEscalatedEvent,
+} from '../../shared/events'
+import { PhaseCompletedEvent } from '../../contexts/strategic/phases/events/phase-completed.event'
+import { PhaseUnlockedEvent } from '../../contexts/strategic/phases/events/phase-unlocked.event'
 
 @Injectable()
 export class RealtimeEventHandler {
   constructor(private gateway: AppGateway) {}
+
+  /**
+   * Bridge domain changes that affect the Jarvis panel to a single
+   * `dashboard:update` signal per unit (plano 25.6). The frontend coalesces
+   * bursts and refetches the consolidated summary / unit cockpit.
+   */
+  private emitDashboardUpdate(unitId: string, reason: string) {
+    this.gateway.emitToUnit(unitId, 'dashboard:update', { reason })
+  }
+
+  @OnEvent('impediment.created')
+  onImpedimentCreated(event: ImpedimentCreatedEvent) {
+    this.emitDashboardUpdate(event.unitId, 'impediment.created')
+  }
+
+  @OnEvent('impediment.resolved')
+  onImpedimentResolved(event: ImpedimentResolvedEvent) {
+    this.emitDashboardUpdate(event.unitId, 'impediment.resolved')
+  }
+
+  @OnEvent('impediment.escalated')
+  onImpedimentEscalated(event: ImpedimentEscalatedEvent) {
+    this.emitDashboardUpdate(event.unitId, 'impediment.escalated')
+  }
+
+  @OnEvent('phase.completed')
+  onPhaseCompleted(event: PhaseCompletedEvent) {
+    this.emitDashboardUpdate(event.unitId, 'phase.completed')
+  }
+
+  @OnEvent('phase.unlocked')
+  onPhaseUnlocked(event: PhaseUnlockedEvent) {
+    this.emitDashboardUpdate(event.unitId, 'phase.unlocked')
+  }
 
   @OnEvent('meeting.created')
   onMeetingCreated(event: MeetingCreatedEvent) {

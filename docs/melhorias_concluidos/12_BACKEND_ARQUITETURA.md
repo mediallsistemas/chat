@@ -1,10 +1,12 @@
 # Plano 12 — Arquitetura Backend
-## NestJS, módulos, guards, interceptors, DTOs
+## NestJS DDD, módulos, guards, interceptors, DTOs
+
+> Última revisão: 2026-05-23 — alinhado à reestruturação DDD concluída e ao plano 17 (Modular Monolith).
 
 ---
 
 ## Objetivo
-Definir a arquitetura backend com NestJS, organização por módulos de domínio, guard stack e boas práticas.
+Definir a arquitetura backend com NestJS em **DDD modular** (4 camadas por contexto), guard stack, comunicação entre contextos via EventBus e boas práticas.
 
 ---
 
@@ -34,94 +36,71 @@ mediall/
 
 ---
 
-## Estrutura de Pastas
+## Estrutura de Pastas (DDD Modular)
+
+Três grandes blocos no topo: **`contexts/`**, **`shared/`**, **`infrastructure/`**.
 
 ```
 apps/backend/src/
-├── auth/
-│   ├── auth.module.ts
-│   ├── auth.controller.ts
-│   ├── auth.service.ts
-│   ├── strategies/
-│   │   ├── jwt.strategy.ts
-│   │   └── local.strategy.ts
-│   └── dto/
-│       ├── login.dto.ts
-│       └── refresh-token.dto.ts
+├── contexts/                  ← 15 domínios de negócio (DDD 4 camadas cada)
+│   ├── auth/
+│   ├── users/
+│   ├── units/
+│   ├── strategic/             ← plans, objectives, goals, phases, macro-tasks
+│   ├── kanban/                ← boards, columns, tasks, task-files
+│   ├── chat/                  ← groups, members, messages, presence
+│   ├── meetings/
+│   ├── transcription/
+│   ├── documents/
+│   ├── tickets/
+│   ├── impediments/
+│   ├── notifications/
+│   ├── consents/
+│   ├── audit/
+│   ├── dashboard/
+│   └── reports/
 │
-├── units/
-│   ├── units.module.ts
-│   ├── units.controller.ts
-│   └── units.service.ts
+├── shared/                    ← cross-cutting técnico
+│   ├── guards/                ← jwt-auth, roles, unit-scope
+│   ├── interceptors/          ← transform, audit-log
+│   ├── decorators/            ← roles, current-user, unit-scope
+│   ├── filters/               ← all-exceptions, http-exception
+│   ├── middleware/            ← correlation-id
+│   ├── events/                ← EventBusService (EventEmitter2 @Global)
+│   ├── controllers/           ← base-unit.controller.ts
+│   ├── dto/                   ← pagination.dto.ts
+│   └── utils/
 │
-├── users/
-│   ├── users.module.ts
-│   ├── users.controller.ts
-│   └── users.service.ts
-│
-├── strategic/
-│   ├── strategic.module.ts
-│   ├── plans/
-│   ├── objectives/
-│   ├── goals/
-│   ├── phases/                ← NOVO (etapas)
-│   └── macro-tasks/
-│
-├── kanban/
-│   ├── kanban.module.ts
-│   ├── boards/
-│   ├── columns/
-│   └── tasks/
-│
-├── impediments/
-│   ├── impediments.module.ts
-│   ├── impediments.controller.ts
-│   └── impediments.service.ts
-│
-├── communication/
-│   ├── communication.module.ts
-│   ├── groups/
-│   └── messages/
-│
-├── meetings/
-│   ├── meetings.module.ts
-│   └── ...
-│
-├── files/
-│   ├── files.module.ts
-│   └── ...
-│
-├── notifications/
-│   ├── notifications.module.ts
-│   └── ...
-│
-├── gateway/
-│   └── app.gateway.ts          ← Socket.IO WebSocket Gateway
-│
-├── jobs/
-│   ├── jobs.module.ts
-│   ├── impediment-escalation.job.ts
-│   ├── group-archive.job.ts
-│   ├── task-checkin.job.ts     ← check-in periódico de tarefas
-│   └── deadline-alert.job.ts
-│
-└── shared/
-    ├── guards/
-    │   ├── jwt-auth.guard.ts
-    │   ├── roles.guard.ts
-    │   └── unit-scope.guard.ts
-    ├── interceptors/
-    │   ├── transform.interceptor.ts
-    │   └── audit-log.interceptor.ts
-    ├── decorators/
-    │   ├── roles.decorator.ts
-    │   ├── current-user.decorator.ts
-    │   └── unit-scope.decorator.ts
-    ├── dto/
-    │   └── pagination.dto.ts
-    └── controllers/
-        └── base-unit.controller.ts
+└── infrastructure/            ← integrações externas, sem regra de negócio
+    ├── prisma/                ← PrismaService, módulo Prisma
+    ├── gateway/               ← Socket.IO + RealtimeEventHandler
+    ├── storage/               ← MinIO/S3 client
+    ├── mail/                  ← envio de e-mail
+    ├── push/                  ← web push
+    ├── jobs/                  ← BullMQ + node-cron
+    └── health/                ← terminus health checks
 ```
+
+### Estrutura interna de cada contexto
+
+```
+contexts/<domain>/
+├── domain/                    ← eventos de domínio (DomainEvent subclasses), entidades puras
+├── application/               ← services (facade chamado pelos controllers), handlers de eventos
+├── infrastructure/            ← repositories Prisma, integrações específicas do contexto
+├── presentation/              ← controllers + DTOs de entrada/saída
+└── <domain>.module.ts
+```
+
+### Regras de dependência (impostas por boundary lint — ver plano 17)
+
+- `presentation` → `application` → `domain`
+- `infrastructure` implementa portas declaradas em `domain`/`application`
+- **Nenhum contexto importa diretamente de outro contexto.** Comunicação cross-domain é via:
+  - `EventBus` (eventos de domínio publicados em `application`, consumidos por handlers de outro contexto em `application/handlers/`)
+  - Read models públicos expostos como ports/interfaces (ex: `UsersReadPort`)
+- `infrastructure/` global não contém lógica de negócio
+- `shared/` é importável por todos, mas não importa de nenhum contexto
 
 ---
 
@@ -262,10 +241,39 @@ GET    /api/dashboard                                ← painel diretoria (GLOBA
 
 ---
 
-## Tipos Compartilhados (packages/types)
+## Comunicação entre contextos — EventBus
 
-DTOs e interfaces usados pelo frontend e backend vivem em `packages/types`:
+`EventBusService` (em `shared/events/`) registra-se como `@Global()` e é o ÚNICO canal de comunicação assíncrona entre contextos.
 
+```typescript
+// publish — em contexts/chat/application/messages.service.ts
+this.eventBus.publish(new MessagePosted({ messageId, groupId, senderId, unitId }))
+
+// subscribe — em contexts/notifications/application/handlers/chat-notification.handler.ts
+@OnEvent('chat.message.posted')
+async onMessagePosted(event: MessagePosted) {
+  await this.notificationsService.createForGroupMembers(...)
+}
+```
+
+**Regras:**
+- Eventos vivem em `contexts/<domain>/domain/events/`
+- Handlers vivem no contexto **consumidor** (ex: notification handler para evento de chat fica em `contexts/notifications/application/handlers/`)
+- Operações críticas de mesma transação não usam evento — usam chamadas síncronas dentro do mesmo contexto
+- Para tráfego pesado/futura extração de serviço, ver plano 17 (Redis Streams)
+
+---
+
+## Pacotes compartilhados
+
+```
+packages/
+├── types/                     ← DTOs e interfaces TS (já existe)
+├── contracts/                 ← (planejado, plano 17) ports cross-service
+└── events/                    ← (planejado, plano 17) schemas Zod de eventos versionados
+```
+
+Exemplo `packages/types`:
 ```typescript
 // packages/types/src/strategic.ts
 export interface Plan { id: string; name: string; status: PlanStatus; ... }
@@ -275,7 +283,7 @@ export interface Goal { id: string; targetValue: number; ... }
 export interface JwtPayload { sub: string; role: UserRole; accessScope: AccessScope; units: string[] }
 ```
 
-Importar no backend e frontend via:
+Importar:
 ```typescript
 import type { Plan, JwtPayload } from '@mediall/types'
 ```
@@ -284,21 +292,33 @@ import type { Plan, JwtPayload } from '@mediall/types'
 
 ## Checklist de Implementação
 
-- [x] Configurar monorepo (Turborepo + npm workspaces)
-- [x] Criar `packages/types` com tipos base
-- [x] Setup NestJS com todos os módulos
-- [x] Configurar Prisma no NestJS
-- [x] Configurar Redis para cache e filas — BullModule.forRoot configurado com Redis no AppModule; PresenceService também usa redis client para presença online
-- [x] Guard stack implementado (JwtAuthGuard → RolesGuard → UnitScopeGuard)
-- [x] BaseUnitController
-- [x] PaginationDto base
-- [x] TransformInterceptor
-- [x] AuditLogInterceptor
-- [x] Socket.IO Gateway com autenticação JWT
-- [x] Jobs cron configurados (ImpedimentEscalationJob, GroupArchiveJob)
-- [x] Jobs BullMQ com fila Redis — ImpedimentEscalationProcessor (@Processor) + BullModule.registerQueue; cron enfileira via InjectQueue; 3 tentativas com backoff exponencial
-- [x] task-checkin.job.ts — Cron 9h diário, notifica responsáveis de tarefas sem atualização 3+ dias
-- [x] deadline-alert.job.ts — Cron 7h diário, notifica responsáveis de tarefas com vencimento em 48h
+### Já implementado
+- [x] Monorepo (Turborepo + npm workspaces)
+- [x] `packages/types` com tipos base
+- [x] Setup NestJS com módulos por contexto
+- [x] Prisma configurado em `infrastructure/prisma/`
+- [x] Reestruturação DDD: 15 contextos com 4 camadas (`domain/application/infrastructure/presentation/`)
+- [x] Guard stack (JwtAuthGuard → RolesGuard → UnitScopeGuard)
+- [x] BaseUnitController em `shared/controllers/`
+- [x] PaginationDto base em `shared/dto/`
+- [x] TransformInterceptor + AuditLogInterceptor
+- [x] Socket.IO Gateway com autenticação JWT (`infrastructure/gateway/`)
 - [x] Validação de unitId via UnitScopeGuard em todas as rotas protegidas
-- [x] Rate limiting no endpoint de login — @Throttle({ default: { ttl: 60_000, limit: 5 } }) em POST /auth/login
-- [x] Swagger/OpenAPI configurado (@nestjs/swagger)
+- [x] Swagger/OpenAPI configurado
+- [x] Rate limiting (@nestjs/throttler) e Helmet
+- [x] Health check (terminus)
+- [x] Sentry + Winston + correlation-id middleware
+
+### Concluído — arquitetural (plano 17)
+- [x] **EventBus em uso** — publishers em chat, impediments, meetings, strategic, tickets, transcription, jobs; handler `NotifyUserRequestedHandler` consome
+- [x] **Boundary lint no CI** — dependency-cruiser com regras em `.dependency-cruiser.cjs`, integrado em `npm run lint`
+- [x] **Schema Prisma multi-file** por domínio (`prismaSchemaFolder` em `prisma/schema/`)
+- [x] **Read models cross-domain** — `CONSENT_READ_PORT`, `USERS_READ_PORT`, `UNITS_READ_PORT` em `shared/ports/`
+- [x] Extrair `transcription` como serviço separado — `apps/transcription-svc/` via Redis Streams (feature flag `TRANSCRIPTION_SVC_ENABLED`)
+
+### Concluído — outras dívidas (plano 16)
+- [x] `task-checkin.job.ts` implementado (cron 9h diário, publica `NotifyUserRequested` via EventBus)
+
+### Pendente — não-bloqueante (escopo menor)
+- [ ] BullMQ real (hoje impediment-escalation usa @nestjs/schedule cron — funciona, mas BullMQ daria retry/dashboard)
+- [ ] `deadline-alert.job.ts` separado (hoje a função similar está coberta por TaskCheckinJob + NotificationType.TASK_DUE_SOON nos handlers)

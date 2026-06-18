@@ -183,10 +183,11 @@ export function Sidebar() {
                   onFocus={() => handleOpen(group.id)}
                   onBlur={scheduleClose}
                   className={clsx(
-                    'flex items-center justify-center h-10 w-full rounded-lg transition-colors',
+                    'flex items-center justify-center h-10 w-full rounded-lg transition-all duration-200',
                     isActive || isOpen
                       ? 'bg-[#BFEF45]/15 text-[#BFEF45]'
                       : 'text-white/55 hover:bg-white/10 hover:text-white/90',
+                    isActive && 'shadow-glow-sm',
                   )}
                 >
                   <i className={`ti ${group.icon} text-[20px] leading-none`} aria-hidden="true" />
@@ -194,7 +195,7 @@ export function Sidebar() {
 
                 {isOpen && (
                   <div
-                    className="absolute left-full top-0 ml-8 z-50 w-56 bg-gd border border-white/10 rounded-lg shadow-2xl py-2"
+                    className="absolute left-full top-0 ml-1.5 z-50 w-56 bg-gd border border-white/10 rounded-lg shadow-2xl py-2 animate-slide-in-left"
                     role="menu"
                     aria-label={group.label}
                     onMouseEnter={cancelClose}

@@ -1,4 +1,10 @@
 # 22 — Grupos Integrados à Gestão do Sistema
+
+> **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
+> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
+> por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
+> regra (ver `.claude/rules/README.md`).
 **Prioridade:** 🟢 Média — diferencial de produto
 **Tempo estimado:** ~18h (faseável; cada integração é independente)
 **Área:** Chat / Grupos × Estratégia, Impedimentos, Reuniões, Tarefas, Multi-unidade

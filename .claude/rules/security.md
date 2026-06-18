@@ -1,8 +1,33 @@
 # Regras de Segurança
 
-Plataforma corporativa multi-unidade de saúde. **Isolamento por unidade é a regra mais
-importante** — um vazamento entre unidades é um incidente de dados. Estas regras refletem o
-que já está implementado e os pontos a manter/corrigir.
+Plataforma corporativa de saúde, evoluindo para **SaaS multitenant**. **Isolamento por tenant é
+a regra nº 0** (§0) e **isolamento por unidade é a regra nº 1** (§5) — um vazamento entre tenants
+ou entre unidades é um incidente de dados. Estas regras refletem o que já está implementado e os
+pontos a manter/corrigir.
+
+---
+
+## 0. Isolamento por tenant 🔴 OBRIGATÓRIO — regra nº 0
+
+> **Estado:** 23.1–23.3 implementados (model `Tenant`, `tenant_id` nullable + backfill,
+> `TenantGuard` + contexto ALS, auto-escopo via middleware `$use`). RLS (23.5) e subdomínio (23.4)
+> são alvo. O auto-escopo já age, mas **mantenha o filtro manual de `unitId`** (§5) — ele é
+> independente. Ver `.claude/rules/architecture.md` §0.
+
+- **`Tenant` = o cliente que assina.** Tudo pertence a um tenant (`Unit`, `User`, todos os dados).
+  Vazamento entre tenants é **mais grave** que entre unidades (cliente A vê dados do cliente B).
+- **Toda query filtra por `tenantId` ANTES de `unitId`.** O `tenantId` vem **do contexto**
+  (JWT + subdomínio), **nunca** do path/body — é a fronteira que o usuário não pode atravessar.
+- **Auto-escopo (implementado — 23.3):** middleware `$use` do `PrismaService` injeta o tenant em
+  toda query (reads filtrados; creates com `tenantId`; `findUnique` pós-filtrado). Em transição,
+  escopo "meu tenant OU sem tenant" enquanto nullable. **RLS** habilitada nas 36 tabelas
+  (FORCE+policy) mas **inerte sob superuser** — ativar com role dedicada + GUC `app.current_tenant_id`
+  (runbook no plano 23). **Não** dispensa o filtro de `unitId` (§5).
+- **`JwtPayload` ganha `tenantId`**; guard stack passa a
+  `JwtAuthGuard → TenantGuard → BillingGuard → RolesGuard → UnitScopeGuard`.
+- **Chave de arquivo** prefixada por tenant: `${tenantId}/${unitId}/${randomUUID()}.${ext}` (§7).
+- **Rooms de socket** tenant-scoped: `tenant:<tid>:unit:<unitId>` (§11).
+- Único código autorizado a cruzar tenants: contexto `platform/` (dono do SaaS), com guard próprio.
 
 ---
 

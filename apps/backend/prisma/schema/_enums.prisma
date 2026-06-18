@@ -176,3 +176,18 @@ enum ParticipantStatus {
   DECLINED
   ATTENDED
 }
+
+// ── Multitenancy (SaaS) — ver docs/melhorias/23_multitenancy_saas.md ──
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum PlanTier {
+  STARTER
+  PRO
+  ENTERPRISE
+}

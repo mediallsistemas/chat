@@ -5,6 +5,52 @@ comunicação entre contextos por **EventBus** (nunca import direto), fronteiras
 **dependency-cruiser**. Schema Prisma **multi-file** (um por domínio). Estas regras refletem o
 código real, não os planos antigos (docs 11/12 são pré-DDD — ignore-os para estrutura).
 
+> **Direção atual: SaaS multitenant.** O produto está sendo evoluído de single-tenant (uma
+> holding) para **multitenant revendável** (ver `docs/melhorias/23_26_INDICE_SAAS.md`). A §0
+> abaixo rege isso e tem precedência sobre qualquer outra regra quando houver conflito.
+
+---
+
+## 0. Multitenancy — a fronteira acima de tudo 🔴 OBRIGATÓRIO
+
+> **Estado:** 23.1 (model `Tenant` + `tenant_id` **nullable** nos 36 models + backfill), 23.2
+> (`JwtPayload.tenantId` + `TenantGuard` + contexto ALS) e 23.3 (auto-escopo via `$use`)
+> **implementados**. **Alvo:** subdomínio/host (23.4), RLS (23.5), `tenant_id` NOT NULL + escopo
+> só-tenant. No PR, marque como "alvo" o que ainda não existe; **não** descreva como pronto o que não está.
+
+- **`Tenant` é o cliente que assina** (uma holding/empresa). Tudo pertence a um tenant: `Unit`,
+  `User` e **todos** os dados de domínio. Vazamento entre tenants é o incidente mais grave possível.
+- **Toda query de dados filtra por `tenantId` ANTES de `unitId`.** O `tenantId` **nunca** vem do
+  path nem do body — vem do **contexto da requisição** (JWT + subdomínio). É a fronteira que o
+  usuário **não pode** atravessar (diferente de `unitId`, que é escolha dele no path).
+- **`tenantId` é coluna escalar denormalizada** em cada model (`tenantId String @map("tenant_id")`
+  + `@@index([tenantId])`), **sem `@relation`** — o mesmo padrão que `unitId` já usa em
+  `Task`/`KanbanBoard` (escopo é coluna indexada, não navegação). O model `Tenant` vive em
+  `prisma/schema/_tenant.prisma`; enums `TenantStatus`/`PlanTier` em `_enums.prisma`.
+- **Auto-escopo (implementado — 23.3):** um **middleware `$use`** no `PrismaService`
+  (`prisma/prisma.service.ts`) injeta o tenant em toda query, lendo-o do `AsyncLocalStorage`
+  **nativo** (`shared/tenant/tenant-context.ts`, setado pelo `TenantGuard`). Reads recebem o
+  filtro de tenant; `create`/`createMany`/`upsert.create` recebem `tenantId`; `findUnique` por PK
+  é **pós-filtrado** pelo resultado (não aceita `where` não-único); `update`/`delete` por id
+  dependem de read escopado prévio + RLS. **Transição:** enquanto `tenant_id` é nullable o escopo
+  é "meu tenant **OU** `tenant_id IS NULL`" (não esconder linhas legadas/nested-write); apertar
+  para só-tenant ao tornar NOT NULL (antes do 2º tenant). **Não** substitui o filtro manual de
+  `unitId` (§4 / `security.md` §5). Sem contexto de tenant (login, jobs, sockets) o middleware não age.
+- **RLS (habilitada no DB — 23.5):** `ENABLE`+`FORCE`+policy `tenant_isolation` nas **36 tabelas**
+  (migration `20260616010000_enable_rls`). **Inerte enquanto o app conecta como superuser**
+  (`postgres` ignora RLS) — ativação exige role **não-superuser** + setar `app.current_tenant_id`
+  por transação (runbook em `docs/melhorias/23_multitenancy_saas.md`). Até lá, o guard ativo é o
+  app-layer (`$use`).
+- **`JwtPayload` tem `tenantId`** (em `@mediall/types`; login injeta, lança se user sem tenant).
+  Rotas tenant-wide usam `TenantGuard` + `@Roles` (não `BaseUnitController`); rotas de unidade
+  continuam em `BaseUnitController`.
+- **Guard stack alvo (global):**
+  `JwtAuthGuard → TenantGuard → BillingGuard → RolesGuard → UnitScopeGuard`
+  (`BillingGuard` chega no plano 26; `TenantGuard` no 23.2).
+- **Platform admin** (dono do SaaS) opera sobre **todos** os tenants no contexto
+  `contexts/platform/` com guard próprio — **fora** da extension de tenant (única exceção
+  autorizada a cruzar tenants).
+
 ---
 
 ## 1. Contextos e fronteiras 🔴 OBRIGATÓRIO

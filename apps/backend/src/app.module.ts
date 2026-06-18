@@ -44,6 +44,7 @@ import { DataRetentionJob } from './jobs/data-retention.job'
 import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
 import { HuddleReaperJob } from './jobs/huddle-reaper.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
+import { TenantGuard } from './shared/guards/tenant.guard'
 import { RolesGuard } from './shared/guards/roles.guard'
 import { UnitScopeGuard } from './shared/guards/unit-scope.guard'
 import { TransformInterceptor } from './shared/interceptors/transform.interceptor'
@@ -95,6 +96,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: UnitScopeGuard },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },

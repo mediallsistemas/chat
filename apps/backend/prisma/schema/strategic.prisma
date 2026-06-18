@@ -3,6 +3,7 @@
 
 model StrategicPlan {
   id        String     @id @default(uuid())
+  tenantId  String?    @map("tenant_id")
   name      String
   year      Int
   vision    String?
@@ -13,15 +14,43 @@ model StrategicPlan {
   createdBy String     @map("created_by")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
+  deletedAt DateTime?  @map("deleted_at")
 
   unit       Unit        @relation(fields: [unitId], references: [id])
   objectives Objective[]
+  units      PlanUnit[]
 
+  @@index([tenantId])
   @@map("strat_plans")
+}
+
+// Plano 24 — atribuição N:N de um plano (definição) às unidades (execução por unidade).
+// Cada unidade onde o plano vale tem uma linha aqui, com seu próprio status/progresso.
+// `StrategicPlan.unitId` permanece por ora como unidade de origem (a ser removido numa
+// fase posterior, quando nada mais depender dele).
+model PlanUnit {
+  id           String       @id @default(uuid())
+  tenantId     String?      @map("tenant_id")
+  planId       String       @map("plan_id")
+  unitId       String       @map("unit_id")
+  status       PlanStatus   @default(DRAFT)
+  progressPct  Decimal      @default(0) @map("progress_pct")
+  trafficLight TrafficLight @default(GREEN) @map("traffic_light")
+  attachedAt   DateTime     @default(now()) @map("attached_at")
+  attachedBy   String       @map("attached_by")
+
+  plan StrategicPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  unit Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, unitId])
+  @@index([tenantId])
+  @@index([unitId])
+  @@map("strat_plan_units")
 }
 
 model Objective {
   id                  String       @id @default(uuid())
+  tenantId            String?      @map("tenant_id")
   planId              String       @map("plan_id")
   title               String
   description         String?
@@ -40,11 +69,13 @@ model Objective {
   plan  StrategicPlan @relation(fields: [planId], references: [id])
   goals Goal[]
 
+  @@index([tenantId])
   @@map("strat_objectives")
 }
 
 model Goal {
   id           String     @id @default(uuid())
+  tenantId     String?    @map("tenant_id")
   objectiveId  String     @map("objective_id")
   title        String
   description  String?
@@ -64,11 +95,13 @@ model Goal {
   objective Objective   @relation(fields: [objectiveId], references: [id])
   phases    PlanPhase[]
 
+  @@index([tenantId])
   @@map("strat_goals")
 }
 
 model PlanPhase {
   id                String      @id @default(uuid())
+  tenantId          String?     @map("tenant_id")
   goalId            String      @map("goal_id")
   title             String
   description       String?
@@ -89,11 +122,13 @@ model PlanPhase {
   macroTasks       MacroTask[]
   phaseScopeBoards PhaseScopeBoard[]
 
+  @@index([tenantId])
   @@map("strat_plan_phases")
 }
 
 model PhaseScopeBoard {
   id            String   @id @default(uuid())
+  tenantId      String?  @map("tenant_id")
   phaseId       String   @map("phase_id")
   unitId        String   @map("unit_id")
   kanbanBoardId String   @map("kanban_board_id")
@@ -104,11 +139,13 @@ model PhaseScopeBoard {
   kanbanBoard KanbanBoard @relation(fields: [kanbanBoardId], references: [id], onDelete: Cascade)
 
   @@unique([phaseId, unitId])
+  @@index([tenantId])
   @@map("strat_phase_scope_boards")
 }
 
 model MacroTask {
   id                String     @id @default(uuid())
+  tenantId          String?    @map("tenant_id")
   phaseId           String     @map("phase_id")
   goalId            String     @map("goal_id")
   objectiveId       String     @map("objective_id")
@@ -129,5 +166,6 @@ model MacroTask {
   phase       PlanPhase   @relation(fields: [phaseId], references: [id])
   kanbanBoard KanbanBoard @relation(fields: [kanbanBoardId], references: [id])
 
+  @@index([tenantId])
   @@map("strat_macro_tasks")
 }

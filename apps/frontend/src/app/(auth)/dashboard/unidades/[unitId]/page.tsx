@@ -1,11 +1,14 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useDashboardUnit } from '@/features/dashboard/hooks/use-dashboard-unit'
+import { ResolveImpedimentButton, ArchivePlanButton } from '@/features/dashboard/components'
+import { useUnits } from '@/features/units/hooks/use-units'
 import { MetricCard, PageHeader } from '@/shared/components'
-import { TrafficLight, ProgressBar } from '@/shared/components/ui'
+import { TrafficLight, ProgressBar, Button } from '@/shared/components/ui'
 import type { TrafficLightStatus } from '@/shared/components/ui'
+import type { Unit } from '@mediall/types'
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-gs/60 rounded-xl ${className}`} />
@@ -13,6 +16,8 @@ function Skeleton({ className }: { className: string }) {
 
 export default function UnitDetailPage() {
   const { unitId } = useParams<{ unitId: string }>()
+  const router = useRouter()
+  const { units, switchUnit } = useUnits()
   const { data, isLoading, isError } = useDashboardUnit(unitId)
 
   if (isLoading) {
@@ -39,6 +44,22 @@ export default function UnitDetailPage() {
 
   const { unit, plans, impediments, metrics } = data
 
+  // Bridge to the unit context: drilling into a plan/objective from here lands on the
+  // mono-unit screens with this unit already active (resolves the painel↔processos gap).
+  const unitForContext: Unit =
+    units.find((u) => u.id === unitId) ?? {
+      id: unit.id,
+      name: unit.name,
+      type: unit.type,
+      parentId: null,
+      managerId: unit.manager?.id ?? null,
+    }
+
+  function enterUnitContext() {
+    switchUnit(unitForContext)
+    router.push('/processos')
+  }
+
   const metricCards = [
     { label: 'Planos Ativos', value: metrics.activePlans, icon: 'ti-chart-arrows' },
     { label: 'Total de Tarefas', value: metrics.totalTasks, icon: 'ti-checkbox' },
@@ -64,6 +85,16 @@ export default function UnitDetailPage() {
         </Link>
         <span className="text-gx">/</span>
         <PageHeader title={unit?.name ?? 'Unidade'} />
+        <Button
+          variant="primary"
+          size="sm"
+          className="ml-auto"
+          onClick={enterUnitContext}
+          aria-label={`Entrar no contexto da unidade ${unit?.name ?? ''}`}
+        >
+          <i className="ti ti-login-2 mr-1.5" aria-hidden="true" />
+          Entrar no contexto desta unidade
+        </Button>
       </div>
 
       {unit?.manager && (
@@ -96,6 +127,7 @@ export default function UnitDetailPage() {
                   <div className="w-28 shrink-0">
                     <ProgressBar value={plan.progress} showLabel size="sm" />
                   </div>
+                  <ArchivePlanButton unitId={unitId} planId={plan.id} planName={plan.name} />
                 </div>
                 {plan.objectives.length > 0 && (
                   <div className="ml-9 space-y-1.5">
@@ -103,6 +135,7 @@ export default function UnitDetailPage() {
                       <Link
                         key={obj.id}
                         href={`/processos/${plan.id}/${obj.id}`}
+                        onClick={() => switchUnit(unitForContext)}
                         className="flex items-center gap-2 text-xs text-gray-600 hover:text-gm group"
                       >
                         <TrafficLight status={obj.trafficLight as TrafficLightStatus} size="sm" />
@@ -137,11 +170,14 @@ export default function UnitDetailPage() {
                   </p>
                 </div>
                 {imp.escalationLevel >= 2 && (
-                  <span className="text-xs text-red-600 font-semibold shrink-0">Diretoria</span>
+                  <span className="text-xs text-red-600 font-semibold shrink-0 self-center">Diretoria</span>
                 )}
                 {imp.escalationLevel === 1 && (
-                  <span className="text-xs text-orange-600 font-semibold shrink-0">Gerência</span>
+                  <span className="text-xs text-orange-600 font-semibold shrink-0 self-center">Gerência</span>
                 )}
+                <div className="shrink-0 self-center">
+                  <ResolveImpedimentButton unitId={unitId} impedimentId={imp.id} taskTitle={imp.taskTitle} />
+                </div>
               </div>
             ))}
           </div>

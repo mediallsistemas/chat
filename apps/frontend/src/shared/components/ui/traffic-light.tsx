@@ -28,7 +28,12 @@ export function TrafficLight({ status, size = 'md', showLabel = false, className
   return (
     <span className={clsx('inline-flex items-center gap-1.5', className)}>
       <span
-        className={clsx('rounded-full shrink-0', DOT_SIZE[size], config.dot)}
+        className={clsx(
+          'rounded-full shrink-0',
+          DOT_SIZE[size],
+          config.dot,
+          status === 'RED' && 'animate-pulse-glow',
+        )}
         aria-hidden="true"
       />
       {showLabel && (

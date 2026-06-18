@@ -51,6 +51,10 @@ function patch<T>(url: string, body?: unknown): Promise<T> {
   return api.patch<{ data: T }>(url, body).then((r) => r.data.data)
 }
 
+function del<T>(url: string): Promise<T> {
+  return api.delete<{ data: T }>(url).then((r) => r.data.data)
+}
+
 export function useUsers(params?: { page?: number; limit?: number; search?: string }) {
   return useQuery<UsersResponse>({
     queryKey: ['users', params],
@@ -104,6 +108,47 @@ export function useUnlockUser() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['users'] })
       toast.success(`Conta de ${data.name} desbloqueada`)
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+export interface AdminUnit {
+  id: string
+  name: string
+}
+
+/** All units the current admin can see — used to assign users to units. */
+export function useAllUnits() {
+  return useQuery<AdminUnit[]>({
+    queryKey: ['units', 'all'],
+    queryFn: () => get<AdminUnit[]>('/units'),
+  })
+}
+
+/** Assign (or update the role of) a user in a unit. */
+export function useAssignUserUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ unitId, ...body }: { unitId: string; userId: string; role: UserRole; isPrimary?: boolean }) =>
+      post(`/units/${unitId}/users`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      toast.success('Usuário atribuído à unidade.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
+/** Remove a user from a unit. */
+export function useRemoveUserUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ unitId, userId }: { unitId: string; userId: string }) =>
+      del(`/units/${unitId}/users/${userId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      toast.success('Usuário removido da unidade.')
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   })

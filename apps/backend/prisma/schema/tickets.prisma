@@ -3,6 +3,7 @@
 
 model Ticket {
   id          String         @id @default(uuid())
+  tenantId    String?        @map("tenant_id")
   title       String
   description String
   status      TicketStatus   @default(OPEN)
@@ -26,11 +27,13 @@ model Ticket {
   @@index([unitId, priority])
   @@index([unitId, createdAt])
   @@index([assignedTo, status])
+  @@index([tenantId])
   @@map("tkt_tickets")
 }
 
 model TicketComment {
   id         String   @id @default(uuid())
+  tenantId   String?  @map("tenant_id")
   ticketId   String   @map("ticket_id")
   userId     String   @map("user_id")
   content    String
@@ -41,5 +44,6 @@ model TicketComment {
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@map("tkt_comments")
 }

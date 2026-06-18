@@ -3,6 +3,7 @@
 
 model DocumentFolder {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   name      String
   parentId  String?  @map("parent_id")
   unitId    String   @map("unit_id")
@@ -16,11 +17,13 @@ model DocumentFolder {
   documents Document[]
 
   @@index([unitId])
+  @@index([tenantId])
   @@map("doc_folders")
 }
 
 model Document {
   id            String   @id @default(uuid())
+  tenantId      String?  @map("tenant_id")
   name          String
   description   String?
   folderId      String?  @map("folder_id")
@@ -36,14 +39,15 @@ model Document {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  folder        DocumentFolder? @relation(fields: [folderId], references: [id])
-  unit          Unit            @relation(fields: [unitId], references: [id])
-  uploader      User            @relation("DocumentUploader", fields: [uploadedBy], references: [id])
-  baseDocument  Document?       @relation("DocumentVersions", fields: [versionOf], references: [id])
-  versions      Document[]      @relation("DocumentVersions")
+  folder       DocumentFolder? @relation(fields: [folderId], references: [id])
+  unit         Unit            @relation(fields: [unitId], references: [id])
+  uploader     User            @relation("DocumentUploader", fields: [uploadedBy], references: [id])
+  baseDocument Document?       @relation("DocumentVersions", fields: [versionOf], references: [id])
+  versions     Document[]      @relation("DocumentVersions")
 
   @@index([unitId, folderId])
   @@index([unitId, createdAt])
   @@index([versionOf])
+  @@index([tenantId])
   @@map("doc_documents")
 }

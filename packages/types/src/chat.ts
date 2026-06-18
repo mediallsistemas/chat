@@ -191,6 +191,8 @@ export interface HuddleTokenResponse {
   token: string
   wsUrl: string
   participantCount: number
+  /** ISO timestamp of when the call started — used to show the running call timer. */
+  startedAt: string
 }
 
 export interface ChatSearchResult {

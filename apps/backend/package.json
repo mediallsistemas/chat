@@ -15,7 +15,8 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "db:backfill-tenant": "ts-node prisma/backfill-tenant.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",

@@ -14,7 +14,7 @@ export function ToastContainer() {
         <div
           key={t.id}
           className={clsx(
-            'rounded-xl px-4 py-3 text-sm font-medium shadow-lg pointer-events-auto',
+            'rounded-xl px-4 py-3 text-sm font-medium shadow-lg pointer-events-auto animate-slide-up',
             t.type === 'error' && 'bg-red-600 text-white',
             t.type === 'success' && 'bg-green-600 text-white',
             t.type === 'warning' && 'bg-yellow-500 text-white',

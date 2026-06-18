@@ -10,7 +10,7 @@ export function SkeletonList({
   return (
     <div className={`space-y-2 ${className ?? ''}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={`${height} rounded-xl bg-gs/10 animate-pulse`} />
+        <div key={i} className={`${height} rounded-xl bg-gs/20 shimmer`} />
       ))}
     </div>
   )
@@ -26,7 +26,7 @@ export function SkeletonGrid({
   return (
     <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 ${className ?? ''}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="h-24 rounded-xl bg-gs/10 animate-pulse" />
+        <div key={i} className="h-24 rounded-xl bg-gs/20 shimmer" />
       ))}
     </div>
   )

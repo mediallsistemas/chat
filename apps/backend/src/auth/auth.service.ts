@@ -59,12 +59,31 @@ export class AuthService {
     const units = user.unitAccess.map((u) => u.unitId)
     const primaryUnit = user.unitAccess.find((u) => u.isPrimary)
 
+    // Multitenancy (plano 23.2): a user must belong to a tenant to authenticate.
+    // After the 23.1 backfill every user has one; new users get one at creation.
+    if (!user.tenantId) {
+      throw new UnauthorizedException(
+        'Usuário sem organização associada. Contate o administrador.',
+      )
+    }
+
+    // Multitenancy (plano 23.4): embed the tenant slug for the host check.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { slug: true },
+    })
+    if (!tenant) {
+      throw new UnauthorizedException('Organização inválida. Contate o administrador.')
+    }
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       name: user.name,
       role: (primaryUnit?.role ?? user.unitAccess[0]?.role) as UserRole,
       accessScope: user.accessScope as AccessScope,
+      tenantId: user.tenantId,
+      tenantSlug: tenant.slug,
       units,
     }
 

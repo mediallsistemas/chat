@@ -7,7 +7,7 @@ import { useUnitStore } from '@/shared/store/unit-store'
 import type { Unit } from '@mediall/types'
 
 export function useUnits() {
-  const { activeUnit, units, setActiveUnit, setUnits } = useUnitStore()
+  const { activeUnit, units, scope, setActiveUnit, enterHoldingScope, setUnits } = useUnitStore()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -22,11 +22,13 @@ export function useUnits() {
   useEffect(() => {
     if (!data) return
     setUnits(data)
-    if (!activeUnit && data.length > 0) {
+    // Auto-select a default unit only in unit scope. In holding scope ('ALL') the
+    // user deliberately cleared the active unit — don't fight that choice.
+    if (scope === 'UNIT' && !activeUnit && data.length > 0) {
       const matriz = data.find((u) => u.type === 'MATRIZ')
       setActiveUnit(matriz ?? data[0])
     }
-  }, [data, activeUnit, setActiveUnit, setUnits])
+  }, [data, activeUnit, scope, setActiveUnit, setUnits])
 
   function switchUnit(unit: Unit) {
     setActiveUnit(unit)
@@ -34,5 +36,10 @@ export function useUnits() {
     queryClient.invalidateQueries()
   }
 
-  return { units: data ?? units, activeUnit, switchUnit, isLoading }
+  function switchToHolding() {
+    enterHoldingScope()
+    queryClient.invalidateQueries()
+  }
+
+  return { units: data ?? units, activeUnit, scope, switchUnit, switchToHolding, isLoading }
 }

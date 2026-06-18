@@ -28,7 +28,13 @@ export class DashboardService {
 
     const [totalPlans, openImpediments, blockedTasks, overdueTasks, completedTasks, goalsAtRisk, plans, impediments, units] =
       await Promise.all([
-        this.prisma.strategicPlan.count({ where: { ...unitFilter, status: 'ACTIVE' } }),
+        this.prisma.strategicPlan.count({
+          where: {
+            status: 'ACTIVE',
+            deletedAt: null,
+            ...(isGlobal ? {} : { units: { some: { unitId: { in: user.units } } } }),
+          },
+        }),
 
         this.prisma.taskImpediment.count({ where: { ...unitFilter, status: { not: 'RESOLVED' } } }),
 
@@ -43,10 +49,16 @@ export class DashboardService {
         this.prisma.goal.count({ where: { ...unitFilter, status: 'AT_RISK' } }),
 
         this.prisma.strategicPlan.findMany({
-          where: { ...unitFilter, status: 'ACTIVE' },
+          where: {
+            status: 'ACTIVE',
+            deletedAt: null,
+            ...(isGlobal ? {} : { units: { some: { unitId: { in: user.units } } } }),
+          },
           include: {
             unit: { select: { id: true, name: true } },
             objectives: { select: { progressPct: true, trafficLight: true } },
+            // Plano 24/25 — unidades onde o plano vale (breakdown por unidade no painel)
+            units: { select: { unitId: true, unit: { select: { name: true } } } },
           },
           orderBy: { createdAt: 'desc' },
         }),
@@ -79,13 +91,14 @@ export class DashboardService {
         year: plan.year,
         unitId: plan.unitId,
         unitName: plan.unit.name,
+        attachedUnits: plan.units.map((pu) => ({ id: pu.unitId, name: pu.unit.name })),
         progress,
         trafficLight: hasRed ? 'RED' : hasYellow ? 'YELLOW' : 'GREEN',
       }
     })
 
     const unitsWithMetrics = units.map((unit) => {
-      const unitPlans = plansWithMetrics.filter((p) => p.unitId === unit.id)
+      const unitPlans = plansWithMetrics.filter((p) => p.attachedUnits.some((au) => au.id === unit.id))
       const unitImps = impediments.filter((i) => i.unitId === unit.id)
       const hasRed =
         unitPlans.some((p) => p.trafficLight === 'RED') || unitImps.some((i) => i.escalationLevel >= 2)

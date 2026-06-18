@@ -3,6 +3,7 @@
 
 model TaskImpediment {
   id                       String           @id @default(uuid())
+  tenantId                 String?          @map("tenant_id")
   taskId                   String           @map("task_id")
   reportedBy               String           @map("reported_by")
   description              String
@@ -22,5 +23,6 @@ model TaskImpediment {
   @@index([unitId, status])
   @@index([unitId, createdAt])
   @@index([escalationLevel])
+  @@index([tenantId])
   @@map("imp_task_impediments")
 }

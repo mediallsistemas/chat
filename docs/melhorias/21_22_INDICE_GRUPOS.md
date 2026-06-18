@@ -1,5 +1,11 @@
 # 21–22 — Índice: Evolução dos Grupos de Chat
 
+> **⚠️ Antes de implementar estes planos:** leia e siga **obrigatoriamente** as regras em
+> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
+> por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
+> regra (ver `.claude/rules/README.md`).
+
 Dois planos que evoluem os grupos de chat de "salas estáticas" para um espaço
 **colaborativo e integrado à gestão**. Foram escritos a partir do código real
 (não dos docs antigos de planejamento) e seguem as regras em [`.claude/rules/`](../../.claude/rules/).

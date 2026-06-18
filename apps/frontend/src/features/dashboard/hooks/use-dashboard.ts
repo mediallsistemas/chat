@@ -22,6 +22,8 @@ export interface DashboardPlan {
   year: number
   unitId: string
   unitName: string
+  /** Unidades onde o plano vale (plano 24/25) — breakdown por unidade. */
+  attachedUnits: { id: string; name: string }[]
   progress: number
   trafficLight: 'GREEN' | 'YELLOW' | 'RED'
 }
@@ -68,12 +70,19 @@ export function useDashboard() {
     const socket = getSocket()
     if (!socket.connected) socket.connect()
 
+    // Coalesce bursts of dashboard:update into a single refetch (plano 25.6).
+    let timer: ReturnType<typeof setTimeout> | null = null
     const handler = () => {
-      qc.invalidateQueries({ queryKey: ['dashboard', 'summary'] })
+      if (timer) return
+      timer = setTimeout(() => {
+        timer = null
+        qc.invalidateQueries({ queryKey: ['dashboard'] })
+      }, 800)
     }
     socket.on('dashboard:update', handler)
     return () => {
       socket.off('dashboard:update', handler)
+      if (timer) clearTimeout(timer)
     }
   }, [qc])
 

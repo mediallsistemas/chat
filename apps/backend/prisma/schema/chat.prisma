@@ -3,6 +3,7 @@
 
 model Group {
   id             String          @id @default(uuid())
+  tenantId       String?         @map("tenant_id")
   name           String
   description    String?
   type           GroupType
@@ -26,11 +27,13 @@ model Group {
   messages Message[]
   meetings Meeting[]
 
+  @@index([tenantId])
   @@map("chat_groups")
 }
 
 model GroupMember {
   id         String          @id @default(uuid())
+  tenantId   String?         @map("tenant_id")
   groupId    String          @map("group_id")
   userId     String          @map("user_id")
   role       GroupMemberRole @default(MEMBER)
@@ -42,11 +45,13 @@ model GroupMember {
   group Group @relation(fields: [groupId], references: [id])
 
   @@unique([groupId, userId])
+  @@index([tenantId])
   @@map("chat_group_members")
 }
 
 model Message {
   id        String      @id @default(uuid())
+  tenantId  String?     @map("tenant_id")
   groupId   String      @map("group_id")
   senderId  String      @map("sender_id")
   content   String
@@ -78,11 +83,13 @@ model Message {
   @@index([groupId, isPinned])
   @@index([senderId, createdAt])
   @@index([replyToId])
+  @@index([tenantId])
   @@map("chat_messages")
 }
 
 model MessageReaction {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   messageId String   @map("message_id")
   userId    String   @map("user_id")
   emoji     String
@@ -93,11 +100,13 @@ model MessageReaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([tenantId])
   @@map("chat_message_reactions")
 }
 
 model MessageBookmark {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   userId    String   @map("user_id")
   messageId String   @map("message_id")
   unitId    String   @map("unit_id")
@@ -108,11 +117,13 @@ model MessageBookmark {
 
   @@unique([userId, messageId])
   @@index([userId, unitId, createdAt])
+  @@index([tenantId])
   @@map("chat_message_bookmarks")
 }
 
 model CustomEmoji {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   unitId    String   @map("unit_id")
   shortcode String
   fileKey   String   @map("file_key")
@@ -121,11 +132,13 @@ model CustomEmoji {
 
   @@unique([unitId, shortcode])
   @@index([unitId])
+  @@index([tenantId])
   @@map("chat_custom_emojis")
 }
 
 model Huddle {
   id            String    @id @default(uuid())
+  tenantId      String?   @map("tenant_id")
   groupId       String    @map("group_id")
   unitId        String    @map("unit_id")
   startedBy     String    @map("started_by")
@@ -141,11 +154,13 @@ model Huddle {
   lonelySince      DateTime? @map("lonely_since")
 
   @@index([groupId, endedAt])
+  @@index([tenantId])
   @@map("chat_huddles")
 }
 
 model ChatReminder {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   userId    String   @map("user_id")
   unitId    String   @map("unit_id")
   groupId   String?  @map("group_id")
@@ -156,5 +171,6 @@ model ChatReminder {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId, remindAt])
+  @@index([tenantId])
   @@map("chat_reminders")
 }

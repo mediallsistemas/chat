@@ -1,4 +1,10 @@
 # 21 — Gestão do Próprio Grupo (Colaborativo)
+
+> **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
+> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
+> por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
+> regra (ver `.claude/rules/README.md`).
 **Prioridade:** 🟢 Média — melhoria de produto
 **Tempo estimado:** ~10h (backend 4h, frontend 6h)
 **Área:** Chat / Grupos — gestão interna do grupo

@@ -1,0 +1,23 @@
+// Tenant context — the SaaS customer (a holding/company that subscribes).
+// Top-level isolation boundary: every domain row carries a denormalized
+// `tenant_id` scalar column (same pattern `unit_id` already uses on Task).
+// See .claude/rules/architecture.md §0 and docs/melhorias/23_multitenancy_saas.md.
+//
+// Phase 23.1: `tenant_id` columns are added NULLABLE across the schema and
+// backfilled (prisma/backfill-tenant.ts) before being made NOT NULL in 23.x.
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  status      TenantStatus @default(TRIAL)
+  planTier    PlanTier     @default(STARTER) @map("plan_tier")
+  maxUnits    Int          @default(3) @map("max_units")
+  maxUsers    Int          @default(25) @map("max_users")
+  trialEndsAt DateTime?    @map("trial_ends_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  @@map("tenants")
+}

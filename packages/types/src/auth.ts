@@ -18,6 +18,10 @@ export interface JwtPayload {
   name: string
   role: UserRole
   accessScope: AccessScope
+  /** Tenant (SaaS customer) the user belongs to — multitenancy plano 23.2. */
+  tenantId: string
+  /** Tenant slug (subdomain) — used for the host check — multitenancy plano 23.4. */
+  tenantSlug: string
   units: string[]
   iat?: number
   exp?: number

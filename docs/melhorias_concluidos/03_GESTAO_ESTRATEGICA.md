@@ -248,7 +248,7 @@ Nenhuma atualização manual necessária nos níveis superiores.
 
 ### Pendente
 - [x] Visualização Lista (KanbanListView) e Calendário (KanbanCalendarView)
-- [x] Visualização Timeline (Gantt) — KanbanGanttView implementado
-- [x] Painel de gestão estratégica por unidade — GET /units/:unitId/plans/panel + /processos/painel com métricas e lista de objetivos
-- [x] Seletor de usuário responsável — UserCombobox (shared/components/ui/user-combobox.tsx) com useUnitMembers hook, aplicado em todos os modais de criação/edição
+- [x] Visualização Timeline (Gantt) — KanbanGanttView
+- [x] Painel de gestão estratégica por unidade — `/processos/painel` com cards + lista
+- [x] Seletor de usuário responsável (UserCombobox em todos os modais)
 - [x] Edição de plano, objetivo, meta e etapa (PATCH endpoints + modais)

@@ -25,9 +25,13 @@ e servem para que qualquer melhoria use as boas práticas já estabelecidas.
 
 ## Dívidas técnicas conhecidas (não repetir, corrigir quando tocar)
 
-- `tailwind.config.ts` ainda aponta `content` para `./src/components/**` e `./src/pages/**`;
-  faltam `./src/features/**` e `./src/shared/**` (a estrutura nova). Corrigir ao tocar em estilos.
+- ~~`tailwind.config.ts` content sem `./src/features/**` e `./src/shared/**`~~ — **resolvido**:
+  o `content` já inclui `app/**`, `features/**`, `shared/**`, `components/**`, `pages/**`.
 - Fallbacks de secret de desenvolvimento ainda existem no código (ex.: `'dev-secret'` em
   `infrastructure/gateway/gateway.module.ts`). Ver `security.md` §2.
 - Migração `src/components` + `src/hooks` → `src/features` + `src/shared` em andamento.
   Código novo já nasce na estrutura nova. Ver `ui.md` §1.
+- **SaaS multitenant em implementação** (planos `docs/melhorias/23_26_INDICE_SAAS.md`): `tenant_id`
+  está sendo adicionado a todos os models (nullable na transição); `TenantGuard`/Prisma
+  Extension/RLS são o alvo. Código novo já deve assumir o isolamento por tenant
+  (`architecture.md` §0, `security.md` §0).

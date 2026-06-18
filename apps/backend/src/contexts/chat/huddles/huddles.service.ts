@@ -184,7 +184,7 @@ export class HuddlesService {
   }
 
   private async issueToken(
-    huddle: { id: string; livekitRoomId: string; groupId: string },
+    huddle: { id: string; livekitRoomId: string; groupId: string; startedAt: Date },
     user: JwtPayload,
   ) {
     const token = await this.liveKit.createToken({
@@ -206,6 +206,7 @@ export class HuddlesService {
       roomId: huddle.livekitRoomId,
       token,
       wsUrl: this.liveKit.wsUrl,
+      startedAt: huddle.startedAt.toISOString(),
     }
   }
 

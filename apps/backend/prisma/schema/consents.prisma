@@ -3,6 +3,7 @@
 
 model UserConsent {
   id         String      @id @default(uuid())
+  tenantId   String?     @map("tenant_id")
   userId     String      @map("user_id")
   type       ConsentType
   accepted   Boolean
@@ -16,5 +17,6 @@ model UserConsent {
 
   @@unique([userId, type, version])
   @@index([userId])
+  @@index([tenantId])
   @@map("consent_user_consents")
 }

@@ -3,6 +3,7 @@
 
 model NotificationSetting {
   id           String   @id @default(uuid())
+  tenantId     String?  @map("tenant_id")
   userId       String   @unique @map("user_id")
   dndEnabled   Boolean  @default(false) @map("dnd_enabled")
   dndStart     String?  @map("dnd_start")
@@ -13,11 +14,13 @@ model NotificationSetting {
 
   user User @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@map("notif_settings")
 }
 
 model PushSubscription {
   id        String   @id @default(uuid())
+  tenantId  String?  @map("tenant_id")
   userId    String   @map("user_id")
   endpoint  String
   p256dh    String
@@ -27,11 +30,13 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, endpoint])
+  @@index([tenantId])
   @@map("notif_push_subscriptions")
 }
 
 model Notification {
   id         String           @id @default(uuid())
+  tenantId   String?          @map("tenant_id")
   userId     String           @map("user_id")
   title      String
   body       String
@@ -46,5 +51,6 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([unitId, createdAt])
+  @@index([tenantId])
   @@map("notif_notifications")
 }

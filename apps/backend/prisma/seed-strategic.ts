@@ -21,6 +21,7 @@ import {
   AcceptanceStatus,
   BoardOwner,
 } from '@prisma/client'
+import { ensureTenantAndBackfill } from './tenant-backfill'
 
 const prisma = new PrismaClient()
 
@@ -75,6 +76,23 @@ async function main() {
       o.goals.flatMap((g) => g.phases.map((p) => p.kanbanBoardId)),
     )
 
+    // Child rows hold RESTRICT FKs to tasks — delete them before the tasks.
+    const taskIds = (
+      await prisma.task.findMany({
+        where: { boardId: { in: boardIds } },
+        select: { id: true },
+      })
+    ).map((t) => t.id)
+
+    if (taskIds.length) {
+      await prisma.taskDependency.deleteMany({
+        where: { OR: [{ taskId: { in: taskIds } }, { dependsOnId: { in: taskIds } }] },
+      })
+      await prisma.taskImpediment.deleteMany({ where: { taskId: { in: taskIds } } })
+      await prisma.taskChecklist.deleteMany({ where: { taskId: { in: taskIds } } })
+      await prisma.taskFile.deleteMany({ where: { taskId: { in: taskIds } } })
+    }
+
     await prisma.task.deleteMany({ where: { board: { id: { in: boardIds } } } })
     await prisma.macroTask.deleteMany({ where: { phaseId: { in: phaseIds } } })
     await prisma.phaseScopeBoard.deleteMany({ where: { phaseId: { in: phaseIds } } })
@@ -103,6 +121,13 @@ async function main() {
     },
   })
   console.log(`✅ Plan created: ${plan.name}`)
+
+  // Plano 24 — atrela o plano à sua unidade (PlanUnit). Sem isto, o plano não aparece
+  // em /units/:unitId/plans (que agora filtra por atribuição). tenant_id é preenchido
+  // pelo backfill no fim do seed (raw client não passa pelo middleware de tenant).
+  await prisma.planUnit.create({
+    data: { planId: plan.id, unitId: MATRIZ_ID, status: PlanStatus.ACTIVE, attachedBy: rafael.id },
+  })
 
   // Default Kanban columns for each phase board
   const defaultColumns = [
@@ -713,6 +738,9 @@ async function main() {
 
     console.log(`   ✓ Plan created for ${MATRIZ_ID} — ${plan.id}`)
   } // end for (TARGET_UNIT_IDS)
+
+  // Plano 23 — tenant + tenant_id em tudo que o seed criou (raw client não passa pelo middleware).
+  await ensureTenantAndBackfill(prisma)
 
   console.log('\n✅ Strategic seed complete')
 }

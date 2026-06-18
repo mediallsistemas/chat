@@ -40,7 +40,7 @@ export function Header() {
   const router = useRouter()
   const pathname = usePathname()
   const { user, setUser } = useAuthStore()
-  const { units, activeUnit, switchUnit } = useUnits()
+  const { units, activeUnit, scope, switchUnit, switchToHolding } = useUnits()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [unitMenuOpen, setUnitMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -79,18 +79,24 @@ export function Header() {
         {getPageTitle(pathname)}
       </h1>
 
-      {/* Unit selector — visible only for MULTI scope */}
-      {user?.accessScope === AccessScope.MULTI && activeUnit && (
+      {/* Scope selector — visible for MULTI and GLOBAL (plano 25). GLOBAL also gets the
+          aggregated "toda a holding" option; SINGLE lands in its only unit, no selector. */}
+      {(user?.accessScope === AccessScope.MULTI || user?.accessScope === AccessScope.GLOBAL) && (
         <div className="relative" ref={unitMenuRef}>
           <button
             onClick={() => setUnitMenuOpen((v) => !v)}
             className="flex items-center gap-2 text-sm bg-page-bg hover:bg-gs/40 px-3 py-1.5 rounded-lg transition-colors border border-gs"
-            aria-label="Selecionar unidade"
+            aria-label="Selecionar escopo"
             aria-expanded={unitMenuOpen}
           >
-            <i className="ti ti-building-hospital text-gd text-base" aria-hidden="true" />
+            <i
+              className={clsx('text-gd text-base', scope === 'ALL' ? 'ti ti-buildings' : 'ti ti-building-hospital')}
+              aria-hidden="true"
+            />
             <span className="text-gray-500 text-xs">Acessando:</span>
-            <span className="font-semibold text-gd text-sm">{activeUnit.name}</span>
+            <span className="font-semibold text-gd text-sm max-w-[160px] truncate">
+              {scope === 'ALL' ? 'Toda a holding' : (activeUnit?.name ?? 'Selecione')}
+            </span>
             <i
               className={clsx('ti ti-chevron-down text-gx text-xs transition-transform', unitMenuOpen && 'rotate-180')}
               aria-hidden="true"
@@ -98,31 +104,50 @@ export function Header() {
           </button>
 
           {unitMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 min-w-[220px] bg-white border border-gs rounded-xl shadow-lg py-1 z-50">
-              <p className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gx uppercase tracking-wider">
-                Suas unidades
+            <div className="absolute left-0 top-full mt-1 min-w-[240px] bg-white border border-gs rounded-xl shadow-lg py-1 z-50">
+              {/* Aggregated holding scope */}
+              <button
+                onClick={() => {
+                  switchToHolding()
+                  setUnitMenuOpen(false)
+                }}
+                className={clsx(
+                  'w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors',
+                  scope === 'ALL'
+                    ? 'bg-gd/5 text-gd font-semibold'
+                    : 'text-gray-700 hover:bg-page-bg',
+                )}
+              >
+                <i className="ti ti-buildings text-base shrink-0" aria-hidden="true" />
+                <span className="flex-1 truncate">Toda a holding</span>
+                {scope === 'ALL' && <i className="ti ti-check text-gd text-sm shrink-0" aria-hidden="true" />}
+              </button>
+
+              <div className="my-1 border-t border-gs/60" />
+
+              <p className="px-3 pt-1 pb-1 text-[10px] font-semibold text-gx uppercase tracking-wider">
+                {user?.accessScope === AccessScope.GLOBAL ? 'Unidades' : 'Suas unidades'}
               </p>
-              {units.map((unit) => (
-                <button
-                  key={unit.id}
-                  onClick={() => {
-                    switchUnit(unit)
-                    setUnitMenuOpen(false)
-                  }}
-                  className={clsx(
-                    'w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors',
-                    unit.id === activeUnit.id
-                      ? 'bg-gd/5 text-gd font-semibold'
-                      : 'text-gray-700 hover:bg-page-bg',
-                  )}
-                >
-                  <i className="ti ti-building-hospital text-sm shrink-0" aria-hidden="true" />
-                  <span className="flex-1 truncate">{unit.name}</span>
-                  {unit.id === activeUnit.id && (
-                    <i className="ti ti-check text-gd text-sm shrink-0" aria-hidden="true" />
-                  )}
-                </button>
-              ))}
+              {units.map((unit) => {
+                const isActive = scope === 'UNIT' && unit.id === activeUnit?.id
+                return (
+                  <button
+                    key={unit.id}
+                    onClick={() => {
+                      switchUnit(unit)
+                      setUnitMenuOpen(false)
+                    }}
+                    className={clsx(
+                      'w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors',
+                      isActive ? 'bg-gd/5 text-gd font-semibold' : 'text-gray-700 hover:bg-page-bg',
+                    )}
+                  >
+                    <i className="ti ti-building-hospital text-sm shrink-0" aria-hidden="true" />
+                    <span className="flex-1 truncate">{unit.name}</span>
+                    {isActive && <i className="ti ti-check text-gd text-sm shrink-0" aria-hidden="true" />}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

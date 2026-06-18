@@ -7,26 +7,45 @@
 
 ## Planos disponíveis
 
-> ✅ Todos os módulos de código concluídos. Detalhes em `docs/melhorias_concluidos/`.
+| # | Arquivo | Descrição | Prioridade |
+|---|---------|-----------|------------|
+| 01 | `01_INFRAESTRUTURA.md` | Servidor, Docker, Nginx, SSL, Banco de dados | 🔴 Fase 1 |
+| 02 | `02_AUTENTICACAO_PERMISSOES.md` | JWT, Guards, RBAC, Multi-unidade, Holding | 🔴 Fase 1 |
+| 03 | `03_GESTAO_ESTRATEGICA.md` | Planos, Objetivos, Metas, OKRs, Etapas, Kanban | 🔴 Fase 1 |
+| 04 | `04_IMPEDIMENTOS.md` | Módulo de impedimentos e escalonamento automático | 🔴 Fase 1 |
+| 05 | `05_PAINEL_DIRETORIA.md` | Dashboard consolidado, faróis, drill-down | 🔴 Fase 1 |
+| 06 | `06_COMUNICACAO_CHAT.md` | Chat, grupos, hierarquia, WebSocket | 🟡 Fase 2 |
+| 07 | `07_ARQUIVOS.md` | Upload, MinIO, versionamento, permissões | 🟡 Fase 2 |
+| 08 | `08_NOTIFICACOES.md` | Sistema de notificações, push, e-mail | 🟡 Fase 2 |
+| 09 | `09_REUNIOES_VIDEO.md` | Agendamento, LiveKit, WebRTC, agenda integrada | 🟢 Fase 3 |
+| 10 | `10_MODELO_DADOS.md` | Todas as tabelas, relações e migrations Prisma | 🔴 Fase 1 |
+| 11 | `11_FRONTEND_ARQUITETURA.md` | Next.js, estrutura de pastas, rotas, componentes | 🔴 Fase 1 |
+| 12 | `12_BACKEND_ARQUITETURA.md` | NestJS, módulos, guards, interceptors, DTOs | 🔴 Fase 1 |
+| 13 | `13_MULTI_UNIDADE_HOLDING.md` | Arquitetura multi-tenant, isolamento por unidade | 🔴 Fase 1 |
+| 14 | `14_ROADMAP_FASES.md` | Cronograma, sprints, entregas por fase | 🔴 Geral |
+| 15 | `15_UI_TEMPLATES.md` | Templates e padrões de UI | 🟡 Geral |
+| 16 | `16_MELHORIAS_E_DIVIDA_TECNICA.md` | Diagnóstico completo + plano de ação por área | 🔴 Pós go-live |
+| 17 | `17_PLANO_MODULAR_MONOLITH.md` | Modular Monolith forte + extração seletiva (transcription, depois meetings+chat) | 🟣 Arquitetural |
+| 17a | `17a_OBSERVABILIDADE_FASE3.md` | Métricas para decidir Fase 4 (go/no-go) | 🟣 Arquitetural |
+| 17b | `17b_PLANO_REALTIME_SVC_FASE4.md` | Plano detalhado de extrair realtime-svc (chat+meetings) — condicional | 🟣 Arquitetural |
+| 17c | `17c_CHECKLIST_GOLIVE_FASE2.md` | Checklist passo-a-passo para deploy do transcription-svc | 🟣 Arquitetural |
 
-| # | Arquivo | Descrição | Status |
-|---|---------|-----------|--------|
-| 01 | `01_INFRAESTRUTURA.md` | Servidor, Docker, Nginx, SSL, Banco de dados | ✅ Código completo — ops pendente |
-| 02 | `02_AUTENTICACAO_PERMISSOES.md` | JWT, Guards, RBAC, Multi-unidade, Holding | ✅ Completo |
-| 03 | `03_GESTAO_ESTRATEGICA.md` | Planos, Objetivos, Metas, OKRs, Etapas, Kanban | ✅ Completo |
-| 04 | `04_IMPEDIMENTOS.md` | Módulo de impedimentos e escalonamento automático | ✅ Completo |
-| 05 | `05_PAINEL_DIRETORIA.md` | Dashboard consolidado, faróis, drill-down | ✅ Completo |
-| 06 | `06_COMUNICACAO_CHAT.md` | Chat, grupos, hierarquia, WebSocket | ✅ Completo |
-| 07 | `07_ARQUIVOS.md` | Upload, MinIO, versionamento, permissões | ✅ Completo |
-| 08 | `08_NOTIFICACOES.md` | Sistema de notificações, push, e-mail | ✅ Completo |
-| 09 | `09_REUNIOES_VIDEO.md` | Agendamento, LiveKit, WebRTC, agenda integrada | ✅ Completo |
-| 10 | `10_MODELO_DADOS.md` | Todas as tabelas, relações e migrations Prisma | ✅ Completo |
-| 11 | `11_FRONTEND_ARQUITETURA.md` | Next.js, estrutura de pastas, rotas, componentes | ✅ Completo |
-| 12 | `12_BACKEND_ARQUITETURA.md` | NestJS, módulos, guards, interceptors, DTOs | ✅ Completo |
-| 13 | `13_MULTI_UNIDADE_HOLDING.md` | Arquitetura multi-tenant, isolamento por unidade | ✅ Completo |
-| 14 | `14_ROADMAP_FASES.md` | Cronograma, sprints, entregas por fase | ✅ Fases 1–3 completas |
-| 15 | `15_UI_TEMPLATES.md` | Templates e padrões de UI | ✅ Completo |
-| 16 | `16_MELHORIAS_E_DIVIDA_TECNICA.md` | Diagnóstico completo + plano de ação por área | ✅ Completo |
+---
+
+## Plano arquitetural vigente
+
+A arquitetura atual é **Modular Monolith DDD** (4 camadas por contexto em `apps/backend/src/contexts/<domain>/`), conforme registrado em `melhorias_concluidos/39_ddd_reestruturacao_completo.md`.
+
+A evolução planejada está no **plano 17** — não vamos para micro-serviços completos. Caminho:
+
+1. Reviver EventBus (zero imports diretos entre contextos)
+2. Boundary lint no CI (eslint-plugin-boundaries ou dependency-cruiser)
+3. Schema Prisma multi-file por domínio
+4. Read models cross-domain (sem joins SQL cruzando fronteira)
+5. Extrair **apenas** `transcription` como serviço separado (Redis Streams)
+6. Avaliar e decidir antes de extrair `meetings`+`chat`
+
+**Os planos 11 e 12 descrevem a estrutura inicial (pré-DDD).** A estrutura atual é diferente — ver `melhorias_concluidos/39_ddd_reestruturacao_completo.md` e o `CLAUDE.md` raiz para a referência viva.
 
 ---
 
