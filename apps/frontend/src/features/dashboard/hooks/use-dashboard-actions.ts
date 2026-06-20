@@ -54,3 +54,21 @@ export function useArchivePlanAction() {
     onError: (err) => toast.error(getErrorMessage(err)),
   })
 }
+
+/**
+ * Excluir plano (geral) — rota tenant-scoped `DELETE /plans/:planId` (soft-delete,
+ * plano 24.2). Não precisa de unitId: remove o plano de todas as unidades.
+ */
+export function useDeletePlanAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ planId }: { planId: string }) => api.delete(`/plans/${planId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['plan-units'] })
+      toast.success('Plano excluído.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}

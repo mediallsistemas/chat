@@ -175,7 +175,7 @@ Stripe ──webhook──▶ ALB ─▶ /platform/billing/webhook
 - [x] 25.2 drill-down grid→unidade
 - [x] 25.3 card planos da holding por unidade ✅ — `/dashboard/summary` inclui `attachedUnits` por plano (via `PlanUnit`), filtra por atribuição (não-global) + `deletedAt: null`; grid de unidades conta planos por **atribuição**. Painel renderiza chips das unidades por plano. (Progresso por unidade ainda é o do plano — boards por unidade = 24.3, adiado.)
 - [x] 25.4 cockpit da unidade  ← rota/endpoint já existiam; "Entrar no contexto desta unidade" + drill-down p/ planos add em 25.2
-- [~] 25.5 ações inline + RBAC  ← **feito:** resolver impedimento (com notas) + arquivar plano (RBAC-gated, no painel e no cockpit). **bloqueado:** excluir plano (rota só no plano 24), escalar manual / war-room (sem rota / plano 22)
+- [~] 25.5 ações inline + RBAC  ← **feito:** resolver impedimento (com notas) + arquivar plano + **excluir plano (geral)** no painel (`DeletePlanButton` → `DELETE /plans/:id`, RBAC-gated, confirmação em Modal). **falta:** escalar manual / war-room (sem rota / plano 22)
 - [~] 25.6 filtros + realtime estendido  ← **feito:** filtros do painel (busca, farol, tipo de unidade, em memória) + bridge `dashboard:update` para `impediment.created/resolved/escalated` e `phase.completed/unlocked` (coalescido no front). **alvo:** realtime no ativar/arquivar plano precisa de evento de domínio do plano
 
 ### Fase IV — Billing (26)

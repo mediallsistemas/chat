@@ -6,7 +6,7 @@ import { clsx } from 'clsx'
 import { MetricCard, PageHeader } from '@/shared/components'
 import { TrafficLight, ProgressBar, Button, Input, Select } from '@/shared/components/ui'
 import { useDashboard } from '@/features/dashboard/hooks/use-dashboard'
-import { ResolveImpedimentButton, ArchivePlanButton } from '@/features/dashboard/components'
+import { ResolveImpedimentButton, ArchivePlanButton, DeletePlanButton } from '@/features/dashboard/components'
 import { useDownloadDashboardPdf } from '@/features/reports/hooks/use-reports'
 import type { TrafficLightStatus } from '@/shared/components/ui'
 
@@ -307,6 +307,7 @@ export default function DashboardPage() {
                   <ProgressBar value={plan.progress} showLabel size="sm" />
                 </div>
                 <ArchivePlanButton unitId={plan.unitId} planId={plan.id} planName={plan.name} />
+                <DeletePlanButton planId={plan.id} planName={plan.name} />
               </div>
             ))}
           </div>

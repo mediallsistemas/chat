@@ -1,1 +1,1 @@
-export { ResolveImpedimentButton, ArchivePlanButton } from './inline-actions'
+export { ResolveImpedimentButton, ArchivePlanButton, DeletePlanButton } from './inline-actions'

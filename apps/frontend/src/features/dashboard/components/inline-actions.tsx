@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { Button, FormModal, FormField, Textarea, Modal } from '@/shared/components/ui'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { UserRole } from '@mediall/types'
-import { useResolveImpedimentAction, useArchivePlanAction } from '../hooks/use-dashboard-actions'
+import { useResolveImpedimentAction, useArchivePlanAction, useDeletePlanAction } from '../hooks/use-dashboard-actions'
 
 /**
  * Inline actions for the Jarvis panel (plano 25.5). RBAC mirrors the backend
@@ -146,6 +146,61 @@ export function ArchivePlanButton({ unitId, planId, planName }: ArchivePlanButto
         <p className="text-sm text-gray-700">
           Arquivar o plano <span className="font-semibold text-gd">{planName}</span>? Ele sai da
           visão ativa e seus boards são arquivados. Você pode reativá-lo depois.
+        </p>
+      </Modal>
+    </>
+  )
+}
+
+// ─── Excluir plano (geral) ────────────────────────────────────────────────────
+
+interface DeletePlanButtonProps {
+  planId: string
+  planName: string
+}
+
+export function DeletePlanButton({ planId, planName }: DeletePlanButtonProps) {
+  const canManage = useHasRole(UserRole.SUPER_ADMIN, UserRole.DIRETORIA)
+  const [open, setOpen] = useState(false)
+  const { mutate, isPending } = useDeletePlanAction()
+
+  if (!canManage) return null
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label={`Excluir plano ${planName}`}
+      >
+        <i className="ti ti-trash mr-1" aria-hidden="true" />
+        Excluir
+      </Button>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Excluir plano"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => mutate({ planId }, { onSuccess: () => setOpen(false) })}
+              loading={isPending}
+            >
+              Excluir plano
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-gray-700">
+          Excluir o plano <span className="font-semibold text-gd">{planName}</span> de{' '}
+          <span className="font-semibold">todas as unidades</span>? O plano sai da holding inteira.
         </p>
       </Modal>
     </>
