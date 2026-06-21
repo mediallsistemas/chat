@@ -2,7 +2,16 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../../../prisma/prisma.service'
 import { CreatePlanDto } from './dto/create-plan.dto'
 import { UpdatePlanDto } from './dto/update-plan.dto'
-import { JwtPayload, UserRole, PlanStatus } from '@mediall/types'
+import {
+  JwtPayload,
+  UserRole,
+  PlanStatus,
+  GoalStatus,
+  PhaseStatus,
+  TrafficLight,
+  TaskStatus,
+  BoardOwner,
+} from '@mediall/types'
 
 @Injectable()
 export class PlansService {
@@ -11,11 +20,21 @@ export class PlansService {
   // ─── Visões por unidade (planos ATRELADOS à unidade via PlanUnit) — plano 24.2 ───
 
   async findAll(unitId: string) {
+    // Mantém o cache de progresso/farol DESTA unidade fresco antes de devolver.
+    const planIds = (
+      await this.prisma.strategicPlan.findMany({
+        where: { deletedAt: null, units: { some: { unitId } } },
+        select: { id: true },
+      })
+    ).map((p) => p.id)
+    for (const planId of planIds) await this.recalcPlanUnit(planId, unitId)
+
     return this.prisma.strategicPlan.findMany({
       where: { deletedAt: null, units: { some: { unitId } } },
       orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
       include: {
-        _count: { select: { objectives: true } },
+        // Cada unidade tem sua própria árvore (execução por unidade) — conte só os objetivos DESTA unidade.
+        _count: { select: { objectives: { where: { unitId } } } },
         // status/progresso DESTA unidade (PlanUnit)
         units: { where: { unitId }, select: { status: true, progressPct: true, trafficLight: true } },
       },
@@ -26,7 +45,9 @@ export class PlansService {
     const plan = await this.prisma.strategicPlan.findFirst({
       where: { id: planId, deletedAt: null, units: { some: { unitId } } },
       include: {
+        // Só os objetivos DESTA unidade (execução por unidade — plano 24.3).
         objectives: {
+          where: { unitId },
           include: { _count: { select: { goals: true } } },
           orderBy: { createdAt: 'asc' },
         },
@@ -90,6 +111,9 @@ export class PlansService {
 
   async listUnits(planId: string) {
     await this.assertPlan(planId)
+    // Atualiza o cache de progresso/farol por unidade antes de devolver (write-through).
+    const links = await this.prisma.planUnit.findMany({ where: { planId }, select: { unitId: true } })
+    for (const { unitId } of links) await this.recalcPlanUnit(planId, unitId)
     return this.prisma.planUnit.findMany({
       where: { planId },
       include: { unit: { select: { id: true, name: true, type: true } } },
@@ -112,16 +136,26 @@ export class PlansService {
       throw new BadRequestException('Uma ou mais unidades são inválidas para esta organização.')
     }
 
-    // NOTE (24.3): fan-out de PhaseScopeBoard por unidade ainda não é feito aqui.
-    return Promise.all(
-      unitIds.map((unitId) =>
-        this.prisma.planUnit.upsert({
-          where: { planId_unitId: { planId, unitId } },
-          update: {},
-          create: { planId, unitId, status: plan.status, attachedBy: user.sub },
-        }),
-      ),
-    )
+    // 24.3 — Fan-out da execução por unidade: cada unidade nova ganha a estrutura
+    // do plano (objetivos/metas/etapas/boards/macro), clonada da unidade de origem
+    // com a EXECUÇÃO ZERADA (1ª etapa ACTIVE, demais LOCKED; sem tarefas). A unidade
+    // executa a sua própria cópia sem afetar as outras. Idempotente.
+    for (const unitId of unitIds) {
+      const already = await this.prisma.planUnit.findFirst({ where: { planId, unitId } })
+      if (already) continue
+
+      await this.prisma.planUnit.create({
+        data: { tenantId: plan.tenantId, planId, unitId, status: plan.status, attachedBy: user.sub },
+      })
+
+      // A unidade de origem já possui a estrutura — só clonamos para as demais.
+      if (unitId !== plan.unitId) {
+        await this.cloneSubtreeForUnit(planId, plan.tenantId, plan.unitId, unitId)
+      }
+      await this.recalcPlanUnit(planId, unitId)
+    }
+
+    return this.listUnits(planId)
   }
 
   /** Desatrela o plano de UMA unidade (não permite remover a última). */
@@ -133,9 +167,11 @@ export class PlansService {
         'Não é possível remover a última unidade do plano. Exclua o plano (geral).',
       )
     }
+    // Derruba a execução daquela unidade (boards/tarefas/macro/etapas/metas/objetivos
+    // DESTE plano e DESTA unidade) — as outras unidades seguem intactas.
+    await this.deleteUnitSubtree(planId, unitId)
     await this.prisma.planUnit.deleteMany({ where: { planId, unitId } })
     return { detached: true }
-    // NOTE (24.3): limpeza dos boards/tarefas daquela unidade ainda não é feita aqui.
   }
 
   /** Exclui o plano para TODAS as unidades (soft-delete). */
@@ -143,5 +179,214 @@ export class PlansService {
     await this.assertPlan(planId)
     await this.prisma.strategicPlan.update({ where: { id: planId }, data: { deletedAt: new Date() } })
     return { deleted: true }
+  }
+
+  // ─── Execução por unidade (fan-out / cleanup / progresso) — plano 24.3 ───
+
+  /**
+   * Clona a estrutura do plano (objetivos → metas → etapas + board/colunas → macro)
+   * da unidade de origem para `targetUnitId`, com a execução ZERADA: 1ª etapa ACTIVE,
+   * demais LOCKED; progresso 0; sem tarefas (cada unidade executa do zero). Sequencial
+   * (sem transação) — ação administrativa; re-attach é idempotente no chamador.
+   */
+  private async cloneSubtreeForUnit(
+    planId: string,
+    tenantId: string | null,
+    sourceUnitId: string,
+    targetUnitId: string,
+  ) {
+    const objectives = await this.prisma.objective.findMany({
+      where: { planId, unitId: sourceUnitId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        goals: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            phases: {
+              orderBy: { order: 'asc' },
+              include: {
+                kanbanBoard: { include: { columns: { orderBy: { position: 'asc' } } } },
+                macroTasks: { orderBy: { createdAt: 'asc' } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    for (const obj of objectives) {
+      const newObjective = await this.prisma.objective.create({
+        data: {
+          tenantId,
+          planId,
+          unitId: targetUnitId,
+          title: obj.title,
+          description: obj.description,
+          benefits: obj.benefits,
+          responsibleSectorId: obj.responsibleSectorId,
+          responsibleUserId: obj.responsibleUserId,
+          deadline: obj.deadline,
+          groupId: obj.groupId,
+          status: GoalStatus.NOT_STARTED,
+          progressPct: 0,
+          trafficLight: TrafficLight.GREEN,
+        },
+      })
+
+      for (const goal of obj.goals) {
+        const newGoal = await this.prisma.goal.create({
+          data: {
+            tenantId,
+            objectiveId: newObjective.id,
+            unitId: targetUnitId,
+            title: goal.title,
+            description: goal.description,
+            sectorId: goal.sectorId,
+            investment: goal.investment,
+            direction: goal.direction,
+            calcMethod: goal.calcMethod,
+            targetValue: goal.targetValue,
+            initialValue: goal.initialValue,
+            currentValue: 0,
+            status: GoalStatus.NOT_STARTED,
+            progressPct: 0,
+          },
+        })
+
+        for (const phase of goal.phases) {
+          const board = await this.prisma.kanbanBoard.create({
+            data: {
+              tenantId,
+              name: phase.kanbanBoard.name,
+              ownerType: BoardOwner.PHASE,
+              ownerId: '',
+              unitId: targetUnitId,
+              columns: {
+                create: phase.kanbanBoard.columns.map((c) => ({
+                  tenantId,
+                  name: c.name,
+                  position: c.position,
+                  wipLimit: c.wipLimit,
+                  isDoneColumn: c.isDoneColumn,
+                  color: c.color,
+                })),
+              },
+            },
+          })
+
+          const newPhase = await this.prisma.planPhase.create({
+            data: {
+              tenantId,
+              goalId: newGoal.id,
+              title: phase.title,
+              description: phase.description,
+              order: phase.order,
+              status: phase.order === 1 ? PhaseStatus.ACTIVE : PhaseStatus.LOCKED,
+              unitScope: phase.unitScope,
+              unitId: phase.unitId,
+              responsibleUserId: phase.responsibleUserId,
+              startDate: phase.startDate,
+              dueDate: phase.dueDate,
+              completedAt: null,
+              kanbanBoardId: board.id,
+            },
+          })
+
+          await this.prisma.kanbanBoard.update({
+            where: { id: board.id },
+            data: { ownerId: newPhase.id },
+          })
+
+          for (const macro of phase.macroTasks) {
+            await this.prisma.macroTask.create({
+              data: {
+                tenantId,
+                phaseId: newPhase.id,
+                goalId: newGoal.id,
+                objectiveId: newObjective.id,
+                title: macro.title,
+                description: macro.description,
+                responsibleUserId: macro.responsibleUserId,
+                sectorId: macro.sectorId,
+                unitId: targetUnitId,
+                startDate: macro.startDate,
+                dueDate: macro.dueDate,
+                status: TaskStatus.NOT_STARTED,
+                progressPct: 0,
+                groupId: macro.groupId,
+                kanbanBoardId: board.id,
+              },
+            })
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Remove a execução do plano numa unidade: tarefas (e filhas), macro-tarefas,
+   * etapas + boards/colunas, metas e objetivos DAQUELE plano e DAQUELA unidade.
+   * As demais unidades do plano não são tocadas.
+   */
+  private async deleteUnitSubtree(planId: string, unitId: string) {
+    const objectives = await this.prisma.objective.findMany({
+      where: { planId, unitId },
+      select: { id: true, goals: { select: { id: true, phases: { select: { id: true, kanbanBoardId: true } } } } },
+    })
+    if (!objectives.length) return
+
+    const objectiveIds = objectives.map((o) => o.id)
+    const goalIds = objectives.flatMap((o) => o.goals.map((g) => g.id))
+    const phases = objectives.flatMap((o) => o.goals.flatMap((g) => g.phases))
+    const phaseIds = phases.map((p) => p.id)
+
+    const boardIds = new Set<string>(phases.map((p) => p.kanbanBoardId))
+    // Macro-tarefas podem ter board próprio (criadas em runtime) — incluir esses boards.
+    const macros = await this.prisma.macroTask.findMany({
+      where: { phaseId: { in: phaseIds } },
+      select: { kanbanBoardId: true },
+    })
+    macros.forEach((m) => boardIds.add(m.kanbanBoardId))
+    const allBoardIds = [...boardIds]
+
+    const taskIds = (
+      await this.prisma.task.findMany({ where: { boardId: { in: allBoardIds } }, select: { id: true } })
+    ).map((t) => t.id)
+
+    if (taskIds.length) {
+      await this.prisma.taskDependency.deleteMany({
+        where: { OR: [{ taskId: { in: taskIds } }, { dependsOnId: { in: taskIds } }] },
+      })
+      await this.prisma.taskImpediment.deleteMany({ where: { taskId: { in: taskIds } } })
+      await this.prisma.taskChecklist.deleteMany({ where: { taskId: { in: taskIds } } })
+      await this.prisma.taskFile.deleteMany({ where: { taskId: { in: taskIds } } })
+    }
+
+    await this.prisma.task.deleteMany({ where: { boardId: { in: allBoardIds } } })
+    await this.prisma.macroTask.deleteMany({ where: { phaseId: { in: phaseIds } } })
+    await this.prisma.phaseScopeBoard.deleteMany({ where: { phaseId: { in: phaseIds } } })
+    await this.prisma.planPhase.deleteMany({ where: { id: { in: phaseIds } } })
+    await this.prisma.kanbanColumn.deleteMany({ where: { boardId: { in: allBoardIds } } })
+    await this.prisma.kanbanBoard.deleteMany({ where: { id: { in: allBoardIds } } })
+    await this.prisma.goal.deleteMany({ where: { id: { in: goalIds } } })
+    await this.prisma.objective.deleteMany({ where: { id: { in: objectiveIds } } })
+  }
+
+  /** Recalcula o cache de progresso/farol por unidade no PlanUnit (derivado dos objetivos). */
+  private async recalcPlanUnit(planId: string, unitId: string) {
+    const objectives = await this.prisma.objective.findMany({
+      where: { planId, unitId },
+      select: { progressPct: true, trafficLight: true },
+    })
+    const progressPct = objectives.length
+      ? objectives.reduce((sum, o) => sum + Number(o.progressPct), 0) / objectives.length
+      : 0
+    const trafficLight = objectives.some((o) => o.trafficLight === TrafficLight.RED)
+      ? TrafficLight.RED
+      : objectives.some((o) => o.trafficLight === TrafficLight.YELLOW)
+        ? TrafficLight.YELLOW
+        : TrafficLight.GREEN
+
+    await this.prisma.planUnit.updateMany({ where: { planId, unitId }, data: { progressPct, trafficLight } })
   }
 }

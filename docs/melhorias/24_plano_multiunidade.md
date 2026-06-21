@@ -16,6 +16,19 @@
 > executa sua própria cópia (boards/tarefas), com progresso por unidade + agregado. Dá para
 > **desvincular/deletar de uma unidade** ou **excluir o plano inteiro**.
 
+> **✅ STATUS (2026-06-21): IMPLEMENTADO.** 24.1–24.5 entregues. **Identidade do plano unificada**
+> (1 `StrategicPlan` + N `PlanUnit`) com **execução por unidade pelo Modelo B (subárvore por
+> unidade)**: o attach faz **fan-out** da estrutura para cada unidade (execução zerada), o detach
+> faz **cleanup** da subárvore daquela unidade, e o progresso/farol por unidade é recalculado no
+> `PlanUnit`. **Por que B e não a "definição física única" (opção A da §schema abaixo):** todo o
+> backend (`objectives.findAll` filtra `{planId, unitId}`, boards/tasks são unit-scoped pela regra
+> de segurança nº1) **e** a navegação do frontend (`/units/:unitId/.../objectives/...`) já são
+> unit-scoped — B casa com isso sem refator; A exigiria reescrever leituras, modelo de board,
+> rollup de progresso e navegação. **Dívida residual (norte futuro = opção A):** editar a
+> *estrutura* (títulos de objetivo/meta) é por unidade; o cabeçalho do plano (nome/visão/atrelar/
+> excluir) já é único. **`PhaseScopeBoard` não é usado** neste modelo (cada unidade tem suas
+> próprias etapas+boards); o hook morto `usePhaseScopeProgress` no front pode ser removido.
+
 ---
 
 ## O problema (verificado no código)

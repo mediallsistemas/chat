@@ -1,10 +1,14 @@
 /**
- * Strategic seed — populates a Mediall Brasil Gerência Médica 2026 plan
- * with 5 objectives, their goals, phases, macro-tasks and tasks, mirroring
- * the structure of the spreadsheet "Planilha-de-Planejamento-Estrategico_Gerencia_medica_2026".
+ * Strategic seed — populates a SINGLE Mediall Brasil "Gerência Médica 2026" plan
+ * (definition) attached to all units (PlanUnit), with each unit getting its OWN
+ * execution subtree (objectives/goals/phases/boards/macro-tasks/tasks) — the
+ * plano-24.3 model: one plan, N units, execution per unit.
+ *
+ * Mirrors the spreadsheet "Planilha-de-Planejamento-Estrategico_Gerencia_medica_2026".
+ * Full human-readable copy: docs/planos_estrategicos/gerencia-medica-2026.md
  *
  * Run with:  npx ts-node prisma/seed-strategic.ts
- * Idempotent: clears any prior plan with the same name before inserting.
+ * Idempotent: clears any prior plan with the same name (all units) before inserting.
  */
 
 import {
@@ -38,7 +42,7 @@ const TARGET_UNIT_IDS = [
 ]
 
 async function main() {
-  console.log('🌱 Strategic seed — Gerência Médica 2026 (replicated across all units)')
+  console.log('🌱 Strategic seed — Gerência Médica 2026 (1 plano → N unidades, execução por unidade)')
 
   const rafael = await prisma.user.findUniqueOrThrow({ where: { email: 'rafael@gmail.com' } })
   const gabriel = await prisma.user.findUniqueOrThrow({ where: { email: 'gabriel@gmail.com' } })
@@ -58,17 +62,14 @@ async function main() {
     where: { email: 'gerente.ccih@mediall.com.br' },
   })
 
-  for (const MATRIZ_ID of TARGET_UNIT_IDS) {
-    console.log(`\n── Unit: ${MATRIZ_ID} ──`)
-
-  // ─── Clean previous strategic data for this plan ──────────────────────────
-  const prev = await prisma.strategicPlan.findFirst({
-    where: { name: PLAN_NAME, year: PLAN_YEAR, unitId: MATRIZ_ID },
+  // ─── Clean previous instances of this plan (every unit) ─────────────────────
+  const prevPlans = await prisma.strategicPlan.findMany({
+    where: { name: PLAN_NAME, year: PLAN_YEAR },
     include: { objectives: { include: { goals: { include: { phases: true } } } } },
   })
 
-  if (prev) {
-    console.log('   ↻ Removing previous plan instance...')
+  for (const prev of prevPlans) {
+    console.log(`   ↻ Removing previous plan instance ${prev.id}...`)
     const phaseIds = prev.objectives.flatMap((o) => o.goals.flatMap((g) => g.phases.map((p) => p.id)))
     const goalIds = prev.objectives.flatMap((o) => o.goals.map((g) => g.id))
     const objectiveIds = prev.objectives.map((o) => o.id)
@@ -78,10 +79,7 @@ async function main() {
 
     // Child rows hold RESTRICT FKs to tasks — delete them before the tasks.
     const taskIds = (
-      await prisma.task.findMany({
-        where: { boardId: { in: boardIds } },
-        select: { id: true },
-      })
+      await prisma.task.findMany({ where: { boardId: { in: boardIds } }, select: { id: true } })
     ).map((t) => t.id)
 
     if (taskIds.length) {
@@ -101,16 +99,18 @@ async function main() {
     await prisma.kanbanBoard.deleteMany({ where: { id: { in: boardIds } } })
     await prisma.goal.deleteMany({ where: { id: { in: goalIds } } })
     await prisma.objective.deleteMany({ where: { id: { in: objectiveIds } } })
+    await prisma.planUnit.deleteMany({ where: { planId: prev.id } })
     await prisma.strategicPlan.delete({ where: { id: prev.id } })
   }
 
-  // ─── Strategic Plan ───────────────────────────────────────────────────────
+  // ─── Single shared plan (definition) — origin unit = first target ───────────
+  const ORIGIN_UNIT_ID = TARGET_UNIT_IDS[0]
   const plan = await prisma.strategicPlan.create({
     data: {
       name: PLAN_NAME,
       year: PLAN_YEAR,
       status: PlanStatus.ACTIVE,
-      unitId: MATRIZ_ID,
+      unitId: ORIGIN_UNIT_ID,
       createdBy: rafael.id,
       vision:
         'Ser reconhecida como a Gerência Médica de alta performance que consolida governança clínica, padroniza a prática assistencial e, de forma interdisciplinar, transforma a complexidade operacional em previsibilidade, segurança e resultado, sustentando a expansão nacional e internacional da Mediall Brasil com controle de risco e excelência assistencial.',
@@ -120,14 +120,7 @@ async function main() {
         'Ética, transparência, credibilidade, competência, comprometimento, profissionalismo e atenção ao bem-estar de pacientes e colaboradores.',
     },
   })
-  console.log(`✅ Plan created: ${plan.name}`)
-
-  // Plano 24 — atrela o plano à sua unidade (PlanUnit). Sem isto, o plano não aparece
-  // em /units/:unitId/plans (que agora filtra por atribuição). tenant_id é preenchido
-  // pelo backfill no fim do seed (raw client não passa pelo middleware de tenant).
-  await prisma.planUnit.create({
-    data: { planId: plan.id, unitId: MATRIZ_ID, status: PlanStatus.ACTIVE, attachedBy: rafael.id },
-  })
+  console.log(`✅ Shared plan created: ${plan.name} (${plan.id})`)
 
   // Default Kanban columns for each phase board
   const defaultColumns = [
@@ -138,7 +131,7 @@ async function main() {
     { name: 'Concluído', position: 5, isDoneColumn: true, color: '#10B981' },
   ]
 
-  // ─── Objectives + Goals + Phases + MacroTasks + Tasks ─────────────────────
+  // ─── Objectives + Goals + Phases + MacroTasks + Tasks (definition) ──────────
   type UserRef = { id: string }
   type TaskDef = {
     title: string
@@ -617,132 +610,135 @@ async function main() {
     HIGH: Priority.HIGH,
     URGENT: Priority.URGENT,
   }
-  const taskStatusMap: Record<string, TaskStatus> = {
-    NOT_STARTED: TaskStatus.NOT_STARTED,
-    IN_PROGRESS: TaskStatus.IN_PROGRESS,
-    BLOCKED: TaskStatus.BLOCKED,
-    REVIEW: TaskStatus.REVIEW,
-    DONE: TaskStatus.DONE,
-  }
 
-  for (const [oIdx, oDef] of objectivesDef.entries()) {
-    const objective = await prisma.objective.create({
-      data: {
-        planId: plan.id,
-        title: oDef.title,
-        description: oDef.description,
-        benefits: oDef.benefits,
-        responsibleUserId: oDef.responsibleUser.id,
-        deadline: days(365),
-        status: oDef.status,
-        trafficLight: oDef.trafficLight,
-        progressPct: oDef.progressPct,
-        unitId: MATRIZ_ID,
-      },
+  // ─── Per-unit execution: attach the plan + build its subtree for each unit ──
+  for (const currentUnitId of TARGET_UNIT_IDS) {
+    console.log(`\n── Unit: ${currentUnitId} ──`)
+
+    // Plano 24 — atrela o plano a esta unidade (PlanUnit). tenant_id é preenchido
+    // pelo backfill no fim do seed (raw client não passa pelo middleware de tenant).
+    await prisma.planUnit.create({
+      data: { planId: plan.id, unitId: currentUnitId, status: PlanStatus.ACTIVE, attachedBy: rafael.id },
     })
-    console.log(`  ✓ Objective ${oIdx + 1}: ${oDef.title}`)
 
-    for (const gDef of oDef.goals) {
-      const goal = await prisma.goal.create({
+    for (const [oIdx, oDef] of objectivesDef.entries()) {
+      const objective = await prisma.objective.create({
         data: {
-          objectiveId: objective.id,
-          title: gDef.title,
-          description: gDef.description,
-          investment: gDef.investment,
-          direction: Direction.UP,
-          calcMethod: CalcMethod.PERCENTAGE,
-          targetValue: gDef.target,
-          currentValue: gDef.current,
-          initialValue: 0,
-          status: gDef.status,
-          progressPct: gDef.progressPct,
-          unitId: MATRIZ_ID,
+          planId: plan.id,
+          title: oDef.title,
+          description: oDef.description,
+          benefits: oDef.benefits,
+          responsibleUserId: oDef.responsibleUser.id,
+          deadline: days(365),
+          status: oDef.status,
+          trafficLight: oDef.trafficLight,
+          progressPct: oDef.progressPct,
+          unitId: currentUnitId,
         },
       })
+      console.log(`  ✓ Objective ${oIdx + 1}: ${oDef.title}`)
 
-      for (const phDef of gDef.phases) {
-        // Each phase gets its own KanbanBoard
-        const board = await prisma.kanbanBoard.create({
+      for (const gDef of oDef.goals) {
+        const goal = await prisma.goal.create({
           data: {
-            name: `${oDef.title.slice(0, 30)}… — ${phDef.title}`,
-            ownerType: BoardOwner.PHASE,
-            ownerId: '', // filled after phase exists; we'll just use phaseId as placeholder
-            unitId: MATRIZ_ID,
-            columns: { create: defaultColumns },
-          },
-          include: { columns: true },
-        })
-
-        const phase = await prisma.planPhase.create({
-          data: {
-            goalId: goal.id,
-            title: phDef.title,
-            order: phDef.order,
-            status: phDef.status,
-            unitScope: UnitScope.ALL,
-            responsibleUserId: phDef.responsible.id,
-            startDate: phDef.startOffsetDays != null ? days(phDef.startOffsetDays) : null,
-            dueDate: phDef.dueOffsetDays != null ? days(phDef.dueOffsetDays) : null,
-            completedAt: phDef.completedOffsetDays != null ? days(phDef.completedOffsetDays) : null,
-            kanbanBoardId: board.id,
+            objectiveId: objective.id,
+            title: gDef.title,
+            description: gDef.description,
+            investment: gDef.investment,
+            direction: Direction.UP,
+            calcMethod: CalcMethod.PERCENTAGE,
+            targetValue: gDef.target,
+            currentValue: gDef.current,
+            initialValue: 0,
+            status: gDef.status,
+            progressPct: gDef.progressPct,
+            unitId: currentUnitId,
           },
         })
 
-        // Update board.ownerId to phase.id
-        await prisma.kanbanBoard.update({ where: { id: board.id }, data: { ownerId: phase.id } })
-
-        let taskPosition = 1
-        for (const mDef of phDef.macroTasks) {
-          const macro = await prisma.macroTask.create({
+        for (const phDef of gDef.phases) {
+          // Each phase gets its own KanbanBoard
+          const board = await prisma.kanbanBoard.create({
             data: {
-              phaseId: phase.id,
+              name: `${oDef.title.slice(0, 30)}… — ${phDef.title}`,
+              ownerType: BoardOwner.PHASE,
+              ownerId: '', // filled after phase exists; we'll just use phaseId as placeholder
+              unitId: currentUnitId,
+              columns: { create: defaultColumns },
+            },
+            include: { columns: true },
+          })
+
+          const phase = await prisma.planPhase.create({
+            data: {
               goalId: goal.id,
-              objectiveId: objective.id,
-              title: mDef.title,
-              responsibleUserId: mDef.responsible.id,
-              unitId: MATRIZ_ID,
-              startDate: mDef.startOffsetDays != null ? days(mDef.startOffsetDays) : null,
-              dueDate: mDef.dueOffsetDays != null ? days(mDef.dueOffsetDays) : null,
-              status: mDef.status,
-              progressPct: mDef.progress,
+              title: phDef.title,
+              order: phDef.order,
+              status: phDef.status,
+              unitScope: UnitScope.ALL,
+              responsibleUserId: phDef.responsible.id,
+              startDate: phDef.startOffsetDays != null ? days(phDef.startOffsetDays) : null,
+              dueDate: phDef.dueOffsetDays != null ? days(phDef.dueOffsetDays) : null,
+              completedAt: phDef.completedOffsetDays != null ? days(phDef.completedOffsetDays) : null,
               kanbanBoardId: board.id,
             },
           })
 
-          for (const tDef of mDef.tasks) {
-            const column = board.columns.find((c) => c.position === tDef.column)!
-            await prisma.task.create({
+          // Update board.ownerId to phase.id
+          await prisma.kanbanBoard.update({ where: { id: board.id }, data: { ownerId: phase.id } })
+
+          let taskPosition = 1
+          for (const mDef of phDef.macroTasks) {
+            const macro = await prisma.macroTask.create({
               data: {
-                boardId: board.id,
-                columnId: column.id,
-                macroTaskId: macro.id,
-                title: tDef.title,
+                phaseId: phase.id,
+                goalId: goal.id,
+                objectiveId: objective.id,
+                title: mDef.title,
                 responsibleUserId: mDef.responsible.id,
-                createdBy: rafael.id,
-                priority: priorityMap[tDef.priority],
+                unitId: currentUnitId,
                 startDate: mDef.startOffsetDays != null ? days(mDef.startOffsetDays) : null,
                 dueDate: mDef.dueOffsetDays != null ? days(mDef.dueOffsetDays) : null,
-                position: taskPosition++,
-                isBlocked: !!tDef.blocked,
-                acceptanceStatus:
-                  tDef.status === 'DONE' ? AcceptanceStatus.ACCEPTED : AcceptanceStatus.PENDING,
-                unitId: MATRIZ_ID,
-                completedAt: tDef.status === 'DONE' ? days(-Math.floor(Math.random() * 20)) : null,
+                status: mDef.status,
+                progressPct: mDef.progress,
+                kanbanBoardId: board.id,
               },
             })
+
+            for (const tDef of mDef.tasks) {
+              const column = board.columns.find((c) => c.position === tDef.column)!
+              await prisma.task.create({
+                data: {
+                  boardId: board.id,
+                  columnId: column.id,
+                  macroTaskId: macro.id,
+                  title: tDef.title,
+                  responsibleUserId: mDef.responsible.id,
+                  createdBy: rafael.id,
+                  priority: priorityMap[tDef.priority],
+                  startDate: mDef.startOffsetDays != null ? days(mDef.startOffsetDays) : null,
+                  dueDate: mDef.dueOffsetDays != null ? days(mDef.dueOffsetDays) : null,
+                  position: taskPosition++,
+                  isBlocked: !!tDef.blocked,
+                  acceptanceStatus:
+                    tDef.status === 'DONE' ? AcceptanceStatus.ACCEPTED : AcceptanceStatus.PENDING,
+                  unitId: currentUnitId,
+                  completedAt: tDef.status === 'DONE' ? days(-Math.floor(Math.random() * 20)) : null,
+                },
+              })
+            }
           }
         }
       }
     }
-  }
 
-    console.log(`   ✓ Plan created for ${MATRIZ_ID} — ${plan.id}`)
+    console.log(`   ✓ Subtree created for ${currentUnitId}`)
   } // end for (TARGET_UNIT_IDS)
 
   // Plano 23 — tenant + tenant_id em tudo que o seed criou (raw client não passa pelo middleware).
   await ensureTenantAndBackfill(prisma)
 
-  console.log('\n✅ Strategic seed complete')
+  console.log('\n✅ Strategic seed complete — 1 plano, 6 unidades, execução por unidade')
 }
 
 main()
