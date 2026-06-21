@@ -12,6 +12,17 @@ import { doubleCsrfProtection } from './csrf'
 
 const REQUIRED_ENV_VARS = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'REDIS_HOST', 'MINIO_ENDPOINT', 'CSRF_SECRET']
 
+// Billing (plano 26) is opt-in. When enabled, its secrets are required at boot —
+// no insecure fallback (security.md §2). When off (dev default), the app boots
+// without Stripe keys and the webhook/checkout endpoints return 503.
+if (process.env.BILLING_ENABLED === 'true') {
+  REQUIRED_ENV_VARS.push('STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET')
+}
+
+// Stripe verifies the webhook against the raw request bytes — this path must skip
+// the CSRF middleware (Stripe sends no CSRF token) and keep its raw body.
+const STRIPE_WEBHOOK_PATH = '/api/v1/platform/billing/webhook'
+
 const logger = WinstonModule.createLogger({
   format: format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -37,7 +48,7 @@ async function bootstrap() {
     process.exit(1)
   }
 
-  const app = await NestFactory.create(AppModule, { logger })
+  const app = await NestFactory.create(AppModule, { logger, rawBody: true })
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -51,7 +62,10 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   }))
   app.use(cookieParser())
-  app.use(doubleCsrfProtection)
+  app.use((req: any, res: any, next: any) => {
+    if (req.path === STRIPE_WEBHOOK_PATH) return next() // Stripe webhook: no CSRF
+    return doubleCsrfProtection(req, res, next)
+  })
   // csrf-csrf throws an http-errors ForbiddenError outside Nest's pipeline,
   // which would land in Express's default 500 handler. Convert it to a clean
   // 403 JSON so the frontend can react (re-fetch token + retry).
@@ -102,6 +116,8 @@ async function bootstrap() {
     .addTag('notifications', 'Notificações in-app, push e email')
     .addTag('reports', 'Exportação de relatórios PDF/Excel')
     .addTag('audit', 'Logs de auditoria')
+    .addTag('billing', 'Assinatura do tenant (plano, faturas, upgrade)')
+    .addTag('platform', 'Administração da plataforma (dono do SaaS)')
     .addCookieAuth('access_token')
     .build()
 

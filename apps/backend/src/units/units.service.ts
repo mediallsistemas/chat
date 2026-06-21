@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateUnitDto } from './dto/create-unit.dto'
 import { AssignUserDto } from './dto/assign-user.dto'
 import { JwtPayload, AccessScope } from '@mediall/types'
+import { getCurrentTenantId } from '../shared/tenant/tenant-context'
 
 @Injectable()
 export class UnitsService {
@@ -38,6 +39,8 @@ export class UnitsService {
   }
 
   async create(dto: CreateUnitDto) {
+    await this.assertUnitQuota()
+
     return this.prisma.unit.create({
       data: {
         name: dto.name,
@@ -46,6 +49,31 @@ export class UnitsService {
         managerId: dto.managerId,
       },
     })
+  }
+
+  /**
+   * Tier limit (plano 26.4): block creating a unit beyond the tenant's `maxUnits`.
+   * No-op without a tenant context (jobs/seed) or for unlimited tiers (maxUnits 0
+   * is treated as "unset" — Enterprise/legacy). The check counts the tenant's own
+   * units explicitly so it's exact during the nullable-tenant transition.
+   */
+  private async assertUnitQuota(): Promise<void> {
+    const tenantId = getCurrentTenantId()
+    if (!tenantId) return
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { maxUnits: true },
+    })
+    if (!tenant || tenant.maxUnits <= 0) return
+
+    const count = await this.prisma.unit.count({ where: { tenantId } })
+    if (count >= tenant.maxUnits) {
+      throw new ForbiddenException(
+        `Limite de ${tenant.maxUnits} unidades do seu plano atingido. ` +
+          'Faça upgrade do plano para adicionar mais unidades.',
+      )
+    }
   }
 
   async findMembers(unitId: string) {

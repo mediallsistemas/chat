@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common'
 import * as bcrypt from 'bcrypt'
 import { randomBytes } from 'crypto'
 import { PrismaService } from '../prisma/prisma.service'
@@ -6,6 +6,7 @@ import { CreateUserDto } from './dto/create-user.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { PaginationDto } from '../shared/dto/pagination.dto'
 import { JwtPayload } from '@mediall/types'
+import { getCurrentTenantId } from '../shared/tenant/tenant-context'
 
 @Injectable()
 export class UsersService {
@@ -55,6 +56,8 @@ export class UsersService {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } })
     if (exists) throw new ConflictException('E-mail já cadastrado.')
 
+    await this.assertUserQuota()
+
     const passwordHash = await bcrypt.hash(dto.password, 12)
 
     return this.prisma.user.create({
@@ -67,6 +70,29 @@ export class UsersService {
       },
       select: { id: true, name: true, email: true, accessScope: true, createdAt: true },
     })
+  }
+
+  /**
+   * Tier limit (plano 26.4): block creating a user beyond the tenant's `maxUsers`.
+   * No-op without a tenant context or for unlimited tiers (maxUsers 0 = unset).
+   */
+  private async assertUserQuota(): Promise<void> {
+    const tenantId = getCurrentTenantId()
+    if (!tenantId) return
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { maxUsers: true },
+    })
+    if (!tenant || tenant.maxUsers <= 0) return
+
+    const count = await this.prisma.user.count({ where: { tenantId } })
+    if (count >= tenant.maxUsers) {
+      throw new ForbiddenException(
+        `Limite de ${tenant.maxUsers} usuários do seu plano atingido. ` +
+          'Faça upgrade do plano para adicionar mais usuários.',
+      )
+    }
   }
 
   async update(id: string, dto: UpdateUserDto) {

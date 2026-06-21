@@ -44,12 +44,17 @@ código real, não os planos antigos (docs 11/12 são pré-DDD — ignore-os par
 - **`JwtPayload` tem `tenantId`** (em `@mediall/types`; login injeta, lança se user sem tenant).
   Rotas tenant-wide usam `TenantGuard` + `@Roles` (não `BaseUnitController`); rotas de unidade
   continuam em `BaseUnitController`.
-- **Guard stack alvo (global):**
+- **Guard stack vigente (global):**
   `JwtAuthGuard → TenantGuard → BillingGuard → RolesGuard → UnitScopeGuard`
-  (`BillingGuard` chega no plano 26; `TenantGuard` no 23.2).
+  (`BillingGuard` **implementado** no plano 26; `TenantGuard` no 23.2). `BillingGuard`
+  (`shared/guards/billing.guard.ts`) bloqueia **mutação** quando `Tenant.status ∈
+  {SUSPENDED,CANCELED}` (somente-leitura); GET sempre passa; PAST_DUE não bloqueia.
+  Rotas isentas usam `@AllowSuspended()` (login/logout/billing do tenant).
 - **Platform admin** (dono do SaaS) opera sobre **todos** os tenants no contexto
-  `contexts/platform/` com guard próprio — **fora** da extension de tenant (única exceção
-  autorizada a cruzar tenants).
+  `contexts/platform/` (**implementado** — plano 26.5) com `PlatformAdminGuard` próprio
+  (re-checa `User.isPlatformAdmin` no banco) — **fora** da extension de tenant (única exceção
+  autorizada a cruzar tenants). Cross-tenant via helper `runWithoutTenant` (`tenant-context.ts`
+  = `tenantStorage.exit`). `Subscription`/`BillingEvent` são platform-scoped (fora de `TENANT_MODELS`).
 
 ---
 

@@ -84,6 +84,7 @@ export class AuthService {
       accessScope: user.accessScope as AccessScope,
       tenantId: user.tenantId,
       tenantSlug: tenant.slug,
+      isPlatformAdmin: user.isPlatformAdmin,
       units,
     }
 
@@ -104,6 +105,7 @@ export class AuthService {
         avatarUrl: user.avatarUrl,
         role: payload.role,
         accessScope: payload.accessScope,
+        isPlatformAdmin: user.isPlatformAdmin,
         units: payload.units,
         customStatus: user.customStatus,
         customStatusEmoji: user.customStatusEmoji,
@@ -126,6 +128,7 @@ export class AuthService {
         email: true,
         avatarUrl: true,
         accessScope: true,
+        isPlatformAdmin: true,
         customStatus: true,
         customStatusEmoji: true,
         statusExpiresAt: true,

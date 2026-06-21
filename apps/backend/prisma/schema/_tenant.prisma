@@ -19,5 +19,8 @@ model Tenant {
   updatedAt   DateTime     @updatedAt @map("updated_at")
   deletedAt   DateTime?    @map("deleted_at")
 
+  // Billing (plano 26) — uma assinatura por tenant (platform-scoped).
+  subscription Subscription?
+
   @@map("tenants")
 }

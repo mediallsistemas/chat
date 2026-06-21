@@ -22,6 +22,9 @@ export interface JwtPayload {
   tenantId: string
   /** Tenant slug (subdomain) — used for the host check — multitenancy plano 23.4. */
   tenantSlug: string
+  /** SaaS owner — operates across all tenants (plano 26.5). UI hint only; the
+   *  PlatformAdminGuard re-checks against the DB (token can't self-elevate). */
+  isPlatformAdmin?: boolean
   units: string[]
   iat?: number
   exp?: number
@@ -40,6 +43,8 @@ export interface AuthUser extends UserStatus {
   avatarUrl: string | null
   role: UserRole
   accessScope: AccessScope
+  /** SaaS owner — shows the platform-admin entry in the UI (plano 26.5). */
+  isPlatformAdmin?: boolean
   units: string[]
 }
 

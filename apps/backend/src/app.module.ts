@@ -45,8 +45,10 @@ import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
 import { HuddleReaperJob } from './jobs/huddle-reaper.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
 import { TenantGuard } from './shared/guards/tenant.guard'
+import { BillingGuard } from './shared/guards/billing.guard'
 import { RolesGuard } from './shared/guards/roles.guard'
 import { UnitScopeGuard } from './shared/guards/unit-scope.guard'
+import { PlatformModule } from './contexts/platform/platform.module'
 import { TransformInterceptor } from './shared/interceptors/transform.interceptor'
 import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor'
 
@@ -92,11 +94,13 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     TicketsModule,
     HealthModule,
     ConsentsModule,
+    PlatformModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
+    { provide: APP_GUARD, useClass: BillingGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: UnitScopeGuard },
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },

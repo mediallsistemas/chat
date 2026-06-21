@@ -21,6 +21,18 @@ export function getCurrentTenantId(): string | undefined {
 }
 
 /**
+ * Run `fn` with NO tenant context, so the Prisma auto-scope middleware no-ops
+ * and queries see every tenant (multitenancy plano 26.5).
+ *
+ * The ONLY authorized caller is the `platform` context (the SaaS owner), which
+ * legitimately operates across all tenants behind `PlatformAdminGuard`. Never
+ * use this from a tenant-facing service — it defeats the isolation boundary.
+ */
+export function runWithoutTenant<T>(fn: () => Promise<T>): Promise<T> {
+  return tenantStorage.exit(fn)
+}
+
+/**
  * Extract the tenant slug from the request Host header (multitenancy plano 23.4).
  * Returns null when there's no tenant subdomain (dev/localhost, raw IP, apex or
  * www/api host) — the host check then becomes a no-op, so local dev is unaffected.

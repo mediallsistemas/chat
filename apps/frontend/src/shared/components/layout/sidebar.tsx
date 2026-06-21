@@ -12,6 +12,8 @@ type NavItem = {
   icon: string
   label: string
   roles: UserRole[] | null
+  /** When true, only the SaaS platform admin sees it (plano 26.5). */
+  platformOnly?: boolean
 }
 
 type NavGroup = {
@@ -65,6 +67,12 @@ const navGroups: NavGroup[] = [
       { href: '/chamados', icon: 'ti-ticket', label: 'Chamados', roles: null },
       { href: '/configuracoes/notificacoes', icon: 'ti-bell-cog', label: 'Notificações', roles: null },
       {
+        href: '/configuracoes/assinatura',
+        icon: 'ti-credit-card',
+        label: 'Assinatura',
+        roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA],
+      },
+      {
         href: '/admin/usuarios',
         icon: 'ti-users',
         label: 'Usuários',
@@ -76,6 +84,14 @@ const navGroups: NavGroup[] = [
         label: 'Auditoria',
         roles: [UserRole.SUPER_ADMIN, UserRole.DIRETORIA],
       },
+    ],
+  },
+  {
+    id: 'plataforma',
+    label: 'Plataforma',
+    icon: 'ti-building-store',
+    items: [
+      { href: '/platform/tenants', icon: 'ti-building-community', label: 'Organizações', roles: null, platformOnly: true },
     ],
   },
 ]
@@ -123,9 +139,10 @@ export function Sidebar() {
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) => !item.roles || (user && item.roles.includes(user.role)),
-      ),
+      items: group.items.filter((item) => {
+        if (item.platformOnly && !user?.isPlatformAdmin) return false
+        return !item.roles || (user && item.roles.includes(user.role))
+      }),
     }))
     .filter((group) => group.items.length > 0)
 

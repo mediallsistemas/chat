@@ -49,6 +49,9 @@ model User {
   customStatus      String?     @map("custom_status")
   customStatusEmoji String?     @map("custom_status_emoji")
   statusExpiresAt   DateTime?   @map("status_expires_at")
+  // Platform admin (dono do SaaS) — opera sobre todos os tenants, fora do
+  // escopo de tenant (plano 26.5). É a única exceção autorizada a cruzar tenants.
+  isPlatformAdmin   Boolean     @default(false) @map("is_platform_admin")
   createdAt         DateTime    @default(now()) @map("created_at")
   updatedAt         DateTime    @updatedAt @map("updated_at")
 
