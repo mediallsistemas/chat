@@ -191,3 +191,13 @@ enum PlanTier {
   PRO
   ENTERPRISE
 }
+
+// Billing (SaaS) — ver docs/melhorias/26_billing_assinaturas_saas.md.
+// Status da assinatura no provedor (Stripe). Distinto de TenantStatus: a
+// Subscription espelha o provedor; o Tenant.status é o que os guards aplicam.
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}

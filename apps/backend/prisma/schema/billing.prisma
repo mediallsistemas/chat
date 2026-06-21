@@ -1,0 +1,44 @@
+// Billing context (plataforma) — ver docs/melhorias/26_billing_assinaturas_saas.md.
+//
+// Assinatura por tenant: o produto é vendido por assinatura mensal. O acesso é
+// condicionado ao `Tenant.status` (plano 23). Stripe cuida de cartão/recorrência;
+// o backend reage aos webhooks e ajusta o status.
+//
+// IMPORTANTE: `Subscription`/`BillingEvent` são PLATFORM-scoped — geridos pelo
+// contexto `platform`, NÃO passam pelo auto-escopo de tenant do PrismaService
+// (não estão em TENANT_MODELS). Por isso `tenantId` aqui é coluna escalar, sem o
+// filtro automático: o contexto platform lê todos os tenants conscientemente.
+
+model Subscription {
+  id                 String             @id @default(uuid())
+  tenantId           String             @unique @map("tenant_id")
+  provider           String             @default("stripe")
+  providerCustomerId String?            @map("provider_customer_id") // cus_...
+  providerSubId      String?            @map("provider_sub_id") // sub_...
+  tier               PlanTier
+  status             SubscriptionStatus @default(TRIALING)
+  currentPeriodEnd   DateTime?          @map("current_period_end")
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("billing_subscriptions")
+}
+
+// Trilha de webhooks recebidos — idempotência + auditoria. O Stripe reenvia
+// webhooks; `providerEventId @unique` garante que o mesmo evento não seja
+// reprocessado (efeito duplicado).
+model BillingEvent {
+  id              String   @id @default(uuid())
+  tenantId        String?  @map("tenant_id")
+  provider        String   @default("stripe")
+  providerEventId String   @unique @map("provider_event_id")
+  type            String
+  payload         Json
+  processedAt     DateTime @default(now()) @map("processed_at")
+
+  @@index([tenantId])
+  @@map("billing_events")
+}

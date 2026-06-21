@@ -1,5 +1,22 @@
 # 23 — Multitenancy (SaaS): isolar por Tenant para revender acesso
 
+> **✅ CONCLUÍDO (código) — 2026-06-21 · movido para `concluidos/`. Leia o status real:**
+> - **Entregue e ATIVO (aplicação):** isolamento por tenant — 23.1 (`Tenant` + `tenant_id` + backfill),
+>   23.2 (`TenantGuard` + contexto ALS), 23.3 (auto-escopo via middleware `$use`), 23.4 (host check +
+>   `tenantSlug`), 23.6 chave de arquivo prefixada por tenant.
+> - **Preparado no banco mas INERTE:** RLS (FORCE + policy em 36 tabelas) — não enforça enquanto o app
+>   conectar como superuser.
+> - **Pendente = DEPLOY / PRÉ-2º-TENANT (runbook no fim deste doc):** ativar RLS (role não-superuser +
+>   GUC `app.current_tenant_id`), `tenant_id NOT NULL` (exige cobrir nested-writes/jobs), rooms de
+>   socket por tenant, DNS wildcard.
+> - **Re-escopado:** provisionamento/onboarding de tenant + painel platform → **plano 26**.
+>
+> Resumo: a **fundação de isolamento está entregue e ativa na camada de aplicação**; o que falta é
+> hardening de banco e plumbing que só passam a importar ao onboardar o 2º cliente — registrados
+> como passos de deploy, não como código faltando no dia a dia.
+
+---
+
 > **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
 > [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
 > `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento

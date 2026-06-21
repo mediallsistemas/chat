@@ -10,6 +10,7 @@ import { FileInterceptor } from '@nestjs/platform-express'
 import { ApiTags, ApiConsumes } from '@nestjs/swagger'
 import { BaseUnitController } from '../../shared/controllers/base-unit.controller'
 import { FilesService } from './files.service'
+import { getCurrentTenantId } from '../../shared/tenant/tenant-context'
 import { randomUUID } from 'crypto'
 
 interface MulterFile {
@@ -40,7 +41,13 @@ export class FilesController extends BaseUnitController {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado.')
 
     const ext = file.originalname.split('.').pop() ?? 'bin'
-    const key = `${unitId}/${randomUUID()}.${ext}`
+    // Plano 23.6 — chave prefixada por tenant (isolamento no storage). Fallback sem
+    // tenant preserva o comportamento antigo na transição; arquivos antigos seguem
+    // resolvendo pela chave salva no DB.
+    const tenantId = getCurrentTenantId()
+    const key = tenantId
+      ? `${tenantId}/${unitId}/${randomUUID()}.${ext}`
+      : `${unitId}/${randomUUID()}.${ext}`
 
     await this.filesService.upload(key, file.buffer, file.mimetype)
 

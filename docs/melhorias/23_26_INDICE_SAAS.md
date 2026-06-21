@@ -154,13 +154,14 @@ Stripe ──webhook──▶ ALB ─▶ /platform/billing/webhook
 
 ## Checklist macro
 
-### Fase I — Multitenant (23)
+### Fase I — Multitenant (23) — ✅ **CONCLUÍDO (código) · movido para [`concluidos/`](../melhorias_concluidos/23_multitenancy_saas.md)**
+> Isolamento por tenant **entregue e ativo na aplicação**. Pendências = **deploy / pré-2º-tenant** (runbook no doc do 23): ativar RLS (role+GUC), `tenant_id NOT NULL`, rooms de socket por tenant, DNS wildcard. Provisionamento/onboarding re-escopado p/ plano 26.
 - [x] 23.1 Tenant + tenant_id + backfill ✅ (migration aplicada; backfill rodou — 2476 linhas)
 - [x] 23.2 TenantGuard + JWT.tenantId + contexto ALS ✅ (AsyncLocalStorage nativo, **não** nestjs-cls)
 - [x] 23.3 auto-escopo ✅ (middleware **`$use`**, não client extension; `findUnique` pós-filtrado; transição-safe tenant-OR-null)
 - [~] 23.4 Subdomínio: host check em `TenantGuard` + `tenantSlug` no JWT ✅ · Route53/Nginx wildcard = deploy (pendente)
 - [~] 23.5 RLS habilitada no DB (FORCE + policy `tenant_isolation`, 36 tabelas, migration `20260616010000_enable_rls`) ✅ · **inerte sob superuser** — ativação (role `mediall_app` + GUC) e `tenant_id` NOT NULL = pendente (runbook no plano 23)
-- [ ] 23.6 Realtime/arquivos tenant-scoped + contexto platform + provisionamento
+- [~] 23.6 **chave de arquivo por tenant ✅** (`files.controller`); **deploy/pré-2º-tenant:** rooms de socket por tenant (refactor de evento→handler→emit; risco sem benefício com 1 tenant); **contexto platform + provisionamento → plano 26**
 - [x] (gap) seed.ts cria tenant + atribui tenant_id ✅ (`ensureTenantAndBackfill`, evita quebrar login no re-seed)
 
 ### Fase II — Plano multi-unidade (24)
