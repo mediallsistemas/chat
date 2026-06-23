@@ -30,7 +30,9 @@ Estrutura vigente: **feature-first**. Domínios em `src/features/<feature>/`
 - Antes de estilizar do zero, use o primitivo de `src/shared/components/ui/`:
   `Button`, `Input`/`Select`/`Textarea`, `Modal`, `FormModal`, `FormField`, `Badge`,
   `StatusBadge`, `TrafficLight`, `Avatar`, `UserCombobox`, `Spinner`, `ProgressBar`,
-  `SkeletonList`/`SkeletonGrid`, `EmptyState`, `ToastContainer`.
+  `SkeletonList`/`SkeletonGrid`, `EmptyState`, `ToastContainer`,
+  `DonutChart`/`BarChart`/`TrendChart` (gráficos SVG sem lib — usados no painel; cores por
+  tom `green|yellow|red|gray|brand|lime` via tokens, nunca hex).
 - **Botões**: `<Button variant="primary|secondary|ghost|danger|outline" size="sm|md|lg" loading>`.
   Não escreva `<button className="bg-...">` à mão para ações.
 - **Estilo**: Tailwind + `clsx` para variantes condicionais. Siga o padrão de variante do

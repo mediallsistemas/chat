@@ -16,12 +16,35 @@ model StrategicPlan {
   updatedAt DateTime   @updatedAt @map("updated_at")
   deletedAt DateTime?  @map("deleted_at")
 
-  unit       Unit        @relation(fields: [unitId], references: [id])
-  objectives Objective[]
-  units      PlanUnit[]
+  unit              Unit                   @relation(fields: [unitId], references: [id])
+  objectives        Objective[]
+  units             PlanUnit[]
+  progressSnapshots PlanProgressSnapshot[]
 
   @@index([tenantId])
   @@map("strat_plans")
+}
+
+// Plano 25 (Slice 3) — snapshot diário do progresso calculado de cada plano, para
+// o painel desenhar a EVOLUÇÃO do progresso no tempo. Antes deste model não havia
+// histórico: o progresso é calculado ao vivo (média dos objetivos). Um job diário
+// (jobs/plan-progress-snapshot.job.ts) faz upsert de uma linha por plano por dia.
+model PlanProgressSnapshot {
+  id           String       @id @default(uuid())
+  tenantId     String?      @map("tenant_id")
+  planId       String       @map("plan_id")
+  unitId       String       @map("unit_id")
+  progressPct  Int          @map("progress_pct")
+  trafficLight TrafficLight @map("traffic_light")
+  capturedOn   DateTime     @db.Date @map("captured_on")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  plan StrategicPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, capturedOn])
+  @@index([tenantId])
+  @@index([capturedOn])
+  @@map("strat_plan_progress_snapshots")
 }
 
 // Plano 24 — atribuição N:N de um plano (definição) às unidades (execução por unidade).

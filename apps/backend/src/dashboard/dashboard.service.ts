@@ -7,6 +7,7 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   private summaryCache = new Map<string, { data: unknown; expiresAt: number }>()
+  private trendsCache = new Map<string, { data: unknown; expiresAt: number }>()
 
   private cacheKey(user: JwtPayload): string {
     return `${user.accessScope}:${[...user.units].sort().join(',')}`
@@ -141,5 +142,117 @@ export class DashboardService {
         responsibleForResolution: i.responsibleForResolution,
       })),
     }
+  }
+
+  // Number of weekly buckets the trend charts cover (~3 months).
+  private static readonly TREND_WEEKS = 12
+
+  /**
+   * Time-series for the dashboard charts (plano 25 — Slice 2/3). All series are
+   * scoped like the summary (GLOBAL sees all; others only `user.units`) and ride
+   * the tenant auto-scope ($use). Cached 60s per scope key.
+   *
+   * - completion / impediments: derived from existing timestamps (no schema
+   *   change) — honest history available immediately.
+   * - planProgress: from PlanProgressSnapshot, which only accumulates from the
+   *   day the snapshot job first runs (empty until then — the UI handles that).
+   */
+  async getTrends(user: JwtPayload) {
+    const key = this.cacheKey(user)
+    const cached = this.trendsCache.get(key)
+    if (cached && cached.expiresAt > Date.now()) return cached.data
+
+    const result = await this.computeTrends(user)
+    this.trendsCache.set(key, { data: result, expiresAt: Date.now() + 60_000 })
+    return result
+  }
+
+  private async computeTrends(user: JwtPayload) {
+    const isGlobal = user.accessScope === AccessScope.GLOBAL
+    const unitFilter = isGlobal ? {} : { unitId: { in: user.units } }
+
+    const weeks = this.lastNWeeks(DashboardService.TREND_WEEKS)
+    const since = new Date(`${weeks[0]}T00:00:00.000Z`)
+    const weekIndex = new Map(weeks.map((w, i) => [w, i]))
+
+    const [completedTasks, impediments, snapshotRows] = await Promise.all([
+      this.prisma.task.findMany({
+        where: { ...unitFilter, completedAt: { gte: since } },
+        select: { completedAt: true },
+      }),
+
+      this.prisma.taskImpediment.findMany({
+        where: {
+          ...unitFilter,
+          OR: [{ createdAt: { gte: since } }, { resolvedAt: { gte: since } }],
+        },
+        select: { createdAt: true, resolvedAt: true },
+      }),
+
+      this.prisma.planProgressSnapshot.groupBy({
+        by: ['capturedOn'],
+        where: {
+          capturedOn: { gte: since },
+          ...(isGlobal ? {} : { plan: { units: { some: { unitId: { in: user.units } } } } }),
+        },
+        _avg: { progressPct: true },
+        orderBy: { capturedOn: 'asc' },
+      }),
+    ])
+
+    const completion = new Array(weeks.length).fill(0)
+    for (const t of completedTasks) {
+      if (!t.completedAt) continue
+      const i = weekIndex.get(this.weekStart(t.completedAt))
+      if (i !== undefined) completion[i] += 1
+    }
+
+    const opened = new Array(weeks.length).fill(0)
+    const resolved = new Array(weeks.length).fill(0)
+    for (const imp of impediments) {
+      const oi = weekIndex.get(this.weekStart(imp.createdAt))
+      if (oi !== undefined) opened[oi] += 1
+      if (imp.resolvedAt) {
+        const ri = weekIndex.get(this.weekStart(imp.resolvedAt))
+        if (ri !== undefined) resolved[ri] += 1
+      }
+    }
+
+    const planProgress = snapshotRows.map((r) => ({
+      date: r.capturedOn.toISOString().slice(0, 10),
+      avgProgress: Math.round(Number(r._avg.progressPct ?? 0)),
+    }))
+
+    return {
+      weeks,
+      completion,
+      impedimentsOpened: opened,
+      impedimentsResolved: resolved,
+      planProgress,
+    }
+  }
+
+  /** ISO date (YYYY-MM-DD) of the Monday starting the week that contains `d` (UTC). */
+  private weekStart(d: Date): string {
+    const x = new Date(d)
+    x.setUTCHours(0, 0, 0, 0)
+    const day = x.getUTCDay() // 0=Sun..6=Sat
+    x.setUTCDate(x.getUTCDate() + (day === 0 ? -6 : 1 - day))
+    return x.toISOString().slice(0, 10)
+  }
+
+  /** The last `n` week-start dates (Mondays, UTC), oldest first, including this week. */
+  private lastNWeeks(n: number): string[] {
+    const monday = new Date()
+    monday.setUTCHours(0, 0, 0, 0)
+    const day = monday.getUTCDay()
+    monday.setUTCDate(monday.getUTCDate() + (day === 0 ? -6 : 1 - day))
+    const weeks: string[] = []
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(monday)
+      d.setUTCDate(d.getUTCDate() - i * 7)
+      weeks.push(d.toISOString().slice(0, 10))
+    }
+    return weeks
   }
 }

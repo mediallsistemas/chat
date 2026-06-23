@@ -239,6 +239,7 @@ A `KanbanBoard` is owned by one of three entity types (`ownerType`):
 | `task-checkin` | Configurable | Alert responsible users with no updates |
 | `deadline-alert` | Daily 7h | Alert tasks due within 48h |
 | `phase-unlock` | On-demand | Unlock next phase when previous completes |
+| `plan-progress-snapshot` | Daily 00:05 | Snapshot each active plan's progress for the dashboard evolution chart |
 
 ---
 

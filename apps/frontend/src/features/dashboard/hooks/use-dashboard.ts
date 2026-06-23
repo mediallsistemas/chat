@@ -53,6 +53,17 @@ export interface DashboardSummary {
   impediments: DashboardImpediment[]
 }
 
+/** Time-series for the dashboard charts (plano 25 — Slice 2/3). Arrays are aligned to `weeks`. */
+export interface DashboardTrends {
+  /** Week-start dates (ISO, Mondays), oldest first. */
+  weeks: string[]
+  completion: number[]
+  impedimentsOpened: number[]
+  impedimentsResolved: number[]
+  /** Plan-progress evolution from daily snapshots (empty until snapshots accumulate). */
+  planProgress: { date: string; avgProgress: number }[]
+}
+
 export interface StaleTaskAlert {
   taskId: string
   taskTitle: string
@@ -90,6 +101,17 @@ export function useDashboard() {
     queryKey: ['dashboard', 'summary'],
     queryFn: async () => {
       const res = await api.get<{ data: DashboardSummary }>('/dashboard/summary')
+      return res.data.data
+    },
+    staleTime: 60_000,
+  })
+}
+
+export function useDashboardTrends() {
+  return useQuery<DashboardTrends>({
+    queryKey: ['dashboard', 'trends'],
+    queryFn: async () => {
+      const res = await api.get<{ data: DashboardTrends }>('/dashboard/trends')
       return res.data.data
     },
     staleTime: 60_000,

@@ -17,4 +17,12 @@ export class DashboardController {
   getSummary(@CurrentUser() user: JwtPayload) {
     return this.dashboardService.getSummary(user)
   }
+
+  @Get('trends')
+  @ApiOperation({ summary: 'Get dashboard time-series', description: 'Weekly task completion (burn-up), impediments opened vs resolved, and the plan-progress evolution series (from daily snapshots), scoped to the authenticated user. Cached for 60 seconds.' })
+  @ApiResponse({ status: 200, description: 'Dashboard trends returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getTrends(@CurrentUser() user: JwtPayload) {
+    return this.dashboardService.getTrends(user)
+  }
 }

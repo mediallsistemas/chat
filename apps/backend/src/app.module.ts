@@ -43,6 +43,7 @@ import { TaskCheckinJob } from './jobs/task-checkin.job'
 import { DataRetentionJob } from './jobs/data-retention.job'
 import { UserStatusCleanupJob } from './jobs/user-status-cleanup.job'
 import { HuddleReaperJob } from './jobs/huddle-reaper.job'
+import { PlanProgressSnapshotJob } from './jobs/plan-progress-snapshot.job'
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard'
 import { TenantGuard } from './shared/guards/tenant.guard'
 import { BillingGuard } from './shared/guards/billing.guard'
@@ -114,6 +115,7 @@ import { AuditLogInterceptor } from './shared/interceptors/audit-log.interceptor
     DataRetentionJob,
     UserStatusCleanupJob,
     HuddleReaperJob,
+    PlanProgressSnapshotJob,
     TranscriptionStreamHandler,
   ],
 })

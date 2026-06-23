@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { clsx } from 'clsx'
 import { MetricCard, PageHeader } from '@/shared/components'
 import { TrafficLight, ProgressBar, Button, Input, Select } from '@/shared/components/ui'
-import { useDashboard } from '@/features/dashboard/hooks/use-dashboard'
-import { ResolveImpedimentButton, ArchivePlanButton, DeletePlanButton } from '@/features/dashboard/components'
+import { useDashboard, useDashboardTrends } from '@/features/dashboard/hooks/use-dashboard'
+import { ResolveImpedimentButton, ArchivePlanButton, DeletePlanButton, DashboardCharts } from '@/features/dashboard/components'
 import { useDownloadDashboardPdf } from '@/features/reports/hooks/use-reports'
 import type { TrafficLightStatus } from '@/shared/components/ui'
 
@@ -25,6 +25,7 @@ const FAROL_OPTIONS: { value: FarolFilter; label: string; status: TrafficLightSt
 
 export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard()
+  const { data: trends, isLoading: trendsLoading, isError: trendsError, refetch: refetchTrends } = useDashboardTrends()
   const { download: downloadPdf, isPending: exportingPdf } = useDownloadDashboardPdf()
 
   // Painel filters — in-memory UI state, not domain data (ui.md §5/§8).
@@ -130,6 +131,16 @@ export default function DashboardPage() {
           <MetricCard key={m.label} {...m} />
         ))}
       </div>
+
+      {/* Visual overview (plano 25 — gráficos): farol distribution, ranked
+          progress, and the burn-up / impediments / plan-progress trends. */}
+      <DashboardCharts
+        units={units}
+        trends={trends}
+        trendsLoading={trendsLoading}
+        trendsError={trendsError}
+        onRetryTrends={refetchTrends}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl border border-gs/60 px-4 py-3">

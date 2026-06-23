@@ -14,6 +14,7 @@ const TENANT_MODELS = new Set<string>([
   'Meeting', 'MeetingParticipant', 'MeetingChatMessage', 'NotificationSetting', 'PushSubscription', 'Notification',
   'TaskImpediment', 'Ticket', 'TicketComment',
   'StrategicPlan', 'Objective', 'Goal', 'PlanPhase', 'PhaseScopeBoard', 'MacroTask',
+  'PlanProgressSnapshot',
 ])
 
 @Injectable()
