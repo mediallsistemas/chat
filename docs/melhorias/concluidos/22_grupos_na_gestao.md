@@ -1,7 +1,13 @@
 # 22 — Grupos Integrados à Gestão do Sistema
 
+> ✅ **Concluído (2026-06-21).** Peça comum (system-event efêmero) + Integração 2 (impedimentos)
+> já existiam; esta entrega completou **Integração 1** (feed de tarefas/fases + mini-progresso do
+> objetivo no header), **Integração 3** (reuniões no fio via `Meeting.groupId`), **Integração 4**
+> (hierarquia setor→subsetor) e **Integração 5** (card de atividade de grupos na Diretoria). Sem
+> migration — avisos automáticos permanecem **efêmeros** por socket, conforme decidido abaixo.
+
 > **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
-> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> [`.claude/rules/`](../../../.claude/rules/) — em especial `architecture.md`, `security.md` e
 > `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
 > por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
 > regra (ver `.claude/rules/README.md`).

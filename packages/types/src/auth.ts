@@ -25,6 +25,9 @@ export interface JwtPayload {
   /** SaaS owner — operates across all tenants (plano 26.5). UI hint only; the
    *  PlatformAdminGuard re-checks against the DB (token can't self-elevate). */
   isPlatformAdmin?: boolean
+  /** Set on an impersonation session (plano 26.5): the tenant being impersonated.
+   *  Drives the visible "you are impersonating X" banner. */
+  impersonatedTenantName?: string
   units: string[]
   iat?: number
   exp?: number
@@ -45,6 +48,8 @@ export interface AuthUser extends UserStatus {
   accessScope: AccessScope
   /** SaaS owner — shows the platform-admin entry in the UI (plano 26.5). */
   isPlatformAdmin?: boolean
+  /** Non-null on an impersonation session — drives the support banner (plano 26.5). */
+  impersonatedTenantName?: string | null
   units: string[]
 }
 

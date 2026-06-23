@@ -24,4 +24,13 @@ export class UpdateGroupDto {
   @IsOptional()
   @IsEnum(GroupVisibility)
   visibility?: GroupVisibility
+
+  /**
+   * Parent SECTOR group this group hangs under (organizational tree). `null`/''
+   * clears the parent. Only a SECTOR group in the same unit is a valid parent;
+   * the tree is purely visual — membership stays independent (plano 22 §4).
+   */
+  @IsOptional()
+  @IsString()
+  parentId?: string | null
 }

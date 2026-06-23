@@ -2,35 +2,42 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
 import { api, invalidateCsrfToken } from '@/shared/lib/api'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { LoginResponse } from '@mediall/types'
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter()
   const setUser = useAuthStore((s) => s.setUser)
   const user = useAuthStore((s) => s.user)
 
+  const [companyName, setCompanyName] = useState('')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
 
-  // Already authenticated → skip the login form.
+  // Already authenticated → skip the signup form.
   useEffect(() => {
     if (user) router.replace('/dashboard')
   }, [user, router])
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      const res = await api.post<{ data: LoginResponse }>('/auth/login', { email, password })
+      const res = await api.post<{ data: LoginResponse }>('/auth/signup', {
+        companyName,
+        name,
+        email,
+        password,
+      })
       return res.data.data
     },
     onSuccess: (data) => {
-      // Logging in changes the CSRF session identity, so the token used for
-      // this request is now stale for subsequent mutations. Drop it so the
-      // next mutation fetches a fresh one bound to the authenticated session.
+      // Signing up establishes a session → the CSRF token bound to the anonymous
+      // request is now stale. Drop it so the next mutation fetches a fresh one.
       invalidateCsrfToken()
       setUser(data.user)
       router.push('/dashboard')
@@ -38,12 +45,12 @@ export default function LoginPage() {
     onError: (err: any) => {
       const status = err.response?.status
       const apiMessage = err.response?.data?.message
-      if (status === 423) {
-        setError(apiMessage || 'Conta bloqueada por excesso de tentativas. Contate um administrador.')
+      if (status === 409) {
+        setError(apiMessage || 'Já existe uma conta com este e-mail.')
       } else if (status === 429) {
         setError('Muitas tentativas. Aguarde alguns instantes e tente novamente.')
       } else {
-        setError(apiMessage || 'E-mail ou senha inválidos.')
+        setError(apiMessage || 'Não foi possível criar a conta. Tente novamente.')
       }
     },
   })
@@ -67,7 +74,6 @@ export default function LoginPage() {
         className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden flex-col justify-between p-12 xl:p-16"
         style={{ backgroundColor: 'var(--gd)' }}
       >
-        {/* Subtle grid texture */}
         <div
           className="absolute inset-0 opacity-[0.05] pointer-events-none"
           style={{
@@ -75,13 +81,11 @@ export default function LoginPage() {
               'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 48px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 48px)',
           }}
         />
-        {/* Lime glow accent */}
         <div
           className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full pointer-events-none"
           style={{ backgroundColor: 'var(--gn)', opacity: 0.12, filter: 'blur(80px)' }}
         />
 
-        {/* Top — logo */}
         <div className="relative flex items-center gap-3">
           <div
             className="inline-flex items-center justify-center w-11 h-11 rounded-2xl"
@@ -97,25 +101,24 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Middle — headline + texts */}
         <div className="relative max-w-lg">
           <h1
             className="text-4xl xl:text-5xl font-bold leading-tight text-white"
             style={{ fontFamily: 'var(--font-sora)' }}
           >
-            Gestão integrada para
-            <span style={{ color: 'var(--gn)' }}> toda a holding</span>.
+            Comece grátis por
+            <span style={{ color: 'var(--gn)' }}> 14 dias</span>.
           </h1>
           <p className="mt-6 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Acesse a plataforma corporativa interna para acompanhar planos estratégicos,
-            comunicação e tarefas de todas as unidades em um só lugar.
+            Crie a conta da sua organização e gerencie planos estratégicos, comunicação e tarefas de
+            todas as unidades em um só lugar. Sem cartão de crédito.
           </p>
 
           <ul className="mt-10 space-y-4">
             {[
-              { icon: 'ti-target-arrow', text: 'Planejamento estratégico e OKRs' },
-              { icon: 'ti-messages', text: 'Comunicação e reuniões integradas' },
-              { icon: 'ti-layout-kanban', text: 'Tarefas e acompanhamento por unidade' },
+              { icon: 'ti-rocket', text: 'Trial de 14 dias, sem cartão' },
+              { icon: 'ti-building-community', text: 'Multi-unidade desde o primeiro dia' },
+              { icon: 'ti-shield-lock', text: 'Seus dados isolados por organização' },
             ].map((item) => (
               <li key={item.icon} className="flex items-center gap-3">
                 <span
@@ -132,9 +135,8 @@ export default function LoginPage() {
           </ul>
         </div>
 
-        {/* Bottom — copyright */}
         <p className="relative text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
-          © {new Date().getFullYear()} Mediall Brasil · Plataforma Corporativa Interna
+          © {new Date().getFullYear()} Mediall Brasil · Plataforma Corporativa
         </p>
       </div>
 
@@ -144,7 +146,6 @@ export default function LoginPage() {
         style={{ backgroundColor: 'var(--bg)' }}
       >
         <div className="w-full max-w-md">
-          {/* Mobile logo (left panel is hidden) */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
             <div
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl"
@@ -164,13 +165,55 @@ export default function LoginPage() {
             className="text-2xl font-bold tracking-tight"
             style={{ fontFamily: 'var(--font-sora)', color: 'var(--gd)' }}
           >
-            Bem-vindo de volta
+            Criar conta da organização
           </h2>
           <p className="text-sm mt-1.5" style={{ color: 'var(--gx)' }}>
-            Entre com suas credenciais para continuar.
+            Comece o trial gratuito de 14 dias.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2 uppercase tracking-wider"
+                style={{ color: 'var(--gx)' }}
+              >
+                Nome da empresa
+              </label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                required
+                autoComplete="organization"
+                placeholder="Sua Holding Ltda."
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                style={inputStyle}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gd)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--gs)')}
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-semibold mb-2 uppercase tracking-wider"
+                style={{ color: 'var(--gx)' }}
+              >
+                Seu nome
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                placeholder="Maria Silva"
+                className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
+                style={inputStyle}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gd)')}
+                onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--gs)')}
+              />
+            </div>
+
             <div>
               <label
                 className="block text-xs font-semibold mb-2 uppercase tracking-wider"
@@ -205,8 +248,9 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="Mínimo 8 caracteres"
                   className="w-full rounded-xl px-4 py-3 pr-11 text-sm outline-none transition-all"
                   style={inputStyle}
                   onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gd)')}
@@ -249,18 +293,18 @@ export default function LoginPage() {
               {isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <i className="ti ti-loader-2 animate-spin text-base" />
-                  Entrando...
+                  Criando conta...
                 </span>
               ) : (
-                'Entrar'
+                'Criar conta e começar'
               )}
             </button>
 
             <p className="text-center text-sm" style={{ color: 'var(--gx)' }}>
-              Não tem uma conta?{' '}
-              <a href="/signup" className="font-semibold hover:underline" style={{ color: 'var(--gd)' }}>
-                Criar conta grátis
-              </a>
+              Já tem uma conta?{' '}
+              <Link href="/login" className="font-semibold hover:underline" style={{ color: 'var(--gd)' }}>
+                Entrar
+              </Link>
             </p>
           </form>
         </div>

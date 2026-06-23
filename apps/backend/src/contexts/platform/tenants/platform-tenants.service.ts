@@ -194,6 +194,7 @@ export class PlatformTenantsService {
         tenantId: target.tenantId,
         tenantSlug: tenant.slug,
         isPlatformAdmin: false, // impersonation never grants platform powers
+        impersonatedTenantName: tenant.name, // drives the visible support banner
         units: target.unitAccess.map((u) => u.unitId),
       }
       const token = this.jwt.sign(payload)

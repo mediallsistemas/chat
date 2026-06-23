@@ -9,11 +9,12 @@ import { Modal, Button, Input, Textarea, Avatar } from '@/shared/components/ui'
 import {
   useUpdateGroup,
   useUploadFile,
+  useGroups,
   useGroupMembers,
   useUpdateMemberRole,
   useRemoveMember,
 } from '@/features/chat/hooks/use-chat'
-import { GroupMemberRole, GroupVisibility, type Group } from '@mediall/types'
+import { GroupMemberRole, GroupType, GroupVisibility, type Group } from '@mediall/types'
 
 const schema = z.object({
   name: z.string().min(1, 'O nome é obrigatório.').max(80, 'No máximo 80 caracteres.'),
@@ -44,10 +45,16 @@ export function GroupSettingsModal({
 
   const { mutate: updateGroup, isPending: saving } = useUpdateGroup(group.id)
   const { mutateAsync: uploadFile, isPending: uploadingCover } = useUploadFile()
+  const { data: groups = [] } = useGroups()
 
   // Pending cover: uploaded key (not yet saved) + a local preview URL.
   const [coverKey, setCoverKey] = useState<string | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+
+  // Parent sector (organizational tree — plano 22 §4). Only meaningful for
+  // SUBSECTOR groups; candidate parents are SECTOR groups other than this one.
+  const [parentId, setParentId] = useState(group.parentId ?? '')
+  const sectors = groups.filter((g) => g.type === GroupType.SECTOR && g.id !== group.id)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -69,6 +76,8 @@ export function GroupSettingsModal({
         name: values.name,
         description: values.description,
         ...(coverKey ? { avatarKey: coverKey } : {}),
+        // Persist the parent only for subsectors; '' clears it on the backend.
+        ...(group.type === GroupType.SUBSECTOR ? { parentId: parentId || null } : {}),
       },
       { onSuccess: onClose },
     )
@@ -136,6 +145,25 @@ export function GroupSettingsModal({
             error={form.formState.errors.description?.message}
             {...form.register('description')}
           />
+
+          {group.type === GroupType.SUBSECTOR && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Setor pai</label>
+              <select
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gs rounded-lg focus:outline-none focus:border-gd text-gray-700"
+              >
+                <option value="">Sem setor pai</option>
+                {sectors.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gx mt-1">
+                Organiza o subsetor sob um setor na barra lateral. Não altera quem tem acesso.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-3 border-t border-gs/40">
             <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>

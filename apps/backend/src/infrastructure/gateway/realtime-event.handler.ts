@@ -23,6 +23,7 @@ import {
 } from '../../shared/events'
 import { PhaseCompletedEvent } from '../../contexts/strategic/phases/events/phase-completed.event'
 import { PhaseUnlockedEvent } from '../../contexts/strategic/phases/events/phase-unlocked.event'
+import { PlanStatusChangedEvent } from '../../contexts/strategic/plans/events/plan-status-changed.event'
 
 @Injectable()
 export class RealtimeEventHandler {
@@ -60,6 +61,15 @@ export class RealtimeEventHandler {
   @OnEvent('phase.unlocked')
   onPhaseUnlocked(event: PhaseUnlockedEvent) {
     this.emitDashboardUpdate(event.unitId, 'phase.unlocked')
+  }
+
+  @OnEvent('plan.status_changed')
+  onPlanStatusChanged(event: PlanStatusChangedEvent) {
+    // Activate/archive/delete a plan → refresh the Jarvis panel for every
+    // affected unit (plano 25.6).
+    for (const unitId of event.unitIds) {
+      this.emitDashboardUpdate(unitId, `plan.${event.action}`)
+    }
   }
 
   @OnEvent('meeting.created')

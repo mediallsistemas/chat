@@ -42,6 +42,24 @@ export function useResolveImpedimentAction() {
   })
 }
 
+/**
+ * Manually escalate an impediment one level (plano 25.5). The backend reuses the
+ * full escalation chain — manager notifications, the war-room notice in the chat
+ * group (plano 22), and the panel refresh.
+ */
+export function useEscalateImpedimentAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ unitId, impedimentId }: { unitId: string; impedimentId: string }) =>
+      api.patch(`/units/${unitId}/impediments/${impedimentId}/escalate`),
+    onSuccess: (_data, { unitId }) => {
+      invalidatePanel(qc, unitId)
+      toast.success('Impedimento escalado.')
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  })
+}
+
 export function useArchivePlanAction() {
   const qc = useQueryClient()
   return useMutation({

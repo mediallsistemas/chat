@@ -192,6 +192,49 @@ export interface MessagesPage {
   nextCursor: string | null
 }
 
+/**
+ * Apply a reaction summary to the cached message list (and per-message reaction
+ * cache). Shared by the `message:reaction` socket echo and the toggle mutation's
+ * onSuccess, so a reaction shows instantly for the sender without depending on
+ * the socket round-trip. Idempotent: rebuilds the flat reaction list from the
+ * summary, so applying it twice (mutation + echo) converges to the same state.
+ */
+function applyReactionSummary(
+  qc: ReturnType<typeof useQueryClient>,
+  groupId: string | null,
+  payload: MessageReactionSummary,
+  currentUserId: string | undefined,
+) {
+  if (!groupId) return
+  qc.setQueryData<{ pages: MessagesPage[]; pageParams: unknown[] }>(
+    ['messages', groupId],
+    (old) => {
+      if (!old) return old
+      return {
+        ...old,
+        pages: old.pages.map((p) => ({
+          ...p,
+          messages: p.messages.map((m) =>
+            m.id === payload.messageId
+              ? {
+                  ...m,
+                  reactions: payload.reactions.flatMap((r) => {
+                    const mine = !!currentUserId && payload.myReactions.includes(r.emoji)
+                    return Array.from({ length: r.count }, (_, i) => ({
+                      emoji: r.emoji,
+                      userId: mine && i === 0 ? currentUserId! : `other:${i}`,
+                    }))
+                  }),
+                }
+              : m,
+          ),
+        })),
+      }
+    },
+  )
+  qc.setQueryData(['reactions', payload.messageId], payload)
+}
+
 export function useMessages(groupId: string | null) {
   const activeUnit = useUnitStore((s) => s.activeUnit)
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -284,38 +327,7 @@ export function useMessages(groupId: string | null) {
     }
 
     function onReaction(payload: MessageReactionSummary) {
-      qc.setQueryData<{ pages: MessagesPage[]; pageParams: unknown[] }>(
-        ['messages', groupId],
-        (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            pages: old.pages.map((p) => ({
-              ...p,
-              messages: p.messages.map((m) =>
-                m.id === payload.messageId
-                  ? {
-                      ...m,
-                      // Rebuild the flat reaction list from the summary. For each
-                      // emoji, mark one slot with the current user's id when they
-                      // reacted (so `isMine` lights up live); the rest are anonymous
-                      // placeholders that only need to keep the count accurate.
-                      reactions: payload.reactions.flatMap((r) => {
-                        const mine = !!currentUserId && payload.myReactions.includes(r.emoji)
-                        return Array.from({ length: r.count }, (_, i) => ({
-                          emoji: r.emoji,
-                          userId: mine && i === 0 ? currentUserId! : `other:${i}`,
-                        }))
-                      }),
-                    }
-                  : m,
-              ),
-            })),
-          }
-        },
-      )
-      // Store per-message reaction summary for accurate display
-      qc.setQueryData(['reactions', payload.messageId], payload)
+      applyReactionSummary(qc, groupId, payload, currentUserId)
     }
 
     // A group edit (name/cover/role/rules) → refresh the group list so the
@@ -495,9 +507,21 @@ export function usePinMessage(groupId: string) {
 
 export function useToggleReaction(groupId: string) {
   const activeUnit = useUnitStore((s) => s.activeUnit)
+  const currentUserId = useAuthStore((s) => s.user?.id)
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
-      api.post(getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/reactions`), { emoji }),
+      api
+        .post<{ data: MessageReactionSummary }>(
+          getUrl(activeUnit!.id, `/groups/${groupId}/messages/${messageId}/reactions`),
+          { emoji },
+        )
+        .then((r) => r.data.data),
+    // Apply the returned summary immediately so the reaction shows instantly,
+    // independent of the `message:reaction` socket echo (which also arrives and
+    // reconciles the same state for every other member in the room).
+    onSuccess: (payload) => applyReactionSummary(qc, groupId, payload, currentUserId),
+    onError: (err) => toast.error(getErrorMessage(err)),
   })
 }
 

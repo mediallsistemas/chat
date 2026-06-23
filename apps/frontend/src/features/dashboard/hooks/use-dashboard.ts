@@ -39,6 +39,14 @@ export interface DashboardImpediment {
   responsibleForResolution: string
 }
 
+/** Group collaboration activity per unit over the last 7 days (plano 22.6). */
+export interface DashboardGroupActivity {
+  unitId: string
+  unitName: string
+  activeGroups: number
+  messages: number
+}
+
 export interface DashboardSummary {
   metrics: {
     totalPlans: number
@@ -51,6 +59,7 @@ export interface DashboardSummary {
   units: DashboardUnit[]
   plans: DashboardPlan[]
   impediments: DashboardImpediment[]
+  groupActivity: DashboardGroupActivity[]
 }
 
 /** Time-series for the dashboard charts (plano 25 — Slice 2/3). Arrays are aligned to `weeks`. */

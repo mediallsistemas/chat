@@ -7,7 +7,12 @@ import { z } from 'zod'
 import { Button, FormModal, FormField, Textarea, Modal } from '@/shared/components/ui'
 import { useAuthStore } from '@/features/auth/store/auth-store'
 import { UserRole } from '@mediall/types'
-import { useResolveImpedimentAction, useArchivePlanAction, useDeletePlanAction } from '../hooks/use-dashboard-actions'
+import {
+  useResolveImpedimentAction,
+  useEscalateImpedimentAction,
+  useArchivePlanAction,
+  useDeletePlanAction,
+} from '../hooks/use-dashboard-actions'
 
 /**
  * Inline actions for the Jarvis panel (plano 25.5). RBAC mirrors the backend
@@ -92,6 +97,77 @@ export function ResolveImpedimentButton({ unitId, impedimentId, taskTitle }: Res
           />
         </FormField>
       </FormModal>
+    </>
+  )
+}
+
+// ─── Escalate impediment ─────────────────────────────────────────────────────
+
+const ESCALATION_TARGET: Record<number, string> = {
+  0: 'Gerência do setor',
+  1: 'Diretoria',
+}
+
+interface EscalateImpedimentButtonProps {
+  unitId: string
+  impedimentId: string
+  taskTitle: string
+  escalationLevel: number
+}
+
+export function EscalateImpedimentButton({
+  unitId,
+  impedimentId,
+  taskTitle,
+  escalationLevel,
+}: EscalateImpedimentButtonProps) {
+  const canEscalate = useHasRole(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
+  const [open, setOpen] = useState(false)
+  const { mutate, isPending } = useEscalateImpedimentAction()
+
+  // Already at the top level (Diretoria) → nothing to escalate to.
+  if (!canEscalate || escalationLevel >= 2) return null
+
+  const target = ESCALATION_TARGET[escalationLevel] ?? 'o próximo nível'
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label={`Escalar impedimento de ${taskTitle}`}
+      >
+        <i className="ti ti-arrow-up-right mr-1" aria-hidden="true" />
+        Escalar
+      </Button>
+
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Escalar impedimento"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => mutate({ unitId, impedimentId }, { onSuccess: () => setOpen(false) })}
+              loading={isPending}
+            >
+              Escalar para {target}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-gray-700">
+          Escalar o impedimento de <span className="font-semibold text-gd">{taskTitle}</span> para{' '}
+          <span className="font-semibold">{target}</span>? Os responsáveis serão notificados e o
+          fato é registrado no grupo da equipe.
+        </p>
+      </Modal>
     </>
   )
 }

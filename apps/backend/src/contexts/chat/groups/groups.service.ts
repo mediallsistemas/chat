@@ -100,12 +100,30 @@ export class GroupsService {
       }
     }
 
+    // For objective-linked groups (project feed — Integração 1), attach the
+    // objective's title and bottom-up progress so the UI can show a mini
+    // progress indicator in the group header. Batched to avoid N+1.
+    const objectiveIds = Array.from(
+      new Set(groups.map((g) => g.objectiveId).filter((id): id is string => !!id)),
+    )
+    const objectiveById = new Map<string, { id: string; title: string; progressPct: number }>()
+    if (objectiveIds.length > 0) {
+      const objectives = await this.prisma.objective.findMany({
+        where: { id: { in: objectiveIds }, unitId },
+        select: { id: true, title: true, progressPct: true },
+      })
+      for (const o of objectives) {
+        objectiveById.set(o.id, { id: o.id, title: o.title, progressPct: Number(o.progressPct) })
+      }
+    }
+
     // Resolve the cover image key → signed URL for every group, attach the unread
-    // count, and the direct-message peer where applicable.
+    // count, the linked objective, and the direct-message peer where applicable.
     return Promise.all(
       groups.map(async (g) => {
         const withAvatar = await this.resolveAvatar(g)
-        const base = { ...withAvatar, unreadCount: unreadByGroup.get(g.id) ?? 0 }
+        const objective = g.objectiveId ? objectiveById.get(g.objectiveId) ?? null : null
+        const base = { ...withAvatar, unreadCount: unreadByGroup.get(g.id) ?? 0, objective }
         return g.type === 'PRIVATE'
           ? { ...base, directPeer: peerByGroup.get(g.id) ?? null }
           : base
@@ -220,9 +238,42 @@ export class GroupsService {
     })
   }
 
+  /**
+   * Validates a requested parent group for the organizational tree: it must be a
+   * SECTOR group in the same unit and not the group itself (no self-parenting).
+   * The tree is one level deep / purely visual, so we don't allow a SUBSECTOR to
+   * be a parent. Throws on invalid input; returns the normalized parentId (or
+   * null when clearing).
+   */
+  private async resolveParentId(
+    unitId: string,
+    groupId: string,
+    parentId: string | null | undefined,
+  ): Promise<string | null> {
+    if (!parentId) return null // '' or null clears the parent
+    if (parentId === groupId) {
+      throw new ForbiddenException('Um grupo não pode ser pai de si mesmo.')
+    }
+    const parent = await this.prisma.group.findFirst({
+      where: { id: parentId, unitId, isArchived: false },
+      select: { type: true },
+    })
+    if (!parent) throw new NotFoundException('Setor pai não encontrado.')
+    if (parent.type !== 'SECTOR') {
+      throw new ForbiddenException('O grupo pai precisa ser um Setor.')
+    }
+    return parentId
+  }
+
   /** Edit group identity/settings. Only a group ADMIN may do this. */
   async updateGroup(unitId: string, groupId: string, dto: UpdateGroupDto, user: JwtPayload) {
     await this.assertAdmin(unitId, groupId, user.sub)
+
+    // Resolve/validate the parent sector only when the field is present in the DTO.
+    const parentId =
+      dto.parentId !== undefined
+        ? await this.resolveParentId(unitId, groupId, dto.parentId)
+        : undefined
 
     const group = await this.prisma.group.update({
       where: { id: groupId },
@@ -233,6 +284,7 @@ export class GroupsService {
         ...(dto.avatarKey !== undefined ? { avatarUrl: dto.avatarKey } : {}),
         onlyAdminsPost: dto.onlyAdminsPost,
         visibility: dto.visibility,
+        ...(parentId !== undefined ? { parentId } : {}),
       },
     })
 

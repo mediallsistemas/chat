@@ -31,7 +31,10 @@ export interface Group {
   description: string | null
   type: GroupType
   visibility: GroupVisibility
+  /** Parent SECTOR group in the organizational tree (SUBSECTOR → SECTOR). Visual only. */
   parentId: string | null
+  /** Linked strategic objective (project feed). Null when the group tracks none. */
+  objectiveId: string | null
   unitId: string
   createdBy: string
   isArchived: boolean
@@ -42,6 +45,11 @@ export interface Group {
   avatarUrl: string | null
   /** Unread messages for the current user (newer than their lastReadAt). */
   unreadCount?: number
+  /**
+   * Linked objective with its bottom-up progress, when `objectiveId` is set —
+   * resolved by the backend so the group header can show a mini progress bar.
+   */
+  objective?: { id: string; title: string; progressPct: number } | null
   _count?: { members: number; messages: number }
   members?: GroupMember[]
   /**
@@ -134,6 +142,8 @@ export interface UpdateGroupInput {
   avatarKey?: string
   onlyAdminsPost?: boolean
   visibility?: GroupVisibility
+  /** Parent SECTOR group id; `null`/'' clears it. Only valid for SUBSECTOR groups. */
+  parentId?: string | null
 }
 
 export interface MessageBookmark {

@@ -6,7 +6,8 @@ import { clsx } from 'clsx'
 import { MetricCard, PageHeader } from '@/shared/components'
 import { TrafficLight, ProgressBar, Button, Input, Select } from '@/shared/components/ui'
 import { useDashboard, useDashboardTrends } from '@/features/dashboard/hooks/use-dashboard'
-import { ResolveImpedimentButton, ArchivePlanButton, DeletePlanButton, DashboardCharts } from '@/features/dashboard/components'
+import { useUnitStore } from '@/shared/store/unit-store'
+import { ResolveImpedimentButton, EscalateImpedimentButton, ArchivePlanButton, DeletePlanButton, DashboardCharts } from '@/features/dashboard/components'
 import { useDownloadDashboardPdf } from '@/features/reports/hooks/use-reports'
 import type { TrafficLightStatus } from '@/shared/components/ui'
 
@@ -27,6 +28,10 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard()
   const { data: trends, isLoading: trendsLoading, isError: trendsError, refetch: refetchTrends } = useDashboardTrends()
   const { download: downloadPdf, isPending: exportingPdf } = useDownloadDashboardPdf()
+  // Clicking a unit card opens that unit's Processos — set it active first so the
+  // (unit-scoped) Processos screen loads the right unit.
+  const setActiveUnit = useUnitStore((s) => s.setActiveUnit)
+  const storeUnits = useUnitStore((s) => s.units)
 
   // Painel filters — in-memory UI state, not domain data (ui.md §5/§8).
   const [search, setSearch] = useState('')
@@ -60,7 +65,7 @@ export default function DashboardPage() {
     )
   }
 
-  const { metrics, units, plans, impediments } = data
+  const { metrics, units, plans, impediments, groupActivity } = data
 
   const metricCards = [
     {
@@ -204,9 +209,13 @@ export default function DashboardPage() {
             {filteredUnits.map((unit) => (
               <Link
                 key={unit.id}
-                href={`/dashboard/unidades/${unit.id}`}
+                href="/processos"
+                onClick={() => {
+                  const full = storeUnits.find((u) => u.id === unit.id)
+                  if (full) setActiveUnit(full)
+                }}
                 className="block bg-white rounded-2xl p-4 border border-gs/60 hover:border-gd/40 hover:shadow-sm transition-all group"
-                aria-label={`Abrir cockpit da unidade ${unit.name}`}
+                aria-label={`Ver processos da unidade ${unit.name}`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-semibold text-gray-800 font-sora truncate group-hover:text-gd">{unit.name}</span>
@@ -263,7 +272,13 @@ export default function DashboardPage() {
                     )}
                   </p>
                 </div>
-                <div className="shrink-0 self-center">
+                <div className="shrink-0 self-center flex items-center gap-1">
+                  <EscalateImpedimentButton
+                    unitId={imp.unitId}
+                    impedimentId={imp.id}
+                    taskTitle={imp.taskTitle}
+                    escalationLevel={imp.escalationLevel}
+                  />
                   <ResolveImpedimentButton
                     unitId={imp.unitId}
                     impedimentId={imp.id}
@@ -324,6 +339,45 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {/* Group activity by unit (Integração 5 — plano 22.6): where team
+          collaboration is alive vs. quiet over the last 7 days. */}
+      {groupActivity.some((g) => g.activeGroups > 0) && (
+        <section className="bg-white rounded-2xl border border-gs/60 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gs/60">
+            <h2 className="text-sm font-semibold text-gray-700 font-sora">Atividade de Grupos por Unidade</h2>
+            <span className="text-xs text-gx">Últimos 7 dias</span>
+          </div>
+          <div className="divide-y divide-gs/40">
+            {(() => {
+              const visible = groupActivity.filter((g) => g.activeGroups > 0)
+              const maxMessages = Math.max(1, ...visible.map((g) => g.messages))
+              return visible.map((g) => (
+                <div key={g.unitId} className="flex items-center gap-3 px-5 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{g.unitName}</p>
+                    <p className="text-xs text-gx mt-0.5">
+                      <i className="ti ti-users-group mr-1" aria-hidden="true" />
+                      {g.activeGroups} {g.activeGroups === 1 ? 'grupo ativo' : 'grupos ativos'}
+                    </p>
+                  </div>
+                  <div className="w-40 shrink-0">
+                    <div className="h-2 rounded-full bg-page-bg overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gd"
+                        style={{ width: `${Math.round((g.messages / maxMessages) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="w-24 shrink-0 text-right text-xs text-gx tabular-nums">
+                    {g.messages} {g.messages === 1 ? 'mensagem' : 'mensagens'}
+                  </span>
+                </div>
+              ))
+            })()}
+          </div>
+        </section>
+      )}
 
       {/* Proactive alerts */}
       {(metrics.overdueTasks > 0 || metrics.goalsAtRisk > 0 || metrics.openImpediments > 0) && (

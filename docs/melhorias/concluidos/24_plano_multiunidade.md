@@ -1,7 +1,13 @@
 # 24 — Plano em múltiplas unidades: definição compartilhada, execução por unidade
 
+> ✅ **Concluído (código, 2026-06-21).** Modelo B (subárvore por unidade): `PlanUnit` (N:N
+> plano↔unidade), **fan-out** no attach (clona objetivos→metas→etapas+boards→macro, execução
+> zerada) e **cleanup** no detach, progresso/farol por unidade (`recalcPlanUnit`),
+> `PlansAdminController` (atrelar/desatrelar/excluir) e `EditPlanModal`. Seed consolidado: 1 plano
+> → 6 unidades. `StrategicPlan.unitId` mantido como unidade de origem.
+
 > **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
-> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> [`.claude/rules/`](../../../.claude/rules/) — em especial `architecture.md`, `security.md` e
 > `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
 > por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
 > regra (ver `.claude/rules/README.md`).
@@ -9,7 +15,7 @@
 **Prioridade:** 🟡 Alta — corrige a dor central de gestão ("um plano não é de todas as unidades")
 **Tempo estimado:** ~24–32h (faseável)
 **Área:** Backend (strategic: plans/objectives/goals/phases), Frontend (processos, admin), Migração de dados
-**Pré-requisito:** [23](23_multitenancy_saas.md) (multitenant) — planos passam a ser **tenant-scoped**.
+**Pré-requisito:** [23](../23_multitenancy_saas.md) (multitenant) — planos passam a ser **tenant-scoped**.
 
 > **Decisão tomada (modelo):** **Definição compartilhada, execução por unidade.** Um plano é
 > definido uma vez (no tenant) e **atrelado a N unidades escolhidas no admin**. Cada unidade
@@ -33,7 +39,7 @@
 
 ## O problema (verificado no código)
 
-Hoje `StrategicPlan.unitId` amarra **um plano = uma unidade** ([strategic.prisma:12](../../apps/backend/prisma/schema/strategic.prisma)).
+Hoje `StrategicPlan.unitId` amarra **um plano = uma unidade** ([strategic.prisma:12](../../../apps/backend/prisma/schema/strategic.prisma)).
 "Gerência Médica 2026" aparecendo em 6 unidades = **6 linhas independentes** (duplicadas no
 `seed-strategic.ts`). Consequências:
 - Não existe "um plano usado em algumas unidades" — só cópias soltas.
@@ -42,7 +48,7 @@ Hoje `StrategicPlan.unitId` amarra **um plano = uma unidade** ([strategic.prisma
 
 **Tensão no schema atual:** já existe `PhaseScopeBoard` (uma fase → várias unidades → um board por
 unidade) e o hook `usePhaseScopeProgress` que calcula **progresso por unidade**
-([use-strategic.ts:248-255](../../apps/frontend/src/features/strategic/hooks/use-strategic.ts)).
+([use-strategic.ts:248-255](../../../apps/frontend/src/features/strategic/hooks/use-strategic.ts)).
 Ou seja, **a metade "execução por unidade" já existe** — mas brigando com o `StrategicPlan.unitId`
 1:1. Este plano resolve a contradição: **um plano → muitas unidades**, reaproveitando o fan-out
 de boards que já está lá.
@@ -181,7 +187,7 @@ PATCH  /units/:unitId/plans/:planId/activate|archive   muda PlanUnit.status daqu
 > compartilhados que incluem a unidade ativa.
 
 > **Permissão:** criar/editar/excluir **definição** = papel de tenant alto (`SUPER_ADMIN`,
-> `DIRETORIA`) — como hoje em [plans.controller.ts:29](../../apps/backend/src/contexts/strategic/plans/plans.controller.ts).
+> `DIRETORIA`) — como hoje em [plans.controller.ts:29](../../../apps/backend/src/contexts/strategic/plans/plans.controller.ts).
 > A definição é tenant-scoped, então essas rotas **não** estendem `BaseUnitController`; usam o
 > `TenantGuard` + `@Roles`. As rotas `/units/:unitId/...` continuam em `BaseUnitController`.
 
@@ -190,7 +196,7 @@ PATCH  /units/:unitId/plans/:planId/activate|archive   muda PlanUnit.status daqu
 ## Frontend
 
 ### Admin: seletor de unidades ao criar/editar plano
-- O `CreatePlanModal`/`EditPlanModal` ([create-plan-modal.tsx](../../apps/frontend/src/features/strategic/components/create-plan-modal.tsx))
+- O `CreatePlanModal`/`EditPlanModal` ([create-plan-modal.tsx](../../../apps/frontend/src/features/strategic/components/create-plan-modal.tsx))
   ganham um campo **multi-seleção de unidades** (checkbox list / multi-combobox), reusando o
   padrão `UserCombobox` (`ui.md` §2). Marca as unidades onde o plano vale.
 - Botão "Excluir desta unidade" e "Excluir plano (todas)" no `EditPlanModal`, cada um com

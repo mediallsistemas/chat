@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, KeyboardEvent, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { clsx } from 'clsx'
-import { Avatar, Button, Modal } from '@/shared/components/ui'
+import { Avatar, Button, Modal, ProgressBar } from '@/shared/components/ui'
 import {
   useGroups, useMessages, useSendMessage, useDeleteMessage,
   usePinMessage, useTypingIndicator, useCreateGroup, useStartDirect, usePresence,
@@ -116,6 +116,38 @@ function groupDisplayName(group: Group): string {
     return group.directPeer?.name ?? 'Conversa direta'
   }
   return group.name
+}
+
+/**
+ * Orders the group list so SUBSECTOR groups appear indented directly under their
+ * parent SECTOR (organizational tree — plano 22 §4). The tree is purely visual;
+ * a group whose parent isn't in the list (e.g. not a member) renders at the top
+ * level. Preserves the backend ordering (most-recent first) among roots.
+ */
+function orderGroupsHierarchically(groups: Group[]): { group: Group; depth: number }[] {
+  const byId = new Map(groups.map((g) => [g.id, g]))
+  const childrenByParent = new Map<string, Group[]>()
+  const roots: Group[] = []
+  for (const g of groups) {
+    const parent = g.parentId ? byId.get(g.parentId) : undefined
+    if (parent && parent.type === GroupType.SECTOR && parent.id !== g.id) {
+      const siblings = childrenByParent.get(parent.id) ?? []
+      siblings.push(g)
+      childrenByParent.set(parent.id, siblings)
+    } else {
+      roots.push(g)
+    }
+  }
+  const ordered: { group: Group; depth: number }[] = []
+  for (const root of roots) {
+    ordered.push({ group: root, depth: 0 })
+    if (root.type === GroupType.SECTOR) {
+      for (const child of childrenByParent.get(root.id) ?? []) {
+        ordered.push({ group: child, depth: 1 })
+      }
+    }
+  }
+  return ordered
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
@@ -392,20 +424,25 @@ function GroupItem({
   active,
   onClick,
   onlineCount = 0,
+  depth = 0,
 }: {
   group: Group
   active: boolean
   onClick: () => void
   onlineCount?: number
+  /** Nesting level in the sector→subsector tree (0 = root). Indents the row. */
+  depth?: number
 }) {
   const displayName = groupDisplayName(group)
 
   return (
     <button
       onClick={onClick}
+      style={depth > 0 ? { paddingLeft: 12 + depth * 18 } : undefined}
       className={clsx(
         'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors',
         active ? 'bg-gd/10 text-gd' : 'hover:bg-page-bg text-gray-700',
+        depth > 0 && 'border-l-2 border-gs/50 rounded-l-none',
       )}
     >
       <div className="relative shrink-0">
@@ -524,10 +561,15 @@ function StartDirectModal({
 
 function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { mutate: create, isPending } = useCreateGroup()
+  const { data: groups = [] } = useGroups()
   const [name, setName] = useState('')
   const [type, setType] = useState<GroupType>(GroupType.SECTOR)
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
+  const [parentId, setParentId] = useState('')
+
+  // Subsectors hang under a parent sector (organizational tree — plano 22 §4).
+  const sectors = groups.filter((g) => g.type === GroupType.SECTOR)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -537,8 +579,17 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
         type,
         description: description || undefined,
         visibility: isPublic ? GroupVisibility.UNIT_PUBLIC : GroupVisibility.PRIVATE_INVITE,
+        parentId: type === GroupType.SUBSECTOR && parentId ? parentId : undefined,
       },
-      { onSuccess: () => { onClose(); setName(''); setDescription(''); setIsPublic(false) } },
+      {
+        onSuccess: () => {
+          onClose()
+          setName('')
+          setDescription('')
+          setIsPublic(false)
+          setParentId('')
+        },
+      },
     )
   }
 
@@ -568,6 +619,24 @@ function CreateGroupModal({ open, onClose }: { open: boolean; onClose: () => voi
             ))}
           </select>
         </div>
+        {type === GroupType.SUBSECTOR && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Setor pai</label>
+            <select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gs rounded-xl focus:outline-none focus:border-gd text-gray-700"
+            >
+              <option value="">Sem setor pai</option>
+              {sectors.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-gx mt-1">
+              Organiza o subsetor sob um setor na barra lateral. Não altera quem tem acesso.
+            </p>
+          </div>
+        )}
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">Descrição (opcional)</label>
           <textarea
@@ -1034,13 +1103,14 @@ function MensagensPageInner() {
                 <p className="text-xs text-gx">Nenhum grupo</p>
               </div>
             ) : (
-              groups.map((g) => {
+              orderGroupsHierarchically(groups).map(({ group: g, depth }) => {
                 const memberIds = g.members?.map((m) => m.userId) ?? []
                 const onlineCount = memberIds.filter((id) => onlineIds.includes(id) && id !== user?.id).length
                 return (
                   <GroupItem
                     key={g.id}
                     group={g}
+                    depth={depth}
                     active={g.id === activeGroupId}
                     onClick={() => setActiveGroupId(g.id)}
                     onlineCount={onlineCount}
@@ -1187,6 +1257,21 @@ function MensagensPageInner() {
               )}
             </div>
           </div>
+
+          {/* Objective progress strip (project feed — Integração 1): shows the
+              linked objective's bottom-up progress so the team sees the work
+              advance in the same place they talk. */}
+          {activeGroup.objective && (
+            <div className="bg-white border-b border-gs/60 px-5 py-1.5 flex items-center gap-3 shrink-0">
+              <i className="ti ti-target text-gx text-sm shrink-0" aria-hidden="true" />
+              <span className="text-[11px] text-gx truncate max-w-[45%]" title={activeGroup.objective.title}>
+                {activeGroup.objective.title}
+              </span>
+              <div className="flex-1 min-w-0">
+                <ProgressBar value={activeGroup.objective.progressPct} showLabel size="sm" />
+              </div>
+            </div>
+          )}
 
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-4 bg-page-bg/30">

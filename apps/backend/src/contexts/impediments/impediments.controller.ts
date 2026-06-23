@@ -45,4 +45,13 @@ export class ImpedimentsController extends BaseUnitController {
   ) {
     return this.impedimentsService.resolve(unitId, impedimentId, dto, user)
   }
+
+  @Patch('impediments/:impedimentId/escalate')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.DIRETORIA, UserRole.GESTOR)
+  escalate(
+    @Param('unitId') unitId: string,
+    @Param('impedimentId') impedimentId: string,
+  ) {
+    return this.impedimentsService.escalate(unitId, impedimentId)
+  }
 }

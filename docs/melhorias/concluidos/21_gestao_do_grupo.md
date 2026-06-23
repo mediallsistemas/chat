@@ -1,7 +1,12 @@
 # 21 — Gestão do Próprio Grupo (Colaborativo)
 
+> ✅ **Concluído.** Implementado no back e no front: editar nome/descrição/capa, papéis de membro
+> com guarda do último admin, `onlyAdminsPost` + `VIEWER` aplicados no envio, evento `group.updated`
+> + bridge realtime, painel "Configurações do grupo" (abas Geral/Permissões/Membros) e ocultação do
+> input para VIEWER/onlyAdminsPost.
+
 > **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
-> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> [`.claude/rules/`](../../../.claude/rules/) — em especial `architecture.md`, `security.md` e
 > `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
 > por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
 > regra (ver `.claude/rules/README.md`).
@@ -41,9 +46,9 @@ membros e definir regras simples de participação.
 ## Estado atual (verificado no código)
 
 - `Group` já tem todos os campos necessários: `name`, `description`, `avatarUrl`,
-  `onlyAdminsPost`, `visibility` — ver [chat.prisma](../../apps/backend/prisma/schema/chat.prisma) (model `Group`, linhas 4-30).
+  `onlyAdminsPost`, `visibility` — ver [chat.prisma](../../../apps/backend/prisma/schema/chat.prisma) (model `Group`, linhas 4-30).
 - `GroupMember.role` é o enum `GroupMemberRole = ADMIN | MEMBER | VIEWER` — VIEWER não tem efeito hoje.
-- Service [groups.service.ts](../../apps/backend/src/contexts/chat/groups/groups.service.ts) tem `create`, `archive`, `addMember`, `removeMember`, `findOrCreateDirect` — **não há `update`**.
+- Service [groups.service.ts](../../../apps/backend/src/contexts/chat/groups/groups.service.ts) tem `create`, `archive`, `addMember`, `removeMember`, `findOrCreateDirect` — **não há `update`**.
 - `messages.service.ts` `send()` **não verifica** `onlyAdminsPost` nem o papel do membro.
 - O gateway só emite eventos de mensagem/huddle para a sala `group:<id>` — **nenhum evento de grupo** (mudança de nome/capa não chega aos outros membros em tempo real).
 - Upload de imagem já existe: `POST /units/:unitId/upload` → MinIO, chave `${unitId}/${uuid}` + signed URL (reusar — `security.md` §7).

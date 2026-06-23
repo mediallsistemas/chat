@@ -171,21 +171,22 @@ Stripe ──webhook──▶ ALB ─▶ /platform/billing/webhook
 - [x] 24.4 frontend ✅ — `EditPlanModal` ganhou seção "Unidades onde o plano vale": lista as atreladas com remover (detach, bloqueia última), chips p/ adicionar a outras unidades (attach), e danger zone "Excluir plano (todas as unidades)" com confirmação inline. Hooks `usePlanUnits/useAttachPlanUnits/useDetachPlanUnit/useDeletePlan`. `tsc` OK. *(Multi-seleção no CREATE deferida — gerencia-se no edit; fan-out de boards é 24.3.)*
 - [x] 24.5 ✅ — **seed consolidado**: `seed-strategic.ts` agora cria **1 `StrategicPlan`** (origem = 1ª unidade) atrelado às **6 unidades** via `PlanUnit`, com **subárvore de execução própria por unidade** (objetivos/metas/etapas/boards/macro/tasks, `unitId` por unidade) — em vez de 6 planos separados. Limpeza idempotente remove instâncias antigas do plano (todas as unidades) antes de re-semear. `ensureTenantAndBackfill` no fim (tenant_id). Cópia humana do plano em [`docs/planos_estrategicos/gerencia-medica-2026.md`](../planos_estrategicos/gerencia-medica-2026.md). **Ainda não rodado** (há WIP de billing/plano-26 não-commitado na árvore + `prisma generate` pendente desse WIP — rodar `npx ts-node prisma/seed-strategic.ts` quando a árvore estabilizar). `StrategicPlan.unitId` mantido como origem (remoção fica p/ depois).
 
-### Fase III — Painel Jarvis (25)
+### Fase III — Painel Jarvis (25) — ✅ **CONCLUÍDO (código, 2026-06-21)**
 - [x] 25.1 seletor de escopo (GLOBAL+holding)
 - [x] 25.2 drill-down grid→unidade
 - [x] 25.3 card planos da holding por unidade ✅ — `/dashboard/summary` inclui `attachedUnits` por plano (via `PlanUnit`), filtra por atribuição (não-global) + `deletedAt: null`; grid de unidades conta planos por **atribuição**. Painel renderiza chips das unidades por plano. (Progresso por unidade ainda é o do plano — boards por unidade = 24.3, adiado.)
 - [x] 25.4 cockpit da unidade  ← rota/endpoint já existiam; "Entrar no contexto desta unidade" + drill-down p/ planos add em 25.2
-- [~] 25.5 ações inline + RBAC  ← **feito:** resolver impedimento (com notas) + arquivar plano + **excluir plano (geral)** no painel (`DeletePlanButton` → `DELETE /plans/:id`, RBAC-gated, confirmação em Modal). **falta:** escalar manual / war-room (sem rota / plano 22)
-- [~] 25.6 filtros + realtime estendido  ← **feito:** filtros do painel (busca, farol, tipo de unidade, em memória) + bridge `dashboard:update` para `impediment.created/resolved/escalated` e `phase.completed/unlocked` (coalescido no front). **alvo:** realtime no ativar/arquivar plano precisa de evento de domínio do plano
+- [x] 25.5 ações inline + RBAC ✅ — resolver impedimento (com notas) + arquivar + **excluir plano (geral)** + **escalar manual** (`PATCH /units/:unitId/impediments/:id/escalate`, RBAC-gated, confirmação em Modal). O escalonamento reusa `ImpedimentEscalatedEvent` → notificações de gestão + `dashboard:update` + **war-room: aviso automático no grupo da equipe (plano 22)**, fechando o "war-room" sem rota nova. Cap no nível 2 (Diretoria). `EscalateImpedimentButton` no painel.
+- [x] 25.6 filtros + realtime estendido ✅ — filtros do painel (busca/farol/tipo, em memória) + bridge `dashboard:update`; agora cobre **ativar/arquivar/excluir plano** via novo `PlanStatusChangedEvent` (`plans.service` emite em activate/archive/softDelete; `realtime-event.handler` faz fan-out por unidade afetada — delete emite para todas as `PlanUnit`) além de `impediment.*`/`phase.*` que já existiam.
 
-### Fase IV — Billing (26)
-- [ ] 26.1 schema Subscription/BillingEvent
-- [ ] 26.2 Stripe (signup + trial)
-- [ ] 26.3 webhook (idempotente)
-- [ ] 26.4 BillingGuard + limites de tier
-- [ ] 26.5 painel platform admin
-- [ ] 26.6 billing do tenant
+### Fase IV — Billing (26) — ✅ **código (2026-06-21); falta Stripe go-live (keys/pacote)**
+- [x] 26.1 schema Subscription/BillingEvent ✅ — models + enums (`SubscriptionStatus`/`PlanTier`) + migration `20260621000000_billing` + `TIER_LIMITS` em `@mediall/types`.
+- [x] 26.2 Stripe (signup + trial) ✅ — **signup público de tenant** (`POST /auth/signup`, `@Public`, rate-limit 3/min): cria `Tenant` (TRIAL +14d) + admin (GLOBAL/`SUPER_ADMIN`) + unidade `MATRIZ` + `Subscription` TRIALING, e já loga (cookie). Front `(public)/signup` + link no login + middleware. **Trial sem cartão**; o customer/checkout do Stripe liga depois pelo portal (26.6). **Go-live pendente:** `npm i stripe` + keys (`BILLING_ENABLED`, `STRIPE_*`).
+- [x] 26.3 webhook (idempotente) ✅ — `POST /platform/billing/webhook` raw body + verificação de assinatura + dedupe `BillingEvent.providerEventId`.
+- [x] 26.4 BillingGuard + limites de tier ✅ — guard global (somente-leitura sob SUSPENDED/CANCELED, `@AllowSuspended`) + `maxUnits`/`maxUsers` em units/users.
+- [x] 26.5 painel platform admin ✅ — `contexts/platform/tenants` (`PlatformAdminGuard`) + front `(platform)/platform/tenants` (mudar tier/suspender/impersonar **auditado**) + **banner de impersonação** sempre visível no app do tenant (`ImpersonationBanner`, marcador `impersonatedTenantName` no JWT/`/auth/me`, "Sair" = logout).
+- [x] 26.6 billing do tenant ✅ — `/configuracoes/assinatura` (`GET /billing/me`, portal/checkout) + `SubscriptionStatusBanner`.
+- [ ] resíduos (não-bloqueantes): e-mail nos eventos `tenant.suspended/reactivated/tier_changed` (eventos publicados, sem handler); métricas MRR/churn; tier ENTERPRISE (DB dedicado/SSO).
 
 ---
 

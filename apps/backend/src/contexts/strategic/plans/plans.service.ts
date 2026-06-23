@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../../prisma/prisma.service'
+import { EventBusService } from '../../../shared/events'
+import { PlanStatusChangedEvent } from './events/plan-status-changed.event'
 import { CreatePlanDto } from './dto/create-plan.dto'
 import { UpdatePlanDto } from './dto/update-plan.dto'
 import {
@@ -15,7 +17,10 @@ import {
 
 @Injectable()
 export class PlansService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   // ─── Visões por unidade (planos ATRELADOS à unidade via PlanUnit) — plano 24.2 ───
 
@@ -80,12 +85,23 @@ export class PlansService {
 
   async activate(unitId: string, planId: string) {
     await this.findOne(unitId, planId)
-    return this.prisma.strategicPlan.update({ where: { id: planId }, data: { status: PlanStatus.ACTIVE } })
+    const plan = await this.prisma.strategicPlan.update({
+      where: { id: planId },
+      data: { status: PlanStatus.ACTIVE },
+    })
+    // Refresh the Jarvis panel in real time for this unit (plano 25.6).
+    this.eventBus.publish(new PlanStatusChangedEvent(planId, [unitId], 'activated'))
+    return plan
   }
 
   async archive(unitId: string, planId: string) {
     await this.findOne(unitId, planId)
-    return this.prisma.strategicPlan.update({ where: { id: planId }, data: { status: PlanStatus.ARCHIVED } })
+    const plan = await this.prisma.strategicPlan.update({
+      where: { id: planId },
+      data: { status: PlanStatus.ARCHIVED },
+    })
+    this.eventBus.publish(new PlanStatusChangedEvent(planId, [unitId], 'archived'))
+    return plan
   }
 
   // ─── Definição + atribuição tenant-wide (admin) — plano 24.2 ───
@@ -177,7 +193,12 @@ export class PlansService {
   /** Exclui o plano para TODAS as unidades (soft-delete). */
   async softDelete(planId: string) {
     await this.assertPlan(planId)
+    // Capture every unit the plan touched so the panel refreshes for all of them.
+    const links = await this.prisma.planUnit.findMany({ where: { planId }, select: { unitId: true } })
     await this.prisma.strategicPlan.update({ where: { id: planId }, data: { deletedAt: new Date() } })
+    this.eventBus.publish(
+      new PlanStatusChangedEvent(planId, links.map((l) => l.unitId), 'deleted'),
+    )
     return { deleted: true }
   }
 

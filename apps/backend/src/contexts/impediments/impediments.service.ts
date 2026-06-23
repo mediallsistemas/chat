@@ -83,6 +83,44 @@ export class ImpedimentsService {
     return resolved
   }
 
+  /**
+   * Manually escalate an impediment one level (0→1→2), bypassing the day-based
+   * wait of the daily job (plano 25.5 — inline action). Publishing
+   * `ImpedimentEscalatedEvent` reuses the whole chain: manager notifications,
+   * the dashboard refresh, and the "war-room" notice posted into the impeded
+   * task's chat group (plano 22). Caps at level 2 (Diretoria).
+   */
+  async escalate(unitId: string, impedimentId: string) {
+    const impediment = await this.prisma.taskImpediment.findFirst({
+      where: { id: impedimentId, unitId },
+    })
+    if (!impediment) throw new NotFoundException('Impedimento não encontrado.')
+    if (impediment.status === ImpedimentStatus.RESOLVED) {
+      throw new BadRequestException('Impedimento já foi resolvido.')
+    }
+    if (impediment.escalationLevel >= 2) {
+      throw new BadRequestException('Impedimento já está no nível máximo (Diretoria).')
+    }
+
+    const newLevel = impediment.escalationLevel + 1
+    const escalated = await this.prisma.taskImpediment.update({
+      where: { id: impedimentId },
+      data: { escalationLevel: newLevel },
+    })
+
+    this.eventBus.publish(
+      new ImpedimentEscalatedEvent(
+        impedimentId,
+        impediment.taskId,
+        unitId,
+        newLevel,
+        impediment.responsibleForResolution,
+      ),
+    )
+
+    return escalated
+  }
+
   async findActive(unitId: string) {
     return this.prisma.taskImpediment.findMany({
       where: { unitId, status: { not: ImpedimentStatus.RESOLVED } },

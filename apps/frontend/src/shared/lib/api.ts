@@ -73,7 +73,15 @@ api.interceptors.response.use(
         csrfToken = null
         return api.request(error.config)
       } catch {
-        window.location.href = '/login'
+        // Refresh failed (or no refresh endpoint): the session is dead. Clear the
+        // persisted auth store so /login doesn't immediately bounce us back to a
+        // protected route — that bounce is what causes the endless reload loop.
+        // Only navigate when we aren't already sitting on /login.
+        try { localStorage.removeItem('mediall-auth') } catch { /* storage unavailable */ }
+        csrfToken = null
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(error)

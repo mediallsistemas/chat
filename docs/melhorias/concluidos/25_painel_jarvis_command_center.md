@@ -1,7 +1,14 @@
 # 25 — Painel "Jarvis": centro de comando visual da holding
 
+> ✅ **Concluído (código, 2026-06-21).** 25.1–25.6: seletor de escopo (GLOBAL + "toda a holding"),
+> drill-down grid→unidade, card de planos da holding por unidade, cockpit da unidade, **ações
+> inline** (resolver/**escalar** impedimento, ativar/arquivar/excluir plano, RBAC-gated) e
+> **realtime estendido** — `dashboard:update` agora cobre mudanças de plano via
+> `PlanStatusChangedEvent`, além de `impediment.*`/`phase.*`. War-room: o escalonamento auto-posta
+> o aviso no grupo da equipe (plano 22).
+
 > **⚠️ Antes de implementar este plano:** leia e siga **obrigatoriamente** as regras em
-> [`.claude/rules/`](../../.claude/rules/) — em especial `architecture.md`, `security.md` e
+> [`.claude/rules/`](../../../.claude/rules/) — em especial `architecture.md`, `security.md` e
 > `ui.md`. Regras marcadas **🔴 OBRIGATÓRIO** são bloqueantes. Toda query respeita o isolamento
 > por **tenant** e por **unit**. Se o código divergir da regra, **o código manda** — atualize a
 > regra (ver `.claude/rules/README.md`).
@@ -10,7 +17,7 @@
 **Tempo estimado:** ~28–36h (faseável por bloco visual)
 **Área:** Frontend (dashboard, header, navegação, drill-down), Backend (endpoints de agregação)
 **Pré-requisito:** [24](24_plano_multiunidade.md) (plano multi-unidade) para o breakdown por unidade
-fazer sentido. Funciona sem [23](23_multitenancy_saas.md), mas o ideal é depois dele (escopo tenant).
+fazer sentido. Funciona sem [23](../23_multitenancy_saas.md), mas o ideal é depois dele (escopo tenant).
 
 > **Decisão tomada (escopo desta rodada):** **Centro de comando visual** — seletor de unidade
 > (inclusive para GLOBAL) + visão "todas as unidades" + drill-down + tempo real + alertas +
@@ -23,7 +30,7 @@ fazer sentido. Funciona sem [23](23_multitenancy_saas.md), mas o ideal é depois
 
 1. **GLOBAL não tem como navegar entre unidades.** O seletor de unidade no header só aparece para
    `AccessScope.MULTI` (`ui.md` §9). Um Admin/Diretoria GLOBAL cai numa unidade qualquer e o
-   `/processos` ([processos-view.tsx:351-375](../../apps/frontend/src/app/(auth)/processos/processos-view.tsx))
+   `/processos` ([processos-view.tsx:351-375](../../../apps/frontend/src/app/(auth)/processos/processos-view.tsx))
    fica preso a essa unidade — sem trocar.
 2. **Painel é global, telas são mono-unidade — não se conversam.** O card "Planos Estratégicos"
    do painel agrega tudo, mas "Ver todos →" leva ao `/processos` de **uma** unidade (por isso
@@ -79,11 +86,11 @@ Hoje o seletor só existe para MULTI. Mudança:
 
 ## Peça 2 — Painel da holding (o consolidado, turbinado)
 
-Evolui o [dashboard/page.tsx](../../apps/frontend/src/app/(auth)/dashboard/page.tsx) (que já tem
+Evolui o [dashboard/page.tsx](../../../apps/frontend/src/app/(auth)/dashboard/page.tsx) (que já tem
 KPIs + grid de unidades + impedimentos + planos + alertas, alimentado por `/dashboard/summary`):
 
 - **Grid de unidades clicável → drill-down.** Cada card de unidade (já existe) vira link para a
-  página de unidade ([dashboard/unidades/[unitId]/page.tsx](../../apps/frontend/src/app/(auth)/dashboard/unidades/) — já existe!).
+  página de unidade ([dashboard/unidades/[unitId]/page.tsx](../../../apps/frontend/src/app/(auth)/dashboard/unidades/) — já existe!).
 - **Card "Planos da holding" com breakdown por unidade.** Em vez de listar planos soltos, mostra
   cada **plano compartilhado** (modelo do plano 24) com mini-barras por unidade atrelada:
   ```
@@ -93,7 +100,7 @@ KPIs + grid de unidades + impedimentos + planos + alertas, alimentado por `/dash
 - **Filtros e busca:** por farol (só 🔴), por unidade, por tipo de unidade, busca por nome de
   plano/meta. Estado em memória (não é dado de domínio → pode ser `useState`/`uiStore`).
 - **Tempo real (já existe):** `dashboard:update` via socket já invalida o summary
-  ([use-dashboard.ts:67-78](../../apps/frontend/src/features/dashboard/hooks/use-dashboard.ts)).
+  ([use-dashboard.ts:67-78](../../../apps/frontend/src/features/dashboard/hooks/use-dashboard.ts)).
   Estender o backend para emitir também em mudanças de plano/impedimento relevantes.
 
 ---
@@ -127,7 +134,7 @@ O Jarvis "toma decisões": ações disponíveis direto da visão, com confirmaç
 
 ## Backend — endpoints de agregação
 
-O `/dashboard/summary` ([dashboard.service.ts](../../apps/backend/src/dashboard/dashboard.service.ts))
+O `/dashboard/summary` ([dashboard.service.ts](../../../apps/backend/src/dashboard/dashboard.service.ts))
 já agrega por escopo (GLOBAL vê tudo; MULTI/SINGLE filtra por `user.units`). Estender:
 
 - `GET /dashboard/summary` — adicionar, em cada plano, o **breakdown por unidade**

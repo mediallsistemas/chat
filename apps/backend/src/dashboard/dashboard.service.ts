@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { AccessScope, JwtPayload } from '@mediall/types'
 
@@ -120,6 +121,43 @@ export class DashboardService {
       }
     })
 
+    // Group activity per unit (Integração 5 — plano 22.6): where is team
+    // collaboration alive vs. quiet. Active team groups (non-archived, non-DM)
+    // and messages posted in the last 7 days, aggregated per unit. Explicit
+    // cross-unit aggregation, scoped to the units the user already sees above
+    // (security.md §5 — GLOBAL sees all, others only their units).
+    const unitIds = units.map((u) => u.id)
+    const cutoff = new Date(Date.now() - 7 * 86_400_000)
+    const activityRows =
+      unitIds.length > 0
+        ? await this.prisma.$queryRaw<
+            { unit_id: string; active_groups: bigint; messages: bigint }[]
+          >`
+            SELECT g.unit_id,
+                   COUNT(DISTINCT g.id) AS active_groups,
+                   COUNT(m.id) FILTER (
+                     WHERE m.created_at >= ${cutoff}
+                       AND m.is_deleted = false
+                       AND m.type <> 'SYSTEM'
+                   ) AS messages
+            FROM chat_groups g
+            LEFT JOIN chat_messages m ON m.group_id = g.id
+            WHERE g.is_archived = false
+              AND g.type <> 'PRIVATE'
+              AND g.unit_id IN (${Prisma.join(unitIds)})
+            GROUP BY g.unit_id
+          `
+        : []
+    const activityByUnit = new Map(activityRows.map((r) => [r.unit_id, r]))
+    const groupActivity = unitsWithMetrics
+      .map((u) => ({
+        unitId: u.id,
+        unitName: u.name,
+        activeGroups: Number(activityByUnit.get(u.id)?.active_groups ?? 0),
+        messages: Number(activityByUnit.get(u.id)?.messages ?? 0),
+      }))
+      .sort((a, b) => b.messages - a.messages)
+
     return {
       metrics: {
         totalPlans,
@@ -131,6 +169,7 @@ export class DashboardService {
       },
       units: unitsWithMetrics,
       plans: plansWithMetrics,
+      groupActivity,
       impediments: impediments.map((i) => ({
         id: i.id,
         description: i.description,

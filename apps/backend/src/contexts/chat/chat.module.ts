@@ -18,6 +18,8 @@ import { HuddlesService } from './huddles/huddles.service'
 import { HuddlesController } from './huddles/huddles.controller'
 import { GroupSystemEventService } from './groups/group-system-event.service'
 import { ManagementToChatHandler } from './handlers/management-to-chat.handler'
+import { StrategyToChatHandler } from './handlers/strategy-to-chat.handler'
+import { MeetingToChatHandler } from './handlers/meeting-to-chat.handler'
 import { PrismaModule } from '../../prisma/prisma.module'
 import { FilesModule } from '../../infrastructure/files/files.module'
 import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
@@ -50,6 +52,8 @@ import { GatewayModule } from '../../infrastructure/gateway/gateway.module'
     HuddlesService,
     GroupSystemEventService,
     ManagementToChatHandler,
+    StrategyToChatHandler,
+    MeetingToChatHandler,
   ],
   exports: [GroupsService, HuddlesService],
 })
