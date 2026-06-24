@@ -1,32 +1,40 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useDashboardUnit } from '@/features/dashboard/hooks/use-dashboard-unit'
-import { ResolveImpedimentButton, ArchivePlanButton } from '@/features/dashboard/components'
-import { useUnits } from '@/features/units/hooks/use-units'
-import { MetricCard, PageHeader } from '@/shared/components'
+import { MetricCard } from '@/shared/components'
 import { TrafficLight, ProgressBar, Button } from '@/shared/components/ui'
 import type { TrafficLightStatus } from '@/shared/components/ui'
-import type { Unit } from '@mediall/types'
+import { useDashboardUnit } from '../hooks/use-dashboard-unit'
+import { useDashboardTrends } from '../hooks/use-dashboard'
+import { ResolveImpedimentButton, ArchivePlanButton } from './inline-actions'
+import { TrendCharts } from './dashboard-charts'
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-gs/60 rounded-xl ${className}`} />
 }
 
-export default function UnitDetailPage() {
-  const { unitId } = useParams<{ unitId: string }>()
-  const router = useRouter()
-  const { units, switchUnit } = useUnits()
-  const { data, isLoading, isError } = useDashboardUnit(unitId)
+/**
+ * Scope-aware dashboard for a single unit (header "uma unidade"). Mirrors the
+ * consolidated panel but narrowed to `unitId`: metrics, the unit's own trend
+ * charts, active plans (with this unit's objectives) and open impediments.
+ * Data comes from GET /dashboard/units/:unitId and /dashboard/trends?unitId.
+ */
+export function UnitDashboard({ unitId }: { unitId: string }) {
+  const { data, isLoading, isError, refetch } = useDashboardUnit(unitId)
+  const {
+    data: trends,
+    isLoading: trendsLoading,
+    isError: trendsError,
+    refetch: refetchTrends,
+  } = useDashboardTrends(unitId)
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
-        <Skeleton className="h-10 w-64" />
+      <div className="space-y-6">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
+        <Skeleton className="h-56" />
         <Skeleton className="h-64" />
       </div>
     )
@@ -34,31 +42,15 @@ export default function UnitDetailPage() {
 
   if (isError || !data) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-sm text-red-700">
-          Erro ao carregar dados da unidade.
-        </div>
+      <div className="flex flex-col items-center gap-2 py-16 text-center">
+        <i className="ti ti-alert-triangle text-3xl text-gs" aria-hidden="true" />
+        <p className="text-sm text-gx">Não foi possível carregar os dados da unidade. Tente novamente.</p>
+        <Button size="sm" variant="secondary" onClick={() => refetch()}>Tentar novamente</Button>
       </div>
     )
   }
 
   const { unit, plans, impediments, metrics } = data
-
-  // Bridge to the unit context: drilling into a plan/objective from here lands on the
-  // mono-unit screens with this unit already active (resolves the painel↔processos gap).
-  const unitForContext: Unit =
-    units.find((u) => u.id === unitId) ?? {
-      id: unit.id,
-      name: unit.name,
-      type: unit.type,
-      parentId: null,
-      managerId: unit.manager?.id ?? null,
-    }
-
-  function enterUnitContext() {
-    switchUnit(unitForContext)
-    router.push('/processos')
-  }
 
   const metricCards = [
     { label: 'Planos Ativos', value: metrics.activePlans, icon: 'ti-chart-arrows' },
@@ -78,39 +70,30 @@ export default function UnitDetailPage() {
   ]
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard" className="text-sm text-gm hover:text-gd font-medium">
-          ← Painel
-        </Link>
-        <span className="text-gx">/</span>
-        <PageHeader title={unit?.name ?? 'Unidade'} />
-        <Button
-          variant="primary"
-          size="sm"
-          className="ml-auto"
-          onClick={enterUnitContext}
-          aria-label={`Entrar no contexto da unidade ${unit?.name ?? ''}`}
-        >
-          <i className="ti ti-login-2 mr-1.5" aria-hidden="true" />
-          Entrar no contexto desta unidade
-        </Button>
-      </div>
-
-      {unit?.manager && (
-        <p className="text-sm text-gx -mt-4">
+    <div className="space-y-6">
+      {unit.manager && (
+        <p className="text-sm text-gx -mt-2">
           Gestor: <span className="font-medium text-gray-700">{unit.manager.name}</span>
         </p>
       )}
 
+      {/* Metric cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {metricCards.map((m) => (
           <MetricCard key={m.label} {...m} />
         ))}
       </div>
 
-      {/* Plans */}
-      {plans.length > 0 && (
+      {/* Time-series scoped to this unit */}
+      <TrendCharts
+        trends={trends}
+        loading={trendsLoading}
+        error={trendsError}
+        onRetry={refetchTrends}
+      />
+
+      {/* Plans with this unit's objectives */}
+      {plans.length > 0 ? (
         <section className="bg-white rounded-2xl border border-gs/60 overflow-hidden">
           <div className="px-5 py-4 border-b border-gs/60">
             <h2 className="text-sm font-semibold text-gray-700 font-sora">Planos Estratégicos</h2>
@@ -135,7 +118,6 @@ export default function UnitDetailPage() {
                       <Link
                         key={obj.id}
                         href={`/processos/${plan.id}/${obj.id}`}
-                        onClick={() => switchUnit(unitForContext)}
                         className="flex items-center gap-2 text-xs text-gray-600 hover:text-gm group"
                       >
                         <TrafficLight status={obj.trafficLight as TrafficLightStatus} size="sm" />
@@ -149,9 +131,17 @@ export default function UnitDetailPage() {
             ))}
           </div>
         </section>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gs/60 px-5 py-10 text-center">
+          <i className="ti ti-file-off text-3xl text-gs mb-2 block" aria-hidden="true" />
+          <p className="text-sm text-gx">Nenhum plano estratégico ativo nesta unidade.</p>
+          <Link href="/processos" className="text-sm text-gd hover:underline mt-2 inline-block">
+            Ver planos
+          </Link>
+        </div>
       )}
 
-      {/* Impediments */}
+      {/* Open impediments */}
       {impediments.length > 0 && (
         <section className="bg-white rounded-2xl border border-gs/60 overflow-hidden">
           <div className="px-5 py-4 border-b border-gs/60">

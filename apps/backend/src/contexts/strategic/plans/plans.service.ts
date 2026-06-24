@@ -62,6 +62,82 @@ export class PlansService {
     return plan
   }
 
+  /**
+   * Strategic panel for a unit: the unit's plans with their objectives, goals and
+   * ACTIVE phases, plus the headline counts. Scoped to this unit's own execution
+   * tree (objectives/goals are per-unit). Shape matches the frontend
+   * `StrategicPanelData`.
+   */
+  async getPanel(unitId: string) {
+    const now = new Date()
+    const plans = await this.prisma.strategicPlan.findMany({
+      where: { deletedAt: null, units: { some: { unitId } } },
+      orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        objectives: {
+          where: { unitId },
+          orderBy: { createdAt: 'asc' },
+          include: {
+            goals: {
+              orderBy: { createdAt: 'asc' },
+              include: {
+                phases: {
+                  where: { status: PhaseStatus.ACTIVE },
+                  orderBy: { order: 'asc' },
+                  include: { _count: { select: { macroTasks: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    const objectives = plans.flatMap((p) => p.objectives)
+    const goals = objectives.flatMap((o) => o.goals)
+    const phases = goals.flatMap((g) => g.phases)
+
+    const blockedMacroTasks = await this.prisma.macroTask.count({
+      where: { unitId, status: TaskStatus.BLOCKED },
+    })
+
+    return {
+      activePlansCount: plans.filter((p) => p.status === PlanStatus.ACTIVE).length,
+      totalObjectives: objectives.length,
+      doneObjectives: objectives.filter((o) => o.status === GoalStatus.DONE).length,
+      activePhasesCount: phases.length,
+      blockedMacroTasks,
+      atRiskGoals: goals.filter((g) => g.status === GoalStatus.AT_RISK).length,
+      overduePhases: phases.filter((ph) => ph.dueDate != null && ph.dueDate < now).length,
+      plans: plans.map((p) => ({
+        id: p.id,
+        name: p.name,
+        year: p.year,
+        status: p.status,
+        objectives: p.objectives.map((o) => ({
+          id: o.id,
+          title: o.title,
+          progressPct: Number(o.progressPct),
+          trafficLight: o.trafficLight,
+          status: o.status,
+          goals: o.goals.map((g) => ({
+            id: g.id,
+            title: g.title,
+            progressPct: Number(g.progressPct),
+            status: g.status,
+            phases: g.phases.map((ph) => ({
+              id: ph.id,
+              title: ph.title,
+              status: ph.status,
+              dueDate: ph.dueDate ? ph.dueDate.toISOString() : null,
+              _count: { macroTasks: ph._count.macroTasks },
+            })),
+          })),
+        })),
+      })),
+    }
+  }
+
   async create(unitId: string, dto: CreatePlanDto, user: JwtPayload) {
     if (![UserRole.SUPER_ADMIN, UserRole.DIRETORIA].includes(user.role)) {
       throw new ForbiddenException('Apenas Diretoria pode criar planos estratégicos.')

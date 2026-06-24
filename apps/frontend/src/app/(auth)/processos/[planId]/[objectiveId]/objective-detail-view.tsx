@@ -19,7 +19,8 @@ export function ObjectiveDetailView({ planId, objectiveId }: { planId: string; o
   const { activeUnit, units, switchUnit } = useUnits()
 
   // Resolve which unit owns this plan; auto-switch active unit when it diverges
-  // so deep links from other units (e.g. /dashboard/unidades/X) work after refresh.
+  // so deep links from other units (e.g. an objective link from the dashboard)
+  // work after refresh.
   const { data: planUnit, isLoading: planUnitLoading } = usePlanUnit(planId)
   useEffect(() => {
     if (!planUnit || !units.length) return

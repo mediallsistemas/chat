@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { clsx } from 'clsx'
 import { PageHeader, MetricCard } from '@/shared/components'
-import { ProgressBar, TrafficLight } from '@/shared/components/ui'
+import { ProgressBar, TrafficLight, Button } from '@/shared/components/ui'
 import { useStrategicPanel } from '@/features/strategic/hooks/use-strategic'
 import { useUnitStore } from '@/shared/store/unit-store'
 import type { TrafficLightStatus } from '@/shared/components/ui'
@@ -40,7 +40,7 @@ function PanelSkeleton() {
 
 export default function PainelEstrategicoPage() {
   const activeUnit = useUnitStore((s) => s.activeUnit)
-  const { data, isLoading } = useStrategicPanel(activeUnit?.id)
+  const { data, isLoading, isError, refetch } = useStrategicPanel(activeUnit?.id)
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -54,6 +54,21 @@ export default function PainelEstrategicoPage() {
           Ver planos completos
         </Link>
       </div>
+
+      {!activeUnit && (
+        <div className="py-16 text-center">
+          <i className="ti ti-building-community text-4xl text-gs mb-3 block" aria-hidden="true" />
+          <p className="text-sm text-gx">Selecione uma unidade para ver o painel estratégico.</p>
+        </div>
+      )}
+
+      {activeUnit && isError && (
+        <div className="flex flex-col items-center gap-2 py-16 text-center">
+          <i className="ti ti-alert-triangle text-3xl text-gs" aria-hidden="true" />
+          <p className="text-sm text-gx">Não foi possível carregar o painel. Tente novamente.</p>
+          <Button size="sm" variant="secondary" onClick={() => refetch()}>Tentar novamente</Button>
+        </div>
+      )}
 
       {isLoading && <PanelSkeleton />}
 

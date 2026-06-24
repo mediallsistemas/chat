@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { AccessScope, JwtPayload } from '@mediall/types'
@@ -9,9 +9,23 @@ export class DashboardService {
 
   private summaryCache = new Map<string, { data: unknown; expiresAt: number }>()
   private trendsCache = new Map<string, { data: unknown; expiresAt: number }>()
+  private unitCache = new Map<string, { data: unknown; expiresAt: number }>()
 
   private cacheKey(user: JwtPayload): string {
     return `${user.accessScope}:${[...user.units].sort().join(',')}`
+  }
+
+  /**
+   * The dashboard controller is not a `BaseUnitController`, so a `:unitId`/`?unitId`
+   * does not pass through `UnitScopeGuard`. Validate access here (security.md §5):
+   * GLOBAL sees any unit (within its tenant, enforced by the $use middleware);
+   * everyone else must have the unit in their token's `units[]`.
+   */
+  private assertUnitAccess(user: JwtPayload, unitId: string): void {
+    if (user.accessScope === AccessScope.GLOBAL) return
+    if (!user.units.includes(unitId)) {
+      throw new ForbiddenException('Você não tem acesso a esta unidade.')
+    }
   }
 
   async getSummary(user: JwtPayload) {
@@ -183,6 +197,98 @@ export class DashboardService {
     }
   }
 
+  /**
+   * Single-unit detail for the scope-aware dashboard (header "uma unidade").
+   * Metrics, active plans (with this unit's objectives) and open impediments,
+   * all scoped to `unitId`. Cached 30s per unit.
+   */
+  async getUnitDetail(user: JwtPayload, unitId: string) {
+    this.assertUnitAccess(user, unitId)
+
+    const cached = this.unitCache.get(unitId)
+    if (cached && cached.expiresAt > Date.now()) return cached.data
+
+    const result = await this.computeUnitDetail(unitId)
+    this.unitCache.set(unitId, { data: result, expiresAt: Date.now() + 30_000 })
+    return result
+  }
+
+  private async computeUnitDetail(unitId: string) {
+    const now = new Date()
+    const [unit, plans, impediments, totalTasks, overdueTasks, openImpediments] = await Promise.all([
+      this.prisma.unit.findUnique({
+        where: { id: unitId },
+        select: { id: true, name: true, type: true, manager: { select: { id: true, name: true } } },
+      }),
+
+      this.prisma.strategicPlan.findMany({
+        where: { status: 'ACTIVE', deletedAt: null, units: { some: { unitId } } },
+        include: {
+          // Objectives carry their own unitId (per-unit execution, plano 24) — only
+          // this unit's objectives, matching the objectives service scoping.
+          objectives: {
+            where: { unitId },
+            select: { id: true, title: true, progressPct: true, trafficLight: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+
+      this.prisma.taskImpediment.findMany({
+        where: { unitId, status: { not: 'RESOLVED' } },
+        include: { task: { select: { id: true, title: true } } },
+        orderBy: [{ escalationLevel: 'desc' }, { createdAt: 'asc' }],
+      }),
+
+      this.prisma.task.count({ where: { unitId } }),
+      this.prisma.task.count({ where: { unitId, dueDate: { lt: now }, completedAt: null } }),
+      this.prisma.taskImpediment.count({ where: { unitId, status: { not: 'RESOLVED' } } }),
+    ])
+
+    if (!unit) throw new NotFoundException('Unidade não encontrada.')
+
+    const plansWithMetrics = plans.map((plan) => {
+      const progress = plan.objectives.length
+        ? Math.round(plan.objectives.reduce((sum, o) => sum + Number(o.progressPct), 0) / plan.objectives.length)
+        : 0
+      const hasRed = plan.objectives.some((o) => o.trafficLight === 'RED')
+      const hasYellow = plan.objectives.some((o) => o.trafficLight === 'YELLOW')
+      return {
+        id: plan.id,
+        name: plan.name,
+        year: plan.year,
+        progress,
+        trafficLight: hasRed ? 'RED' : hasYellow ? 'YELLOW' : 'GREEN',
+        objectives: plan.objectives.map((o) => ({
+          id: o.id,
+          title: o.title,
+          progressPct: Number(o.progressPct),
+          trafficLight: o.trafficLight,
+        })),
+      }
+    })
+
+    return {
+      unit: { id: unit.id, name: unit.name, type: unit.type, manager: unit.manager },
+      plans: plansWithMetrics,
+      impediments: impediments.map((i) => ({
+        id: i.id,
+        description: i.description,
+        escalationLevel: i.escalationLevel,
+        daysOpen: Math.floor((Date.now() - i.createdAt.getTime()) / 86_400_000),
+        taskId: i.task.id,
+        taskTitle: i.task.title,
+      })),
+      metrics: {
+        totalTasks,
+        overdueTasks,
+        openImpediments,
+        activePlans: plansWithMetrics.length,
+      },
+    }
+  }
+
   // Number of weekly buckets the trend charts cover (~3 months).
   private static readonly TREND_WEEKS = 12
 
@@ -196,19 +302,28 @@ export class DashboardService {
    * - planProgress: from PlanProgressSnapshot, which only accumulates from the
    *   day the snapshot job first runs (empty until then — the UI handles that).
    */
-  async getTrends(user: JwtPayload) {
-    const key = this.cacheKey(user)
+  async getTrends(user: JwtPayload, unitId?: string) {
+    if (unitId) this.assertUnitAccess(user, unitId)
+
+    const key = `${this.cacheKey(user)}:${unitId ?? 'all'}`
     const cached = this.trendsCache.get(key)
     if (cached && cached.expiresAt > Date.now()) return cached.data
 
-    const result = await this.computeTrends(user)
+    const result = await this.computeTrends(user, unitId)
     this.trendsCache.set(key, { data: result, expiresAt: Date.now() + 60_000 })
     return result
   }
 
-  private async computeTrends(user: JwtPayload) {
+  private async computeTrends(user: JwtPayload, unitId?: string) {
     const isGlobal = user.accessScope === AccessScope.GLOBAL
-    const unitFilter = isGlobal ? {} : { unitId: { in: user.units } }
+    // A single selected unit narrows everything to that unit; otherwise scope to
+    // the user's units (GLOBAL sees all). Access already validated in getTrends.
+    const unitFilter = unitId ? { unitId } : isGlobal ? {} : { unitId: { in: user.units } }
+    const snapshotPlanFilter = unitId
+      ? { plan: { units: { some: { unitId } } } }
+      : isGlobal
+        ? {}
+        : { plan: { units: { some: { unitId: { in: user.units } } } } }
 
     const weeks = this.lastNWeeks(DashboardService.TREND_WEEKS)
     const since = new Date(`${weeks[0]}T00:00:00.000Z`)
@@ -232,7 +347,7 @@ export class DashboardService {
         by: ['capturedOn'],
         where: {
           capturedOn: { gte: since },
-          ...(isGlobal ? {} : { plan: { units: { some: { unitId: { in: user.units } } } } }),
+          ...snapshotPlanFilter,
         },
         _avg: { progressPct: true },
         orderBy: { capturedOn: 'asc' },

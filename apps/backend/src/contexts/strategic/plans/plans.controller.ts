@@ -20,6 +20,12 @@ export class PlansController extends BaseUnitController {
     return this.plansService.findAll(unitId)
   }
 
+  // Must be declared BEFORE `:planId` so "panel" isn't matched as a plan id.
+  @Get('panel')
+  panel(@Param('unitId') unitId: string) {
+    return this.plansService.getPanel(unitId)
+  }
+
   @Get(':planId')
   findOne(@Param('unitId') unitId: string, @Param('planId') planId: string) {
     return this.plansService.findOne(unitId, planId)

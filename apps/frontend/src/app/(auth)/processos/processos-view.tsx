@@ -180,7 +180,8 @@ function ObjectiveAccordion({
   unitId: string
   planId: string
 }) {
-  const [open, setOpen] = useState(true)
+  // Start collapsed — objectives open on click (goals lazy-load via enabled:open).
+  const [open, setOpen] = useState(false)
   const [addGoalOpen, setAddGoalOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const { data: goals, isLoading } = useGoals(unitId, objective.id, { enabled: open })

@@ -37,7 +37,6 @@ const navGroups: NavGroup[] = [
       },
       { href: '/processos', icon: 'ti-sitemap', label: 'Processos', roles: null },
       { href: '/processos/painel', icon: 'ti-report-analytics', label: 'Painel Estratégico', roles: null },
-      { href: '/kanban', icon: 'ti-layout-kanban', label: 'Kanban', roles: null },
       { href: '/impedimentos', icon: 'ti-alert-triangle', label: 'Impedimentos', roles: null },
     ],
   },

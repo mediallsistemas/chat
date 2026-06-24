@@ -116,11 +116,17 @@ export function useDashboard() {
   })
 }
 
-export function useDashboardTrends() {
+/**
+ * Dashboard time-series. Pass `unitId` to narrow the series to a single unit
+ * (header "uma unidade" scope); omit it for the consolidated holding view.
+ */
+export function useDashboardTrends(unitId?: string) {
   return useQuery<DashboardTrends>({
-    queryKey: ['dashboard', 'trends'],
+    queryKey: ['dashboard', 'trends', unitId ?? 'all'],
     queryFn: async () => {
-      const res = await api.get<{ data: DashboardTrends }>('/dashboard/trends')
+      const res = await api.get<{ data: DashboardTrends }>('/dashboard/trends', {
+        params: unitId ? { unitId } : undefined,
+      })
       return res.data.data
     },
     staleTime: 60_000,
