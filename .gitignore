@@ -46,3 +46,7 @@ prisma/migrations/dev.db
 
 # Redis
 dump.rdb
+
+# Secrets / certificates — never commit
+token.txt
+infra/nginx/certs/
